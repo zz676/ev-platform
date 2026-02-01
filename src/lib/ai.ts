@@ -125,3 +125,51 @@ Requirements:
 
   return response.choices[0].message.content;
 }
+
+// Generate image for X post using DALL-E (fallback when no scraped image)
+export async function generatePostImage(
+  title: string,
+  summary: string
+): Promise<string> {
+  // DALL-E requires OpenAI directly (not DeepSeek)
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    throw new Error("OpenAI API key required for image generation");
+  }
+
+  const openai = new OpenAI({
+    apiKey: openaiKey,
+  });
+
+  // Create a prompt that generates relevant EV imagery
+  const imagePrompt = `A professional, modern photograph style image for an electric vehicle news article.
+Topic: ${title}
+Context: ${summary.slice(0, 200)}
+
+Style requirements:
+- Clean, professional news/tech media aesthetic
+- Feature electric vehicles, charging infrastructure, or EV technology
+- Modern urban or tech environment
+- Vibrant but realistic colors
+- No text or logos in the image
+- High quality, suitable for social media`;
+
+  const response = await openai.images.generate({
+    model: "dall-e-3",
+    prompt: imagePrompt,
+    n: 1,
+    size: "1024x1024",
+    quality: "standard",
+  });
+
+  if (!response.data || response.data.length === 0) {
+    throw new Error("Failed to generate image: no data returned");
+  }
+  const imageUrl = response.data[0].url;
+  if (!imageUrl) {
+    throw new Error("Failed to generate image: no URL returned");
+  }
+
+  console.log(`AI image generated successfully for: ${title.slice(0, 50)}...`);
+  return imageUrl;
+}

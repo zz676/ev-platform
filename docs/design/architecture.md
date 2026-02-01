@@ -28,7 +28,8 @@ A fully automated platform that aggregates Chinese EV industry content from offi
 | Supabase Client | ✅ Done | Client + server initialization |
 | API Routes | 🔄 In Progress | posts, subscribe, webhook, cron |
 | Python Scraper | 🔄 In Progress | Framework being built |
-| X Auto-publish | ⏳ Pending | Depends on API routes |
+| X Auto-publish | ✅ Done | Cron endpoint with image support |
+| X Image Support | ✅ Done | Scraped images + AI fallback (DALL-E 3) |
 | Deployment | ⏳ Pending | Vercel + Railway |
 
 ---
@@ -393,6 +394,96 @@ enum Frequency {
 
 ---
 
+## X Post Image Support
+
+### Hybrid Image Strategy
+
+X posts with images get significantly higher engagement. We use a hybrid approach:
+
+| Priority | Source | Cost | Quality |
+|----------|--------|------|---------|
+| 1 | Scraped from original article | Free | Original/authentic |
+| 2 | AI-generated (DALL-E 3) | ~$0.04/image | Professional, EV-themed |
+| 3 | Text-only (fallback) | Free | Lower engagement |
+
+### Implementation Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    X Post Publishing Flow                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐     ┌─────────────────┐     ┌──────────────┐ │
+│  │ Post Ready  │ ──▶ │ Check for       │ ──▶ │ Has scraped  │ │
+│  │ to Publish  │     │ originalMediaUrls│     │ image?       │ │
+│  └─────────────┘     └─────────────────┘     └──────┬───────┘ │
+│                                                      │         │
+│                             ┌────────────────────────┴────┐    │
+│                             │ Yes                    No   │    │
+│                             ▼                        ▼    │    │
+│                  ┌──────────────────┐   ┌────────────────────┐ │
+│                  │ Use scraped URL  │   │ Generate AI image  │ │
+│                  │ (free)           │   │ (DALL-E 3, $0.04)  │ │
+│                  └────────┬─────────┘   └──────────┬─────────┘ │
+│                           │                        │           │
+│                           └───────────┬────────────┘           │
+│                                       ▼                        │
+│                          ┌────────────────────────┐            │
+│                          │ Upload to X Media API  │            │
+│                          │ (v2 media/upload)      │            │
+│                          └───────────┬────────────┘            │
+│                                      │                         │
+│                                      ▼                         │
+│                          ┌────────────────────────┐            │
+│                          │ Post tweet with        │            │
+│                          │ media_ids (v2 API)     │            │
+│                          └────────────────────────┘            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### X API Endpoints
+
+| Endpoint | Version | Purpose |
+|----------|---------|---------|
+| `https://api.x.com/2/media/upload` | v2 | Media upload (images) |
+| `https://api.x.com/2/tweets` | v2 | Tweet posting |
+
+**Note**: X has fully migrated to `api.x.com` domain (as of 2025). The old `twitter.com` endpoints are deprecated.
+
+### AI Image Generation (DALL-E 3)
+
+When no scraped image is available, we generate a professional EV-themed image:
+
+```typescript
+// Prompt template for DALL-E 3
+const imagePrompt = `A professional, modern photograph style image for an electric vehicle news article.
+Topic: ${title}
+Context: ${summary.slice(0, 200)}
+
+Style requirements:
+- Clean, professional news/tech media aesthetic
+- Feature electric vehicles, charging infrastructure, or EV technology
+- Modern urban or tech environment
+- Vibrant but realistic colors
+- No text or logos in the image
+- High quality, suitable for social media`;
+```
+
+**Cost breakdown**:
+- DALL-E 3 (1024x1024, standard): ~$0.04 per image
+- At 3-5 posts/day with 50% AI generation: ~$2-3/month
+
+### Files Involved
+
+| File | Function |
+|------|----------|
+| `src/lib/twitter.ts` | `uploadMedia()` - Upload images to X |
+| `src/lib/ai.ts` | `generatePostImage()` - DALL-E 3 generation |
+| `src/app/api/cron/publish/route.ts` | Orchestrates image selection and posting |
+
+---
+
 ## X Post Format
 
 ### Template
@@ -439,8 +530,11 @@ NIO's growth vs infrastructure challenge continues... 🧵
 | Supabase | Free | $0 |
 | Railway (Scraper) | Starter | $5 |
 | DeepSeek API | Usage | $5-15 |
+| OpenAI (DALL-E 3) | Usage | $2-5 |
 | X API | Basic | $100 |
-| **Total** | | **$110-140/mo** |
+| **Total** | | **$112-145/mo** |
+
+**Note**: DALL-E 3 costs ~$0.04/image for AI-generated post images when no scraped image is available.
 
 ---
 
@@ -499,7 +593,7 @@ NIO's growth vs infrastructure challenge continues... 🧵
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ Configured | Supabase client auth |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ Configured | Supabase server admin |
 | `DATABASE_URL` | ⚠️ Needs password | Prisma PostgreSQL connection |
-| `OPENAI_API_KEY` | ✅ Configured | AI fallback (GPT-4o-mini) |
+| `OPENAI_API_KEY` | ✅ Configured | AI fallback (GPT-4o-mini) + DALL-E 3 images |
 | `DEEPSEEK_API_KEY` | ⏳ Pending | AI primary (DeepSeek V3) |
 | `X_API_KEY` | ✅ Configured | X/Twitter API |
 | `X_API_SECRET` | ✅ Configured | X/Twitter API |
