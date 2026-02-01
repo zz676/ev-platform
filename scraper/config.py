@@ -16,6 +16,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 # Webhook
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "http://localhost:3000/api/webhook")
 WEBHOOK_SECRET = os.getenv("SCRAPER_WEBHOOK_SECRET")
+CRON_SECRET = os.getenv("CRON_SECRET")  # For triggering X publish
 
 # Scraper Settings
 SCRAPE_INTERVAL_HOURS = int(os.getenv("SCRAPE_INTERVAL_HOURS", "6"))

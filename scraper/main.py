@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import hmac
 import json
+import os
 import sys
 from datetime import datetime
 
@@ -124,6 +125,41 @@ def submit_to_webhook(articles: list[dict], batch_id: str = None) -> bool:
         return False
 
 
+def trigger_x_publish() -> bool:
+    """Trigger X/Twitter auto-publish via the cron endpoint.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    publish_url = WEBHOOK_URL.replace("/api/webhook", "/api/cron/publish")
+    cron_secret = os.getenv("CRON_SECRET", "")
+
+    print(f"\nTriggering X publish at {publish_url}...")
+
+    try:
+        headers = {}
+        if cron_secret:
+            headers["Authorization"] = f"Bearer {cron_secret}"
+
+        response = requests.post(
+            publish_url,
+            headers=headers,
+            timeout=120,  # Publishing can take time
+        )
+
+        if response.ok:
+            result = response.json()
+            print(f"X publish response: {result}")
+            return True
+        else:
+            print(f"X publish error: {response.status_code} - {response.text}")
+            return False
+
+    except Exception as e:
+        print(f"Failed to trigger X publish: {e}")
+        return False
+
+
 def run_scraper(
     sources: list[str] = None,
     limit: int = 10,
@@ -196,6 +232,11 @@ def run_scraper(
         success = submit_to_webhook(all_articles, batch_id)
         if success:
             print("\nScraper run completed successfully!")
+            # Trigger X publishing after successful scrape
+            print("\n" + "="*50)
+            print("Triggering X/Twitter auto-publish...")
+            print("="*50)
+            trigger_x_publish()
         else:
             print("\nScraper run completed with errors")
             sys.exit(1)

@@ -27,13 +27,16 @@ Create a `.env` file in the scraper directory:
 DEEPSEEK_API_KEY=sk-xxx  # Primary (recommended - better Chinese)
 OPENAI_API_KEY=sk-xxx    # Fallback
 
-# Webhook
-WEBHOOK_URL=http://localhost:3000/api/webhook
+# Webhook & Publishing
+WEBHOOK_URL=https://your-vercel-app.vercel.app/api/webhook
 SCRAPER_WEBHOOK_SECRET=your-secret-here
+CRON_SECRET=your-cron-secret-here  # For triggering X auto-publish
 
 # Optional
 SCRAPE_INTERVAL_HOURS=6
 ```
+
+**Note:** After each successful scrape, the scraper automatically triggers X/Twitter publishing via the `/api/cron/publish` endpoint. This replaces Vercel Cron (which is limited on Hobby plan).
 
 ## Usage
 
