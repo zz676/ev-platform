@@ -127,8 +127,8 @@ export default function Home() {
               <Link href="/about" className="hover:text-white">About</Link>
               <Link href="/contact" className="hover:text-white">Contact</Link>
               <Link href="/privacy" className="hover:text-white">Privacy</Link>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">
-                Twitter/X
+              <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                X
               </a>
             </div>
           </div>
