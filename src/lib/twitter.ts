@@ -6,6 +6,10 @@ const API_SECRET = process.env.X_API_SECRET!;
 const ACCESS_TOKEN = process.env.X_ACCESS_TOKEN!;
 const ACCESS_TOKEN_SECRET = process.env.X_ACCESS_TOKEN_SECRET!;
 
+// X API endpoints (migrated to x.com domain as of 2025)
+const MEDIA_UPLOAD_URL = "https://api.x.com/2/media/upload";
+const TWEETS_URL = "https://api.x.com/2/tweets";
+
 // OAuth 1.0a signature generation
 function generateOAuthSignature(
   method: string,
@@ -85,21 +89,90 @@ export interface TwitterError {
   type: string;
 }
 
-// Post a tweet
-export async function postTweet(text: string): Promise<TweetResponse> {
-  const url = "https://api.twitter.com/2/tweets";
+// v2 Media Upload Response
+export interface MediaUploadResponse {
+  data: {
+    id: string;
+    media_key: string;
+    expires_after_secs?: number;
+    size?: number;
+  };
+  meta?: Record<string, unknown>;
+}
 
+// Download image from URL and return as base64
+async function downloadImageAsBase64(imageUrl: string): Promise<string> {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download image: ${response.status}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString("base64");
+  return base64;
+}
+
+// Upload media to X and get media_id (v2 API)
+export async function uploadMedia(imageUrl: string): Promise<string> {
   if (!API_KEY || !API_SECRET || !ACCESS_TOKEN || !ACCESS_TOKEN_SECRET) {
     throw new Error("X API credentials not configured");
   }
 
-  const response = await fetch(url, {
+  // Download image and convert to base64
+  const base64Data = await downloadImageAsBase64(imageUrl);
+
+  // v2 API uses JSON body with media (base64) and media_category
+  const payload = {
+    media: base64Data,
+    media_category: "tweet_image",
+  };
+
+  // Generate OAuth header (no body params in signature for JSON)
+  const authHeader = generateOAuthHeader("POST", MEDIA_UPLOAD_URL);
+
+  const response = await fetch(MEDIA_UPLOAD_URL, {
     method: "POST",
     headers: {
-      Authorization: generateOAuthHeader("POST", url),
+      Authorization: authHeader,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("X Media Upload error:", errorText);
+    throw new Error(`X Media Upload error: ${response.status} - ${errorText}`);
+  }
+
+  const result: MediaUploadResponse = await response.json();
+  console.log(`Media uploaded successfully: ${result.data.id}`);
+  return result.data.id;
+}
+
+// Post a tweet (optionally with media)
+export async function postTweet(
+  text: string,
+  mediaIds?: string[]
+): Promise<TweetResponse> {
+  if (!API_KEY || !API_SECRET || !ACCESS_TOKEN || !ACCESS_TOKEN_SECRET) {
+    throw new Error("X API credentials not configured");
+  }
+
+  // Build tweet payload
+  const payload: { text: string; media?: { media_ids: string[] } } = { text };
+
+  if (mediaIds && mediaIds.length > 0) {
+    payload.media = { media_ids: mediaIds };
+  }
+
+  const response = await fetch(TWEETS_URL, {
+    method: "POST",
+    headers: {
+      Authorization: generateOAuthHeader("POST", TWEETS_URL),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -176,7 +249,7 @@ export function formatTweetContent(post: {
 // Verify credentials
 export async function verifyCredentials(): Promise<boolean> {
   try {
-    const url = "https://api.twitter.com/2/users/me";
+    const url = "https://api.x.com/2/users/me";
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${process.env.X_BEARER_TOKEN}`,
