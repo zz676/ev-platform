@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Platform - Architecture Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+        .flow-arrow { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .tech-badge { transition: all 0.2s; }
+        .tech-badge:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white py-16">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="flex items-center gap-4 mb-4">
+                <span class="text-5xl">⚡</span>
+                <h1 class="text-4xl font-bold">EV Platform</h1>
+            </div>
+            <p class="text-xl text-purple-100 max-w-2xl">
+                Automated platform for aggregating Chinese EV news and publishing to global audiences via X and a bilingual website.
+            </p>
+            <div class="flex flex-wrap gap-4 mt-8">
+                <span class="bg-white/20 px-4 py-2 rounded-full text-sm">🇨🇳 Chinese Sources</span>
+                <span class="bg-white/20 px-4 py-2 rounded-full text-sm">🤖 AI-Powered (DeepSeek)</span>
+                <span class="bg-white/20 px-4 py-2 rounded-full text-sm">🌐 Bilingual</span>
+                <span class="bg-white/20 px-4 py-2 rounded-full text-sm">🐦 Auto-Post to X</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 bg-white shadow-sm z-50">
+        <div class="max-w-6xl mx-auto px-6 py-4">
+            <div class="flex flex-wrap gap-6">
+                <a href="#status" class="text-gray-600 hover:text-purple-600 font-medium">Status</a>
+                <a href="#overview" class="text-gray-600 hover:text-purple-600 font-medium">Overview</a>
+                <a href="#differentiation" class="text-gray-600 hover:text-purple-600 font-medium">Differentiation</a>
+                <a href="#data-sources" class="text-gray-600 hover:text-purple-600 font-medium">Data Sources</a>
+                <a href="#architecture" class="text-gray-600 hover:text-purple-600 font-medium">Architecture</a>
+                <a href="#tech-stack" class="text-gray-600 hover:text-purple-600 font-medium">Tech Stack</a>
+                <a href="#implementation" class="text-gray-600 hover:text-purple-600 font-medium">Implementation</a>
+                <a href="#api-keys" class="text-gray-600 hover:text-purple-600 font-medium">API Keys</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-6 py-12">
+        <!-- Implementation Status Section -->
+        <section id="status" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">Implementation Status</h2>
+            <div class="bg-white rounded-xl p-6 shadow-lg">
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="border rounded-lg p-4 border-green-300 bg-green-50">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                            <span class="font-semibold text-green-700">Next.js Website</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Next.js 15 + TypeScript + Tailwind CSS</p>
+                    </div>
+                    <div class="border rounded-lg p-4 border-green-300 bg-green-50">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                            <span class="font-semibold text-green-700">i18n (EN/ZH)</span>
+                        </div>
+                        <p class="text-sm text-gray-600">next-intl with locale routing</p>
+                    </div>
+                    <div class="border rounded-lg p-4 border-green-300 bg-green-50">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                            <span class="font-semibold text-green-700">Home Page UI</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Hero, news grid, subscription CTA</p>
+                    </div>
+                    <div class="border rounded-lg p-4 border-green-300 bg-green-50">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                            <span class="font-semibold text-green-700">Prisma Schema</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Post & Subscriber models defined</p>
+                    </div>
+                    <div class="border rounded-lg p-4 border-green-300 bg-green-50">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                            <span class="font-semibold text-green-700">AI Service</span>
+                        </div>
+                        <p class="text-sm text-gray-600">DeepSeek + OpenAI fallback</p>
+                    </div>
+                    <div class="border rounded-lg p-4 border-green-300 bg-green-50">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                            <span class="font-semibold text-green-700">Supabase Client</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Client + server initialization</p>
+                    </div>
+                    <div class="border rounded-lg p-4 border-yellow-300 bg-yellow-50">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                            <span class="font-semibold text-yellow-700">API Routes</span>
+                        </div>
+                        <p class="text-sm text-gray-600">posts, subscribe, webhook, cron</p>
+                    </div>
+                    <div class="border rounded-lg p-4 border-yellow-300 bg-yellow-50">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                            <span class="font-semibold text-yellow-700">Python Scraper</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Framework being built</p>
+                    </div>
+                    <div class="border rounded-lg p-4 border-gray-300 bg-gray-50">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-3 h-3 bg-gray-400 rounded-full"></span>
+                            <span class="font-semibold text-gray-600">X Auto-publish</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Pending API routes</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex items-center gap-6 text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                        <span class="text-gray-600">Complete</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                        <span class="text-gray-600">In Progress</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 bg-gray-400 rounded-full"></span>
+                        <span class="text-gray-600">Pending</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Overview Section -->
+        <section id="overview" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">Project Overview</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="text-2xl">🎯</span> Core Mission
+                    </h3>
+                    <p class="text-gray-600">
+                        Bridge the information gap between China's booming EV market and global audiences by automatically aggregating, translating, and distributing high-quality EV news content with a unique social media perspective.
+                    </p>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="text-2xl">👥</span> Target Users
+                    </h3>
+                    <ul class="text-gray-600 space-y-2">
+                        <li>• Overseas Chinese following domestic EV developments</li>
+                        <li>• International investors & analysts</li>
+                        <li>• EV industry professionals</li>
+                        <li>• EV enthusiasts worldwide</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Differentiation Section -->
+        <section id="differentiation" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">Competitive Differentiation</h2>
+
+            <div class="bg-white rounded-xl p-6 shadow-lg mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Main Competitor: CnEVPost.com</h3>
+                <p class="text-gray-600 mb-4">Shanghai-based English EV news site with professional, investor-focused content.</p>
+
+                <div class="grid md:grid-cols-2 gap-6 mt-6">
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="font-semibold text-gray-700 mb-3">CnEVPost Style</h4>
+                        <ul class="text-sm text-gray-600 space-y-2">
+                            <li>📰 Official news & earnings reports</li>
+                            <li>📊 Monthly sales data</li>
+                            <li>🏢 Company announcements</li>
+                            <li>📈 Investor perspective</li>
+                            <li>🌐 Website-centric</li>
+                            <li>✍️ Human editors</li>
+                        </ul>
+                    </div>
+                    <div class="border-2 border-purple-300 rounded-lg p-4 bg-purple-50">
+                        <h4 class="font-semibold text-purple-700 mb-3">Our Style (Differentiated)</h4>
+                        <ul class="text-sm text-gray-700 space-y-2">
+                            <li>🔥 Weibo/Douyin viral content</li>
+                            <li>🎬 Real owner experiences</li>
+                            <li>💬 Industry gossip & debates</li>
+                            <li>👀 Consumer perspective</li>
+                            <li>🐦 X/Twitter-native</li>
+                            <li>🤖 AI automation</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sample Post Comparison -->
+            <div class="bg-white rounded-xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Content Style Comparison</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-gray-500 mb-2">CnEVPost (Dry, Factual)</h4>
+                        <p class="text-gray-700">"NIO delivers 20,544 vehicles in January 2025"</p>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                        <h4 class="text-sm font-medium text-purple-600 mb-2">Our Style (Engaging, Social)</h4>
+                        <div class="text-gray-700 text-sm">
+                            <p class="font-medium">🚗 Sales | NIO January Deliveries: 20K+</p>
+                            <p class="mt-2">But here's what Weibo owners are actually saying: 2-hour waits at battery swap stations during holidays!</p>
+                            <p class="mt-2 text-purple-600">#ChinaEV #NIO #BatterySwap</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Sources Section -->
+        <section id="data-sources" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">Data Sources (Tiered Strategy)</h2>
+
+            <!-- Tier 1 -->
+            <div class="bg-white rounded-xl p-6 shadow-lg mb-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">Tier 1 - Priority</span>
+                    <h3 class="text-lg font-semibold text-gray-800">Official Company Websites</h3>
+                </div>
+                <p class="text-gray-600 mb-4">Most stable, legal, and reliable. Many have English versions.</p>
+
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="border rounded-lg p-3">
+                        <div class="font-medium text-gray-800">NIO 蔚来</div>
+                        <div class="text-sm text-gray-500">ir.nio.com</div>
+                        <div class="text-xs text-green-600 mt-1">✅ English ✅ Monthly Data</div>
+                    </div>
+                    <div class="border rounded-lg p-3">
+                        <div class="font-medium text-gray-800">XPeng 小鹏</div>
+                        <div class="text-sm text-gray-500">ir.xiaopeng.com</div>
+                        <div class="text-xs text-green-600 mt-1">✅ English ✅ Monthly Data</div>
+                    </div>
+                    <div class="border rounded-lg p-3">
+                        <div class="font-medium text-gray-800">Li Auto 理想</div>
+                        <div class="text-sm text-gray-500">ir.lixiang.com</div>
+                        <div class="text-xs text-green-600 mt-1">✅ English ✅ Monthly Data</div>
+                    </div>
+                    <div class="border rounded-lg p-3">
+                        <div class="font-medium text-gray-800">BYD 比亚迪</div>
+                        <div class="text-sm text-gray-500">byd.com/en/news</div>
+                        <div class="text-xs text-green-600 mt-1">✅ English ✅ Monthly Data</div>
+                    </div>
+                    <div class="border rounded-lg p-3">
+                        <div class="font-medium text-gray-800">Zeekr 极氪</div>
+                        <div class="text-sm text-gray-500">ir.zeekr.com</div>
+                        <div class="text-xs text-green-600 mt-1">✅ English ✅ Monthly Data</div>
+                    </div>
+                    <div class="border rounded-lg p-3">
+                        <div class="font-medium text-gray-800">Leapmotor 零跑</div>
+                        <div class="text-sm text-gray-500">ir.leapmotor.com</div>
+                        <div class="text-xs text-green-600 mt-1">✅ English ✅ Monthly Data</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tier 2 -->
+            <div class="bg-white rounded-xl p-6 shadow-lg mb-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium">Tier 2 - Secondary</span>
+                    <h3 class="text-lg font-semibold text-gray-800">News Media</h3>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <span class="px-3 py-1 bg-gray-100 rounded-full text-sm">新浪汽车</span>
+                    <span class="px-3 py-1 bg-gray-100 rounded-full text-sm">36氪汽车</span>
+                    <span class="px-3 py-1 bg-gray-100 rounded-full text-sm">汽车之家</span>
+                    <span class="px-3 py-1 bg-gray-100 rounded-full text-sm">懂车帝</span>
+                    <span class="px-3 py-1 bg-gray-100 rounded-full text-sm">电车通</span>
+                </div>
+            </div>
+
+            <!-- Tier 3 -->
+            <div class="bg-white rounded-xl p-6 shadow-lg">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">Tier 3 - Differentiation</span>
+                    <h3 class="text-lg font-semibold text-gray-800">Weibo Social Content</h3>
+                </div>
+                <p class="text-gray-600 mb-4">Higher risk but unique content that competitors don't have.</p>
+
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-2">Brand Accounts</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-2 py-1 bg-red-50 text-red-700 rounded text-sm">@蔚来</span>
+                            <span class="px-2 py-1 bg-red-50 text-red-700 rounded text-sm">@乐道汽车</span>
+                            <span class="px-2 py-1 bg-red-50 text-red-700 rounded text-sm">@小鹏汽车</span>
+                            <span class="px-2 py-1 bg-red-50 text-red-700 rounded text-sm">@理想汽车</span>
+                            <span class="px-2 py-1 bg-red-50 text-red-700 rounded text-sm">@比亚迪汽车</span>
+                            <span class="px-2 py-1 bg-red-50 text-red-700 rounded text-sm">@小米汽车</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-2">Founders/Executives (More engaging)</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-2 py-1 bg-purple-50 text-purple-700 rounded text-sm">@李想</span>
+                            <span class="px-2 py-1 bg-purple-50 text-purple-700 rounded text-sm">@何小鹏</span>
+                            <span class="px-2 py-1 bg-purple-50 text-purple-700 rounded text-sm">@雷军</span>
+                            <span class="px-2 py-1 bg-purple-50 text-purple-700 rounded text-sm">@余承东</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-700 mb-2">KOL/Media</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-sm">@电动车公社</span>
+                            <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-sm">@42号车库</span>
+                            <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-sm">@新出行</span>
+                            <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-sm">@新车部落</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture Section -->
+        <section id="architecture" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">System Architecture</h2>
+            <div class="bg-white rounded-xl p-8 shadow-lg overflow-x-auto">
+                <div class="min-w-[800px]">
+                    <div class="space-y-6">
+                        <!-- Source Adapters -->
+                        <div class="flex justify-center gap-4">
+                            <div class="w-36 bg-green-100 border-2 border-green-300 rounded-lg p-3 text-center">
+                                <div class="text-xl mb-1">🏢</div>
+                                <div class="font-semibold text-green-700 text-sm">Official Sites</div>
+                                <div class="text-xs text-green-600">Stable</div>
+                            </div>
+                            <div class="w-36 bg-yellow-100 border-2 border-yellow-300 rounded-lg p-3 text-center">
+                                <div class="text-xl mb-1">📰</div>
+                                <div class="font-semibold text-yellow-700 text-sm">News Media</div>
+                                <div class="text-xs text-yellow-600">Medium</div>
+                            </div>
+                            <div class="w-36 bg-red-100 border-2 border-red-300 rounded-lg p-3 text-center">
+                                <div class="text-xl mb-1">🔴</div>
+                                <div class="font-semibold text-red-700 text-sm">Weibo</div>
+                                <div class="text-xs text-red-600">Optional</div>
+                            </div>
+                            <div class="w-36 bg-gray-100 border-2 border-gray-300 rounded-lg p-3 text-center">
+                                <div class="text-xl mb-1">✋</div>
+                                <div class="font-semibold text-gray-700 text-sm">Manual Import</div>
+                                <div class="text-xs text-gray-600">Backup</div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center">
+                            <div class="text-3xl text-gray-400 flow-arrow">↓</div>
+                        </div>
+
+                        <!-- AI Processing -->
+                        <div class="bg-purple-50 border-2 border-purple-300 rounded-xl p-6 max-w-2xl mx-auto">
+                            <div class="text-center mb-4">
+                                <span class="bg-purple-200 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">AI Processing Layer</span>
+                            </div>
+                            <div class="text-center text-sm text-gray-600 mb-4">
+                                Primary: <strong>DeepSeek V3</strong> ($0.27/M) | Fallback: <strong>GPT-4o-mini</strong>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div class="bg-white rounded-lg p-3 text-center">
+                                    <div class="font-semibold text-purple-700">Filter</div>
+                                    <div class="text-gray-500">Score 0-100</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-3 text-center">
+                                    <div class="font-semibold text-purple-700">Translate</div>
+                                    <div class="text-gray-500">CN → EN</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-3 text-center">
+                                    <div class="font-semibold text-purple-700">Summarize</div>
+                                    <div class="text-gray-500">X Post</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center">
+                            <div class="text-3xl text-gray-400 flow-arrow">↓</div>
+                        </div>
+
+                        <!-- Database -->
+                        <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-4 max-w-md mx-auto text-center">
+                            <span class="bg-emerald-200 text-emerald-800 px-3 py-1 rounded-full text-sm font-medium">Supabase (PostgreSQL)</span>
+                            <div class="text-gray-600 mt-2 text-sm">Posts • Subscribers • Analytics</div>
+                        </div>
+
+                        <div class="flex justify-center gap-24">
+                            <div class="text-3xl text-gray-400 flow-arrow">↙</div>
+                            <div class="text-3xl text-gray-400 flow-arrow">↘</div>
+                        </div>
+
+                        <!-- Output -->
+                        <div class="flex justify-center gap-8">
+                            <div class="w-56 bg-blue-50 border-2 border-blue-300 rounded-xl p-4">
+                                <div class="text-center mb-3">
+                                    <span class="bg-blue-200 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">Next.js Website</span>
+                                </div>
+                                <ul class="text-xs text-gray-600 space-y-1">
+                                    <li>• News feed</li>
+                                    <li>• Bilingual (EN/CN)</li>
+                                    <li>• Email subscription</li>
+                                    <li>• Vercel deployment</li>
+                                </ul>
+                            </div>
+                            <div class="w-56 bg-sky-50 border-2 border-sky-300 rounded-xl p-4">
+                                <div class="text-center mb-3">
+                                    <span class="bg-sky-200 text-sky-800 px-3 py-1 rounded-full text-sm font-medium">X Auto Publisher</span>
+                                </div>
+                                <ul class="text-xs text-gray-600 space-y-1">
+                                    <li>• 3-5 posts/day</li>
+                                    <li>• Vercel Cron</li>
+                                    <li>• Auto hashtags</li>
+                                    <li>• Link to website</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tech Stack Section -->
+        <section id="tech-stack" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">Technology Stack</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white text-sm">🖥️</span>
+                        Frontend
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="tech-badge bg-gray-900 text-white px-3 py-1 rounded-full text-sm">Next.js 15</span>
+                        <span class="tech-badge bg-blue-600 text-white px-3 py-1 rounded-full text-sm">TypeScript</span>
+                        <span class="tech-badge bg-cyan-500 text-white px-3 py-1 rounded-full text-sm">Tailwind</span>
+                        <span class="tech-badge bg-gray-700 text-white px-3 py-1 rounded-full text-sm">shadcn/ui</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-white text-sm">💾</span>
+                        Database
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="tech-badge bg-emerald-600 text-white px-3 py-1 rounded-full text-sm">Supabase</span>
+                        <span class="tech-badge bg-blue-800 text-white px-3 py-1 rounded-full text-sm">PostgreSQL</span>
+                        <span class="tech-badge bg-teal-600 text-white px-3 py-1 rounded-full text-sm">Prisma</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center text-white text-sm">🤖</span>
+                        AI Processing
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="tech-badge bg-blue-700 text-white px-3 py-1 rounded-full text-sm">DeepSeek V3</span>
+                        <span class="tech-badge bg-green-700 text-white px-3 py-1 rounded-full text-sm">GPT-4o-mini</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center text-white text-sm">🕷️</span>
+                        Scraper
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="tech-badge bg-yellow-600 text-white px-3 py-1 rounded-full text-sm">Python</span>
+                        <span class="tech-badge bg-orange-500 text-white px-3 py-1 rounded-full text-sm">Requests</span>
+                        <span class="tech-badge bg-green-600 text-white px-3 py-1 rounded-full text-sm">Playwright</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center text-white text-sm">🚀</span>
+                        Deployment
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="tech-badge bg-gray-900 text-white px-3 py-1 rounded-full text-sm">Vercel</span>
+                        <span class="tech-badge bg-purple-700 text-white px-3 py-1 rounded-full text-sm">Railway</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center text-white text-sm">🐦</span>
+                        Distribution
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="tech-badge bg-sky-500 text-white px-3 py-1 rounded-full text-sm">X API v2</span>
+                        <span class="tech-badge bg-pink-500 text-white px-3 py-1 rounded-full text-sm">Resend</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Implementation Section -->
+        <section id="implementation" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">Implementation Phases</h2>
+            <div class="space-y-6">
+                <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-blue-500">
+                    <div class="flex items-center gap-4 mb-4">
+                        <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">Phase 1</span>
+                        <h3 class="text-lg font-semibold text-gray-800">Foundation Setup</h3>
+                    </div>
+                    <ul class="text-gray-600 space-y-2 ml-4">
+                        <li>• Initialize Next.js with TypeScript, Tailwind, shadcn/ui</li>
+                        <li>• Set up Supabase database with Prisma schema</li>
+                        <li>• Configure DeepSeek/OpenAI API</li>
+                        <li>• Build basic UI components</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-green-500">
+                    <div class="flex items-center gap-4 mb-4">
+                        <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">Phase 2</span>
+                        <h3 class="text-lg font-semibold text-gray-800">Website MVP</h3>
+                    </div>
+                    <ul class="text-gray-600 space-y-2 ml-4">
+                        <li>• News feed with infinite scroll</li>
+                        <li>• Article detail pages</li>
+                        <li>• Language toggle (EN/CN)</li>
+                        <li>• Email subscription</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-yellow-500">
+                    <div class="flex items-center gap-4 mb-4">
+                        <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium">Phase 3</span>
+                        <h3 class="text-lg font-semibold text-gray-800">Scraper System</h3>
+                    </div>
+                    <ul class="text-gray-600 space-y-2 ml-4">
+                        <li>• Python scraper framework</li>
+                        <li>• <strong>Priority:</strong> Official website scrapers (NIO, XPeng, Li Auto, BYD)</li>
+                        <li>• AI processing pipeline with Function Calling</li>
+                        <li>• <em>Optional:</em> Weibo public data scraper</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-purple-500">
+                    <div class="flex items-center gap-4 mb-4">
+                        <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">Phase 4</span>
+                        <h3 class="text-lg font-semibold text-gray-800">X Integration</h3>
+                    </div>
+                    <ul class="text-gray-600 space-y-2 ml-4">
+                        <li>• Configure X API developer account</li>
+                        <li>• Auto-publishing logic</li>
+                        <li>• Vercel Cron scheduling</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-lg border-l-4 border-red-500">
+                    <div class="flex items-center gap-4 mb-4">
+                        <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">Phase 5</span>
+                        <h3 class="text-lg font-semibold text-gray-800">Deploy & Launch</h3>
+                    </div>
+                    <ul class="text-gray-600 space-y-2 ml-4">
+                        <li>• Deploy website to Vercel</li>
+                        <li>• Deploy scraper to Railway</li>
+                        <li>• Configure domain and SSL</li>
+                        <li>• Set up monitoring</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- API Keys Status -->
+        <section id="api-keys" class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">API Keys Configuration</h2>
+            <div class="bg-white rounded-xl p-6 shadow-lg">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="text-left py-3 text-gray-600 font-medium">Key</th>
+                            <th class="text-left py-3 text-gray-600 font-medium">Status</th>
+                            <th class="text-left py-3 text-gray-600 font-medium">Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800 font-mono text-sm">NEXT_PUBLIC_SUPABASE_URL</td>
+                            <td class="py-3"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-sm">Configured</span></td>
+                            <td class="py-3 text-gray-500">Supabase API endpoint</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800 font-mono text-sm">NEXT_PUBLIC_SUPABASE_ANON_KEY</td>
+                            <td class="py-3"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-sm">Configured</span></td>
+                            <td class="py-3 text-gray-500">Supabase client auth</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800 font-mono text-sm">SUPABASE_SERVICE_ROLE_KEY</td>
+                            <td class="py-3"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-sm">Configured</span></td>
+                            <td class="py-3 text-gray-500">Supabase server admin</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800 font-mono text-sm">DATABASE_URL</td>
+                            <td class="py-3"><span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-sm">Needs Password</span></td>
+                            <td class="py-3 text-gray-500">Prisma PostgreSQL connection</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800 font-mono text-sm">OPENAI_API_KEY</td>
+                            <td class="py-3"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-sm">Configured</span></td>
+                            <td class="py-3 text-gray-500">AI fallback (GPT-4o-mini)</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800 font-mono text-sm">DEEPSEEK_API_KEY</td>
+                            <td class="py-3"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm">Pending</span></td>
+                            <td class="py-3 text-gray-500">AI primary (DeepSeek V3)</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800 font-mono text-sm">X_API_* (5 keys)</td>
+                            <td class="py-3"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-sm">Configured</span></td>
+                            <td class="py-3 text-gray-500">X/Twitter API</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800 font-mono text-sm">RESEND_API_KEY</td>
+                            <td class="py-3"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-sm">Configured</span></td>
+                            <td class="py-3 text-gray-500">Email service</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Cost Section -->
+        <section class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">Estimated Monthly Costs</h2>
+            <div class="bg-white rounded-xl p-6 shadow-lg max-w-2xl">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="text-left py-3 text-gray-600 font-medium">Service</th>
+                            <th class="text-left py-3 text-gray-600 font-medium">Tier</th>
+                            <th class="text-right py-3 text-gray-600 font-medium">Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800">Vercel</td>
+                            <td class="py-3 text-gray-500">Free/Pro</td>
+                            <td class="py-3 text-right text-gray-800">$0-20</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800">Supabase</td>
+                            <td class="py-3 text-gray-500">Free</td>
+                            <td class="py-3 text-right text-gray-800">$0</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800">Railway</td>
+                            <td class="py-3 text-gray-500">Starter</td>
+                            <td class="py-3 text-right text-gray-800">$5</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800">DeepSeek API</td>
+                            <td class="py-3 text-gray-500">Usage</td>
+                            <td class="py-3 text-right text-gray-800">$5-15</td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="py-3 text-gray-800">X API</td>
+                            <td class="py-3 text-gray-500">Basic</td>
+                            <td class="py-3 text-right text-gray-800">$100</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="py-3 text-gray-800 font-semibold" colspan="2">Total</td>
+                            <td class="py-3 text-right text-gray-800 font-semibold">$110-140/mo</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="max-w-6xl mx-auto px-6 text-center">
+            <p class="text-gray-400">EV Platform Architecture Design Document</p>
+            <p class="text-gray-500 text-sm mt-2">Last Updated: February 2025</p>
+        </div>
+    </footer>
+
+    <script>
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>

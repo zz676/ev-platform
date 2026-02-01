@@ -1,0 +1,22 @@
+{
+  "Home": {
+    "title": "China EV News",
+    "subscribe": "Subscribe",
+    "hero": {
+      "title": "Your Window into China's EV Revolution",
+      "subtitle": "Real-time updates on BYD, NIO, XPeng, Li Auto and more. Curated from Chinese social media and official sources."
+    },
+    "latestNews": "Latest News",
+    "placeholder": {
+      "title": "NIO January Deliveries Exceed 20,000 Units",
+      "description": "NIO delivered 20,544 vehicles in January 2025, marking a new monthly record with strong demand for the ET5 series."
+    },
+    "readMore": "Read more",
+    "loadMore": "Load More",
+    "cta": {
+      "title": "Never Miss an Update",
+      "description": "Get the latest China EV news delivered to your inbox. Daily or weekly digest available.",
+      "emailPlaceholder": "Enter your email"
+    }
+  }
+}

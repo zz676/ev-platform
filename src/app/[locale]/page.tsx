@@ -1,0 +1,142 @@
+import { useTranslations } from "next-intl";
+import Link from "next/link";
+
+export default function Home() {
+  const t = useTranslations("Home");
+
+  return (
+    <main className="min-h-screen">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">⚡</span>
+              <h1 className="text-2xl font-bold">{t("title")}</h1>
+            </div>
+            <nav className="flex items-center gap-6">
+              <Link href="/en" className="hover:opacity-80">EN</Link>
+              <Link href="/zh" className="hover:opacity-80">中文</Link>
+              <Link
+                href="/subscribe"
+                className="bg-white text-purple-600 px-4 py-2 rounded-full font-medium hover:bg-opacity-90"
+              >
+                {t("subscribe")}
+              </Link>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="bg-gradient-to-b from-purple-600 to-purple-700 text-white py-16">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            {t("hero.title")}
+          </h2>
+          <p className="text-xl text-purple-100 max-w-2xl mx-auto mb-8">
+            {t("hero.subtitle")}
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">BYD</span>
+            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">NIO</span>
+            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">XPeng</span>
+            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">Li Auto</span>
+            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">Xiaomi</span>
+            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">Zeekr</span>
+          </div>
+        </div>
+      </section>
+
+      {/* News Feed Placeholder */}
+      <section className="py-12 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <h3 className="text-2xl font-bold text-gray-800 mb-8">{t("latestNews")}</h3>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Placeholder cards */}
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <article
+                key={i}
+                className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-sm font-medium">
+                    Sales
+                  </span>
+                  <span className="text-gray-400 text-sm">2 hours ago</span>
+                </div>
+                <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                  {t("placeholder.title")}
+                </h4>
+                <p className="text-gray-600 text-sm mb-4">
+                  {t("placeholder.description")}
+                </p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Source: NIO Official</span>
+                  <Link href="#" className="text-purple-600 hover:underline">
+                    {t("readMore")} →
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <button className="bg-purple-600 text-white px-8 py-3 rounded-full font-medium hover:bg-purple-700 transition-colors">
+              {t("loadMore")}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Subscribe CTA */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4 text-center">
+          <h3 className="text-3xl font-bold text-gray-800 mb-4">
+            {t("cta.title")}
+          </h3>
+          <p className="text-gray-600 mb-8 max-w-xl mx-auto">
+            {t("cta.description")}
+          </p>
+          <form className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+            <input
+              type="email"
+              placeholder={t("cta.emailPlaceholder")}
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            <button
+              type="submit"
+              className="bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors"
+            >
+              {t("subscribe")}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white py-12">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center gap-2 mb-4 md:mb-0">
+              <span className="text-2xl">⚡</span>
+              <span className="font-bold">China EV News</span>
+            </div>
+            <div className="flex gap-6 text-gray-400">
+              <Link href="/about" className="hover:text-white">About</Link>
+              <Link href="/contact" className="hover:text-white">Contact</Link>
+              <Link href="/privacy" className="hover:text-white">Privacy</Link>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                Twitter/X
+              </a>
+            </div>
+          </div>
+          <div className="text-center text-gray-500 text-sm mt-8">
+            © 2025 China EV News. All rights reserved.
+          </div>
+        </div>
+      </footer>
+    </main>
+  );
+}

@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Post {
+  id                String     @id @default(cuid())
+
+  // Source Information
+  sourceId          String     @unique
+  source            Source     @default(OFFICIAL)
+  sourceUrl         String
+  sourceAuthor      String
+  sourceDate        DateTime
+
+  // Original Content (Chinese)
+  originalTitle     String?
+  originalContent   String     @db.Text
+  originalMediaUrls String[]
+
+  // Translated Content (English)
+  translatedTitle   String?
+  translatedContent String     @db.Text
+  translatedSummary String     // For X posts (short)
+
+  // Metadata
+  categories        String[]
+  relevanceScore    Int        @default(0) // 0-100
+
+  // Publishing Status
+  status            PostStatus @default(PENDING)
+  publishedToX      Boolean    @default(false)
+  xPostId           String?
+  xPublishedAt      DateTime?
+
+  // Timestamps
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([source])
+  @@index([status])
+  @@index([createdAt])
+  @@index([relevanceScore])
+}
+
+model Subscriber {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  language    Language  @default(EN)
+  categories  String[]
+  frequency   Frequency @default(DAILY)
+  verified    Boolean   @default(false)
+  verifyToken String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([verified])
+}
+
+enum Source {
+  OFFICIAL
+  MEDIA
+  WEIBO
+  MANUAL
+}
+
+enum PostStatus {
+  PENDING
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+enum Language {
+  EN
+  ZH
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+}
