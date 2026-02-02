@@ -40,15 +40,12 @@ export function Footer() {
 
   return (
     <footer className="bg-ev-green-50 text-gray-700">
-      <div className="px-6 lg:px-8 py-4">
+      <div className="px-6 lg:px-8 pt-4 pb-[0.8rem]">
         {/* Top Row */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           {/* Left - Stay Updated */}
           <div id="subscribe" className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-gray-800 font-semibold">{t("stayUpdated")}</h3>
-              <span className="text-xs text-gray-500 hidden sm:inline">{t("stayUpdatedDesc")}</span>
-            </div>
+            <h3 className="text-gray-800 font-semibold">{t("stayUpdated")}</h3>
             {status === "success" ? (
               <p className="text-sm text-ev-green-600 font-medium">{t("subscribeSuccess")}</p>
             ) : (
@@ -59,7 +56,7 @@ export function Footer() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t("emailPlaceholder")}
                   required
-                  className="px-3 py-1.5 text-sm bg-white border border-ev-green-200 rounded-md focus:outline-none focus:ring-1 focus:ring-ev-green-500 focus:border-transparent w-40 sm:w-48 text-gray-800 placeholder-gray-400"
+                  className="px-3 py-1.5 text-sm bg-white border border-ev-green-200 rounded-md focus:outline-none focus:ring-1 focus:ring-ev-green-500 focus:border-transparent w-40 sm:w-48 focus:w-[11.5rem] sm:focus:w-[13.8rem] transition-all duration-200 text-gray-800 placeholder-gray-400"
                 />
                 <button
                   type="submit"
@@ -78,7 +75,6 @@ export function Footer() {
           {/* Right - Navigation */}
           <div className="flex items-center gap-6 text-sm">
             <div className="flex items-center gap-4">
-              <span className="text-gray-500 text-xs uppercase">{t("navigate")}</span>
               <Link href={`/${locale}`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("navNews")}</Link>
               <Link href={`/${locale}/deliveries`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("navDeliveries")}</Link>
               <Link href={`/${locale}/tech`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("navTech")}</Link>
@@ -105,7 +101,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Row */}
-        <div className="flex justify-between items-center mt-3 pt-3 border-t border-ev-green-200 text-xs text-gray-500">
+        <div className="flex justify-between items-center mt-3 pt-[0.45rem] border-t border-ev-green-200 text-xs text-gray-500">
           <p>© 2025 EV Juice</p>
           <p className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 bg-ev-green-500 rounded-full"></span>
