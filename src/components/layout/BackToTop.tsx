@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronUp } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 
 export function BackToTop() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     const toggleVisibility = () => {
-      // Show button when page is scrolled down 400px
       setIsVisible(window.scrollY > 400);
     };
 
@@ -28,11 +27,19 @@ export function BackToTop() {
   return (
     <button
       onClick={scrollToTop}
-      className="fixed bottom-8 left-6 z-50 flex items-center gap-2 px-4 py-2 text-xs font-semibold tracking-wider text-gray-600 bg-white rounded-full border-2 border-lime-400 shadow-lg transition-all duration-300 hover:border-lime-500 hover:text-gray-800 hover:shadow-[0_0_12px_rgba(163,230,53,0.5)] before:absolute before:inset-0 before:rounded-full before:border-2 before:border-lime-400 before:animate-pulse before:opacity-40"
+      className="fixed bottom-8 right-6 z-50 group"
       aria-label="Back to top"
     >
-      <ChevronUp className="h-4 w-4" />
-      TOP
+      {/* Outer glowing ring */}
+      <span className="absolute inset-[-4px] rounded-full bg-lime-400/30 blur-md animate-glow-pulse" />
+
+      {/* Middle glowing ring */}
+      <span className="absolute inset-[-2px] rounded-full bg-lime-400/50 blur-sm animate-pulse" />
+
+      {/* Button */}
+      <span className="relative flex items-center justify-center w-11 h-11 bg-white rounded-full border-2 border-lime-400 shadow-lg transition-all duration-300 group-hover:border-lime-500 group-hover:shadow-[0_0_25px_rgba(163,230,53,0.7)]">
+        <ArrowUp className="h-5 w-5 text-lime-600 transition-all duration-300 group-hover:text-lime-700 group-hover:-translate-y-0.5" />
+      </span>
     </button>
   );
 }
