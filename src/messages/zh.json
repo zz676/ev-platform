@@ -1,6 +1,6 @@
 {
   "Home": {
-    "title": "中国电车资讯",
+    "title": "EV Juicy",
     "subscribe": "订阅",
     "hero": {
       "title": "洞察中国电动车革命",
@@ -18,5 +18,112 @@
       "description": "将中国电动车最新动态直接送到您的邮箱。支持每日或每周摘要。",
       "emailPlaceholder": "输入您的邮箱"
     }
+  },
+  "Nav": {
+    "feed": "资讯",
+    "markets": "市场",
+    "command": "指令",
+    "saved": "收藏",
+    "newIntel": "新情报",
+    "latest": "最新",
+    "delivery": "交付",
+    "tech": "技术",
+    "policy": "政策"
+  },
+  "Header": {
+    "login": "登录",
+    "logout": "退出",
+    "search": "搜索...",
+    "account": "账户",
+    "nav": {
+      "news": "新闻",
+      "deliveries": "销量",
+      "tech": "科技",
+      "markets": "市场",
+      "policy": "政策"
+    }
+  },
+  "UserPanel": {
+    "myFeed": "我的资讯",
+    "markets": "市场",
+    "commandCenter": "指挥中心",
+    "savedArticles": "收藏文章",
+    "adminPanel": "管理面板",
+    "settings": "设置",
+    "logout": "退出登录"
+  },
+  "Admin": {
+    "title": "管理面板",
+    "subtitle": "管理和审核内容",
+    "totalPosts": "总文章数",
+    "pendingReview": "待审核",
+    "approved": "已批准",
+    "published": "已发布",
+    "pendingPosts": "待审核文章",
+    "refresh": "刷新",
+    "approveAll": "全部批准",
+    "approve": "批准",
+    "reject": "拒绝",
+    "viewSource": "查看原文",
+    "allCaughtUp": "全部处理完毕！",
+    "noPending": "没有待审核的文章。",
+    "loading": "加载中...",
+    "accessDenied": "访问被拒绝",
+    "needAdmin": "您需要管理员权限才能访问此页面。"
+  },
+  "Feed": {
+    "title": "情报流",
+    "all": "全部",
+    "breaking": "突发",
+    "regulatory": "政策",
+    "noResults": "暂无资讯，请稍后再来！",
+    "loadMore": "加载更多"
+  },
+  "Article": {
+    "id": "编号",
+    "source": "来源",
+    "published": "发布时间",
+    "impact": "影响力",
+    "highImpact": "高",
+    "mediumImpact": "中",
+    "lowImpact": "低",
+    "language": {
+      "en": "EN",
+      "zh": "中文"
+    },
+    "relatedArticles": "相关文章",
+    "backToFeed": "返回列表",
+    "readOriginal": "查看原文",
+    "share": "分享"
+  },
+  "Sidebar": {
+    "liveCommandCenter": "实时指挥中心",
+    "loadArchives": "加载历史",
+    "marketPulse": "市场脉搏",
+    "bullish": "看涨",
+    "bearish": "看跌",
+    "neutral": "中性"
+  },
+  "Common": {
+    "search": "搜索...",
+    "loading": "加载中...",
+    "error": "出错了",
+    "retry": "重试"
+  },
+  "Footer": {
+    "terms": "服务条款",
+    "privacy": "隐私政策",
+    "subscribe": "订阅",
+    "contact": "联系我们",
+    "followUs": "关注我们:"
+  },
+  "Search": {
+    "title": "搜索",
+    "backToHome": "返回首页",
+    "resultsFor": "搜索 \"{query}\" 的结果",
+    "foundCount": "找到 {count} 条结果",
+    "noResults": "未找到结果",
+    "tryDifferent": "尝试使用其他关键词",
+    "enterQuery": "输入关键词搜索文章"
   }
 }
