@@ -49,12 +49,12 @@ export function Header() {
         <Link href={`/${locale}`} className="flex items-center gap-2 flex-shrink-0">
           <Image
             src="/icon-48.png"
-            alt="EV Juice"
+            alt={t("brand")}
             width={36}
             height={36}
             className="w-9 h-9"
           />
-          <span className="font-bold text-xl" style={{ color: '#27c618' }}>EV Juice</span>
+          <span className="font-bold text-xl" style={{ color: '#27c618' }}>{t("brand")}</span>
         </Link>
 
         {/* Navigation - Center */}
