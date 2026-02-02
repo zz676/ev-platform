@@ -1,7 +1,7 @@
 """BYD (比亚迪) official news scraper."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple
 from bs4 import Tag
 
 from .base import BaseSource, Article
@@ -62,13 +62,15 @@ class BYDSource(BaseSource):
             if link and not link.startswith("http"):
                 link = f"{self.base_url}{link}"
 
-            # Find date
-            date_elem = item.select_one(".date, time, [class*='date'], [class*='time']")
-            date_str = date_elem.get_text() if date_elem else ""
-            pub_date = self._parse_date(date_str)
-
-            # Generate source ID
-            source_id = self._generate_source_id(link or title, pub_date)
+            # Step 1: Try to extract date from listing page
+            listing_date_selectors = [
+                ".date",
+                "time",
+                "[class*='date']",
+                "[class*='time']",
+                "[class*='publish']",
+            ]
+            pub_date = self._extract_date_from_selectors(item, listing_date_selectors)
 
             # Find summary/excerpt
             summary_elem = item.select_one(".summary, .excerpt, .desc, p")
@@ -77,11 +79,23 @@ class BYDSource(BaseSource):
             # Get full content if we have a link
             content = summary
             media_urls = []
+            detail_date = None
 
             if link:
-                full_content, media_urls = self._fetch_full_article(link)
+                full_content, media_urls, detail_date = self._fetch_full_article(link)
                 if full_content:
                     content = full_content
+
+            # Step 2: Use detail page date if listing date extraction failed
+            if pub_date is None and detail_date is not None:
+                pub_date = detail_date
+
+            # Step 3: Final fallback with warning
+            if pub_date is None:
+                pub_date = self._parse_date_with_fallback("", link or self.news_url)
+
+            # Generate source ID
+            source_id = self._generate_source_id(link or title, pub_date)
 
             # Extract image from the item itself
             img_elem = item.select_one("img")
@@ -108,10 +122,32 @@ class BYDSource(BaseSource):
             print(f"Error parsing BYD article: {e}")
             return None
 
-    def _fetch_full_article(self, url: str) -> tuple[str, list[str]]:
-        """Fetch full article content."""
+    def _fetch_full_article(self, url: str) -> Tuple[str, list[str], Optional[datetime]]:
+        """Fetch full article content.
+
+        Returns:
+            Tuple of (content, media_urls, date)
+        """
         try:
             soup = self._get_soup(url)
+
+            # Extract date from detail page
+            # Step 1: Try meta tags first
+            pub_date = self._extract_date_from_meta(soup)
+
+            # Step 2: Try BYD-specific selectors
+            if pub_date is None:
+                detail_date_selectors = [
+                    ".article-date",
+                    ".news-date",
+                    ".publish-date",
+                    "[class*='article'] .date",
+                    "[class*='news'] .date",
+                    "[class*='article'] time",
+                    "[class*='meta'] time",
+                    "[class*='publish']",
+                ]
+                pub_date = self._extract_date_from_selectors(soup, detail_date_selectors)
 
             # Look for article body
             body = soup.select_one(
@@ -133,18 +169,9 @@ class BYDSource(BaseSource):
                             src = f"{self.base_url}{src}"
                         media_urls.append(src)
 
-                return content, media_urls
+                return content, media_urls, pub_date
 
         except Exception as e:
             print(f"Error fetching full article: {e}")
 
-        return "", []
-
-    def _parse_date(self, date_str: str) -> datetime:
-        """Parse date string."""
-        from dateutil import parser
-
-        try:
-            return parser.parse(date_str)
-        except Exception:
-            return datetime.now()
+        return "", [], None

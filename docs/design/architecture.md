@@ -559,6 +559,136 @@ NIO's growth vs infrastructure challenge continues... 🧵
 12. Connect scraper to Supabase
 13. **Optional: Weibo public data scraper**
 
+---
+
+## Scraper Date Extraction
+
+### Problem
+
+Web scrapers often fail to extract publication dates correctly because:
+1. CSS selectors don't match actual HTML structure
+2. Date elements may be on detail pages, not listing pages
+3. Empty strings passed to date parser cause silent fallbacks to `datetime.now()`
+
+### Solution: Multi-Layer Date Extraction
+
+The scraper uses a fallback chain to maximize date extraction accuracy:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Date Extraction Fallback Chain               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────┐     ┌─────────────────┐                   │
+│  │ 1. Listing Page │ ──▶ │ Date found?     │                   │
+│  │    Selectors    │     │                 │                   │
+│  └─────────────────┘     └────────┬────────┘                   │
+│                                   │                             │
+│                    ┌──────────────┴──────────────┐              │
+│                    │ Yes                    No   │              │
+│                    ▼                        ▼    │              │
+│           ┌──────────────┐     ┌─────────────────┐             │
+│           │ Use listing  │     │ 2. Detail Page  │             │
+│           │ page date    │     │    Meta Tags    │             │
+│           └──────────────┘     └────────┬────────┘             │
+│                                         │                       │
+│                          ┌──────────────┴──────────────┐        │
+│                          │ Yes                    No   │        │
+│                          ▼                        ▼    │        │
+│                 ┌──────────────┐     ┌─────────────────┐       │
+│                 │ Use meta     │     │ 3. Detail Page  │       │
+│                 │ tag date     │     │    Selectors    │       │
+│                 └──────────────┘     └────────┬────────┘       │
+│                                               │                 │
+│                                ┌──────────────┴──────────────┐  │
+│                                │ Yes                    No   │  │
+│                                ▼                        ▼    │  │
+│                       ┌──────────────┐     ┌─────────────────┐ │
+│                       │ Use detail   │     │ 4. Fallback to  │ │
+│                       │ selector date│     │    datetime.now │ │
+│                       └──────────────┘     │    + WARNING    │ │
+│                                            └─────────────────┘ │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Base Class Methods (`sources/base.py`)
+
+| Method | Purpose |
+|--------|---------|
+| `_extract_date_from_meta(soup)` | Extract from `<meta>` tags like `article:published_time` |
+| `_extract_date_from_selectors(soup, selectors)` | Try multiple CSS selectors |
+| `_extract_date_from_url(url)` | Extract date embedded in URL patterns (e.g., `/news/20250920001`) |
+| `_parse_date_robust(date_str)` | Parse date, return `None` on failure (not `datetime.now()`) |
+| `_parse_date_with_fallback(date_str, url)` | Final fallback with warning log |
+
+### Meta Tags Checked
+
+```html
+<meta property="article:published_time" content="...">
+<meta name="datePublished" content="...">
+<meta name="pubdate" content="...">
+<meta name="publish_date" content="...">
+<meta itemprop="datePublished" content="...">
+<meta property="og:article:published_time" content="...">
+<time datetime="...">
+<time pubdate datetime="...">
+```
+
+### URL Pattern Extraction
+
+For sites with React/Vue rendering where HTML extraction fails, dates can be extracted from URL patterns:
+
+| Pattern | Example | Extracted |
+|---------|---------|-----------|
+| `/news/YYYYMMDD###` | `/news/20250920001` | 2025-09-20 |
+| `/YYYY/MM/DD/` | `/2025/09/20/article` | 2025-09-20 |
+| `YYYY-MM-DD` | `/article-2025-09-20` | 2025-09-20 |
+
+This is particularly useful for **NIO** which uses React client-side rendering but embeds dates in URLs.
+
+### Source-Specific Selectors
+
+| Source | Detail Page Selectors |
+|--------|----------------------|
+| **NIO** | URL pattern (`/news/YYYYMMDD###`), fallback to CSS selectors |
+| **BYD** | `.article-date`, `.news-date`, `[class*='article'] .date` |
+| **XPeng/Li Auto** | `.nir-widget--news-date`, `.nir-widget--field-date`, `[class*='nir'] time` |
+
+### Weibo Date Parsing
+
+Weibo uses relative date formats that require special handling:
+
+| Format | Example | Meaning |
+|--------|---------|---------|
+| 刚刚 | - | Just now |
+| X分钟前 | 5分钟前 | 5 minutes ago |
+| X小时前 | 2小时前 | 2 hours ago |
+| 昨天 HH:MM | 昨天 14:30 | Yesterday at 14:30 |
+| MM-DD | 01-20 | Month-day (current year) |
+| YYYY-MM-DD | 2025-01-15 | Full date |
+
+### Warning Logs
+
+When date extraction fails completely, a warning is logged:
+
+```
+WARNING: Could not extract date for https://example.com/article, using current time
+```
+
+This helps identify sources that need selector updates without breaking the scraper.
+
+### Files Involved
+
+| File | Responsibility |
+|------|----------------|
+| `scraper/sources/base.py` | Base class with shared date extraction methods |
+| `scraper/sources/nio.py` | NIO-specific selectors, returns 3-tuple from `_fetch_full_article` |
+| `scraper/sources/byd.py` | BYD-specific selectors |
+| `scraper/sources/xpeng.py` | XPeng IR (nir-widget) selectors |
+| `scraper/sources/li_auto.py` | Li Auto IR (nir-widget) selectors |
+| `scraper/sources/weibo.py` | Weibo relative date parsing |
+
 ### Phase 4: X Publishing
 14. Configure X API developer account
 15. Implement auto-publishing logic
