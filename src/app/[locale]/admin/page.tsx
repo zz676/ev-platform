@@ -36,12 +36,15 @@ export default function AdminPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [activeStatus, setActiveStatus] = useState<PostStatus>("PENDING");
+  const [activeStatus, setActiveStatus] = useState<PostStatus | undefined>("PENDING");
 
-  const fetchPosts = useCallback(async (status: PostStatus = activeStatus) => {
+  const fetchPosts = useCallback(async (status?: PostStatus) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/admin/posts?status=${status}&limit=50`);
+      const url = status
+        ? `/api/admin/posts?status=${status}&limit=50`
+        : `/api/admin/posts?limit=50`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch posts");
       const data = await response.json();
       setPosts(data.posts);
@@ -51,13 +54,13 @@ export default function AdminPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeStatus]);
+  }, []);
 
   useEffect(() => {
     fetchPosts(activeStatus);
   }, [activeStatus, fetchPosts]);
 
-  const handleStatusChange = (status: PostStatus) => {
+  const handleStatusChange = (status: PostStatus | undefined) => {
     setActiveStatus(status);
   };
 
@@ -151,8 +154,8 @@ export default function AdminPage() {
         published: prev.published + 1,
       }));
 
-      // Show success notification (using alert for simplicity)
-      alert(`Successfully posted to X!\n\nView tweet: ${data.tweetUrl}`);
+      // Log success - no popup
+      console.log(`Posted to X: ${data.tweetUrl}`);
     } catch (error) {
       console.error("Error posting to X:", error);
       // Don't throw or alert - just log the error

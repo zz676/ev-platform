@@ -19,7 +19,7 @@ interface Post {
 
 interface PostRowProps {
   post: Post;
-  activeStatus: PostStatus;
+  activeStatus?: PostStatus;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onPostToX?: (id: string) => void;
@@ -46,7 +46,8 @@ function getScoreColor(score: number): string {
 export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, isUpdating, isPostingToX }: PostRowProps) {
   const title = post.translatedTitle || post.originalTitle || "Untitled";
   const canPostToX = post.status === "APPROVED" && !post.publishedToX && onPostToX;
-  const showApproveReject = activeStatus === "PENDING";
+  // Show approve/reject when filtering pending OR when showing all and post is pending
+  const showApproveReject = activeStatus === "PENDING" || (!activeStatus && post.status === "PENDING");
 
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50">

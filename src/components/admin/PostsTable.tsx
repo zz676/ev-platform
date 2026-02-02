@@ -20,7 +20,7 @@ interface Post {
 
 interface PostsTableProps {
   posts: Post[];
-  activeStatus: PostStatus;
+  activeStatus?: PostStatus;
   onApprove: (id: string) => Promise<void>;
   onReject: (id: string) => Promise<void>;
   onPostToX?: (id: string) => Promise<void>;
@@ -29,16 +29,24 @@ interface PostsTableProps {
   isLoading: boolean;
 }
 
-const statusTitles: Record<PostStatus, string> = {
-  PENDING: "Pending Posts",
-  APPROVED: "Approved Posts",
-  PUBLISHED: "Published Posts",
+const getStatusTitle = (status?: PostStatus): string => {
+  if (!status) return "All Posts";
+  const titles: Record<PostStatus, string> = {
+    PENDING: "Pending Posts",
+    APPROVED: "Approved Posts",
+    PUBLISHED: "Published Posts",
+  };
+  return titles[status];
 };
 
-const emptyMessages: Record<PostStatus, { title: string; subtitle: string }> = {
-  PENDING: { title: "All caught up!", subtitle: "No pending posts to review." },
-  APPROVED: { title: "No approved posts", subtitle: "Approve some posts to see them here." },
-  PUBLISHED: { title: "No published posts", subtitle: "Post approved content to X to see them here." },
+const getEmptyMessage = (status?: PostStatus): { title: string; subtitle: string } => {
+  if (!status) return { title: "No posts", subtitle: "No posts found." };
+  const messages: Record<PostStatus, { title: string; subtitle: string }> = {
+    PENDING: { title: "All caught up!", subtitle: "No pending posts to review." },
+    APPROVED: { title: "No approved posts", subtitle: "Approve some posts to see them here." },
+    PUBLISHED: { title: "No published posts", subtitle: "Post approved content to X to see them here." },
+  };
+  return messages[status];
 };
 
 export function PostsTable({
@@ -108,7 +116,7 @@ export function PostsTable({
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       {/* Table Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <h2 className="font-semibold text-gray-900">{statusTitles[activeStatus]}</h2>
+        <h2 className="font-semibold text-gray-900">{getStatusTitle(activeStatus)}</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={onRefresh}
@@ -140,8 +148,8 @@ export function PostsTable({
       ) : posts.length === 0 ? (
         <div className="px-4 py-12 text-center text-gray-500">
           <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-400" />
-          <p className="font-medium text-gray-900">{emptyMessages[activeStatus].title}</p>
-          <p className="text-sm mt-1">{emptyMessages[activeStatus].subtitle}</p>
+          <p className="font-medium text-gray-900">{getEmptyMessage(activeStatus).title}</p>
+          <p className="text-sm mt-1">{getEmptyMessage(activeStatus).subtitle}</p>
         </div>
       ) : (
         <div className="overflow-x-auto">

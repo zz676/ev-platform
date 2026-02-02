@@ -1,4 +1,4 @@
-import { formatTweetContent } from '../twitter';
+import { formatTweetContent, generateOAuthSignature, generateOAuthHeader } from '../twitter';
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -7,6 +7,94 @@ global.fetch = mockFetch;
 describe('twitter.ts', () => {
   beforeEach(() => {
     mockFetch.mockClear();
+  });
+
+  describe('generateOAuthSignature', () => {
+    it('should generate a valid HMAC-SHA1 signature', () => {
+      const signature = generateOAuthSignature(
+        'POST',
+        'https://api.x.com/2/tweets',
+        {
+          oauth_consumer_key: 'test_key',
+          oauth_nonce: 'abc123',
+          oauth_signature_method: 'HMAC-SHA1',
+          oauth_timestamp: '1234567890',
+          oauth_token: 'test_token',
+          oauth_version: '1.0',
+        },
+        'consumer_secret',
+        'token_secret'
+      );
+
+      expect(signature).toBeDefined();
+      expect(typeof signature).toBe('string');
+      // Base64 encoded signature
+      expect(signature).toMatch(/^[A-Za-z0-9+/]+=*$/);
+    });
+
+    it('should produce consistent signatures for same inputs', () => {
+      const params = {
+        oauth_consumer_key: 'key',
+        oauth_nonce: 'nonce',
+        oauth_signature_method: 'HMAC-SHA1',
+        oauth_timestamp: '12345',
+        oauth_token: 'token',
+        oauth_version: '1.0',
+      };
+
+      const sig1 = generateOAuthSignature('GET', 'https://api.x.com/test', params, 'secret', 'token_secret');
+      const sig2 = generateOAuthSignature('GET', 'https://api.x.com/test', params, 'secret', 'token_secret');
+
+      expect(sig1).toBe(sig2);
+    });
+
+    it('should produce different signatures for different methods', () => {
+      const params = {
+        oauth_consumer_key: 'key',
+        oauth_nonce: 'nonce',
+        oauth_signature_method: 'HMAC-SHA1',
+        oauth_timestamp: '12345',
+        oauth_token: 'token',
+        oauth_version: '1.0',
+      };
+
+      const getSig = generateOAuthSignature('GET', 'https://api.x.com/test', params, 'secret', 'token_secret');
+      const postSig = generateOAuthSignature('POST', 'https://api.x.com/test', params, 'secret', 'token_secret');
+
+      expect(getSig).not.toBe(postSig);
+    });
+  });
+
+  describe('generateOAuthHeader', () => {
+    it('should generate a valid OAuth header string', () => {
+      const header = generateOAuthHeader('POST', 'https://api.x.com/2/tweets', {
+        apiKey: 'test_api_key',
+        apiSecret: 'test_api_secret',
+        accessToken: 'test_access_token',
+        accessTokenSecret: 'test_access_token_secret',
+      });
+
+      expect(header).toMatch(/^OAuth /);
+      expect(header).toContain('oauth_consumer_key="test_api_key"');
+      expect(header).toContain('oauth_token="test_access_token"');
+      expect(header).toContain('oauth_signature_method="HMAC-SHA1"');
+      expect(header).toContain('oauth_version="1.0"');
+      expect(header).toContain('oauth_signature=');
+      expect(header).toContain('oauth_nonce=');
+      expect(header).toContain('oauth_timestamp=');
+    });
+
+    it('should properly encode special characters', () => {
+      const header = generateOAuthHeader('POST', 'https://api.x.com/2/tweets', {
+        apiKey: 'key+with/special=chars',
+        apiSecret: 'secret',
+        accessToken: 'token',
+        accessTokenSecret: 'token_secret',
+      });
+
+      // Special characters should be percent-encoded
+      expect(header).toContain('oauth_consumer_key="key%2Bwith%2Fspecial%3Dchars"');
+    });
   });
 
   describe('formatTweetContent', () => {
