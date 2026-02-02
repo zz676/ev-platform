@@ -13,23 +13,33 @@ class XPengSource(BaseSource):
     name = "XPeng"
     source_type = "OFFICIAL"
     base_url = "https://ir.xiaopeng.com"
-    news_url = "https://ir.xiaopeng.com/news-releases"
+    news_url = "https://ir.xiaopeng.com/"
 
     def fetch_articles(self, limit: int = 10) -> list[Article]:
-        """Fetch news releases from XPeng IR page."""
+        """Fetch news releases from XPeng IR homepage."""
         articles = []
 
         try:
             soup = self._get_soup(self.news_url)
 
-            # XPeng IR page structure
-            items = soup.select(".nir-widget--list .nir-widget--field")
+            # XPeng IR homepage shows news releases with links to detail pages
+            # Find links that point to news release details
+            items = soup.select("a[href*='/news-releases/news-release-details/']")
 
             if not items:
-                # Alternative selectors
-                items = soup.select("article, .news-item, .press-release-item")
+                # Alternative: look for news widget sections
+                items = soup.select(".nir-widget--list .nir-widget--field a")
 
-            for item in items[:limit]:
+            # Deduplicate by href
+            seen_hrefs = set()
+            unique_items = []
+            for item in items:
+                href = item.get("href", "")
+                if href and href not in seen_hrefs:
+                    seen_hrefs.add(href)
+                    unique_items.append(item)
+
+            for item in unique_items[:limit]:
                 article = self._parse_article(item)
                 if article:
                     articles.append(article)
@@ -40,21 +50,21 @@ class XPengSource(BaseSource):
         return articles
 
     def _parse_article(self, item: Tag) -> Optional[Article]:
-        """Parse a single article item."""
+        """Parse a single article item (anchor tag)."""
         try:
-            # Find title and link
-            title_elem = item.select_one("a, .title, h3")
-            if not title_elem:
+            # The item is the anchor tag itself
+            title = self._clean_text(item.get_text())
+            if not title:
                 return None
 
-            title = self._clean_text(title_elem.get_text())
-            link = title_elem.get("href", "")
+            link = item.get("href", "")
 
             if link and not link.startswith("http"):
                 link = f"{self.base_url}{link}"
 
-            # Find date
-            date_elem = item.select_one(".date, time, .nir-widget--field--date")
+            # Date is typically in a sibling or parent element
+            parent = item.find_parent()
+            date_elem = parent.select_one(".date, time, [class*='date']") if parent else None
             date_str = date_elem.get_text() if date_elem else ""
             pub_date = self._parse_date(date_str)
 
