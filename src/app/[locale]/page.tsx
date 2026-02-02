@@ -1,9 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import prisma from "@/lib/prisma";
 import { PostStatus } from "@prisma/client";
-import { NewsCard } from "@/components/cards/NewsCard";
 import { HeroCard } from "@/components/cards/HeroCard";
 import { SideNewsCard } from "@/components/cards/SideNewsCard";
+import { MoreNewsSection } from "@/components/sections/MoreNewsSection";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -181,41 +181,22 @@ export default async function Home({
 
           {/* More News Section */}
           {moreNews.length > 0 && (
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-lg font-bold text-gray-900">
-                  {locale === "zh" ? "更多新闻" : "More News"}
-                </h2>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {moreNews.map((post) => (
-                  <NewsCard
-                    key={post.id}
-                    id={post.id}
-                    title={getTitle(post) || "Untitled"}
-                    summary={getSummary(post) || ""}
-                    category={post.categories[0] || "News"}
-                    source={post.sourceAuthor}
-                    sourceUrl={post.sourceUrl}
-                    timestamp={post.sourceDate}
-                    imageUrl={getImage(post)}
-                    relevanceScore={post.relevanceScore}
-                    locale={locale}
-                  />
-                ))}
-              </div>
-              {/* More Button */}
-              <div className="mt-6 flex justify-center">
-                <button className="relative px-2 py-1 text-sm font-semibold tracking-widest text-lime-400 hover:text-lime-300 transition-colors duration-300 drop-shadow-[0_0_8px_rgba(163,230,53,0.8)]">
-                  <span className="relative">
-                    MORE
-                    {/* Underline with glow */}
-                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-lime-400 shadow-[0_0_8px_rgba(163,230,53,0.8)]" />
-                  </span>
-                </button>
-              </div>
-            </div>
+            <MoreNewsSection
+              initialPosts={moreNews.map((post) => ({
+                id: post.id,
+                title: getTitle(post) || "Untitled",
+                summary: getSummary(post) || "",
+                category: post.categories[0] || "News",
+                source: post.sourceAuthor,
+                sourceUrl: post.sourceUrl,
+                timestamp: post.sourceDate,
+                imageUrl: getImage(post),
+                relevanceScore: post.relevanceScore,
+              }))}
+              locale={locale}
+              sectionTitle={locale === "zh" ? "更多新闻" : "More News"}
+              totalInitialPosts={posts.length}
+            />
           )}
         </div>
       ) : (
