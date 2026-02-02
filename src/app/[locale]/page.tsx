@@ -1,8 +1,47 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import prisma from "@/lib/prisma";
+import { PostStatus } from "@prisma/client";
 
-export default function Home() {
-  const t = useTranslations("Home");
+// Format relative time
+function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffHours < 1) return "Just now";
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  return date.toLocaleDateString();
+}
+
+export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const t = await getTranslations("Home");
+
+  // Fetch posts from database
+  const posts = await prisma.post.findMany({
+    where: {
+      status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    select: {
+      id: true,
+      source: true,
+      sourceUrl: true,
+      sourceAuthor: true,
+      sourceDate: true,
+      originalTitle: true,
+      translatedTitle: true,
+      originalContent: true,
+      translatedContent: true,
+      translatedSummary: true,
+      categories: true,
+      createdAt: true,
+    },
+  });
 
   return (
     <main className="min-h-screen">
@@ -54,32 +93,45 @@ export default function Home() {
           <h3 className="text-2xl font-bold text-gray-800 mb-8">{t("latestNews")}</h3>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Placeholder cards */}
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <article
-                key={i}
-                className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-sm font-medium">
-                    Sales
-                  </span>
-                  <span className="text-gray-400 text-sm">2 hours ago</span>
-                </div>
-                <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                  {t("placeholder.title")}
-                </h4>
-                <p className="text-gray-600 text-sm mb-4">
-                  {t("placeholder.description")}
-                </p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Source: NIO Official</span>
-                  <Link href="#" className="text-purple-600 hover:underline">
-                    {t("readMore")} →
-                  </Link>
-                </div>
-              </article>
-            ))}
+            {posts.length > 0 ? (
+              posts.map((post) => {
+                const title = locale === "zh" ? post.originalTitle : post.translatedTitle;
+                const summary = post.translatedSummary || (locale === "zh" ? post.originalContent : post.translatedContent);
+                const category = post.categories[0] || "News";
+
+                return (
+                  <article
+                    key={post.id}
+                    className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-sm font-medium">
+                        {category}
+                      </span>
+                      <span className="text-gray-400 text-sm">
+                        {formatRelativeTime(post.sourceDate)}
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                      {title || "Untitled"}
+                    </h4>
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                      {summary?.slice(0, 150)}...
+                    </p>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">Source: {post.sourceAuthor}</span>
+                      <Link href={post.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">
+                        {t("readMore")} →
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="col-span-3 text-center text-gray-500 py-8">
+                No news available yet. Check back soon!
+              </div>
+            )}
           </div>
 
           <div className="text-center mt-8">
