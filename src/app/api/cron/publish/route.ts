@@ -11,13 +11,47 @@ import {
   hasImageFailed,
   MAX_ATTEMPTS,
 } from "@/lib/x-publication";
+import { POSTING_CONFIG } from "@/lib/config/posting";
+import { alertDailyLimitReached } from "@/lib/email/admin-alerts";
 
 // Vercel Cron secret for authentication
 const CRON_SECRET = process.env.CRON_SECRET;
 
-// Configuration
-const MAX_POSTS_PER_RUN = 3; // Maximum posts to publish per cron run
-const MIN_RELEVANCE_SCORE = 60; // Minimum score to auto-publish
+// Check if X posting is disabled via env var
+const SKIP_X_PUBLISH = process.env.SKIP_X_PUBLISH === "true";
+
+/**
+ * Get count of posts published to X today
+ */
+async function getTodayPostCount(): Promise<number> {
+  const startOfDay = new Date();
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  const count = await prisma.postingLog.count({
+    where: {
+      createdAt: { gte: startOfDay },
+    },
+  });
+
+  return count;
+}
+
+/**
+ * Log a posting action to the database
+ */
+async function logPosting(
+  postType: "VIP" | "DIGEST" | "MANUAL",
+  tweetId: string,
+  postIds: string[]
+): Promise<void> {
+  await prisma.postingLog.create({
+    data: {
+      postType,
+      tweetId,
+      postIds,
+    },
+  });
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,23 +63,58 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Find posts ready to publish
-    // Priority: highest relevance score, approved status, not yet published to X
+    // Check if posting is disabled
+    if (SKIP_X_PUBLISH) {
+      return NextResponse.json({
+        message: "X publishing is disabled (SKIP_X_PUBLISH=true)",
+        published: 0,
+      });
+    }
+
+    // Check daily rate limit
+    const todayCount = await getTodayPostCount();
+    if (todayCount >= POSTING_CONFIG.MAX_POSTS_PER_DAY) {
+      await alertDailyLimitReached(todayCount);
+      return NextResponse.json({
+        message: "Daily post limit reached",
+        published: 0,
+        todayCount,
+        limit: POSTING_CONFIG.MAX_POSTS_PER_DAY,
+      });
+    }
+
+    // Calculate remaining posts allowed today
+    const remainingAllowed = Math.min(
+      POSTING_CONFIG.MAX_VIP_PER_RUN,
+      POSTING_CONFIG.MAX_POSTS_PER_DAY - todayCount
+    );
+
+    if (remainingAllowed <= 0) {
+      return NextResponse.json({
+        message: "No remaining posts allowed for this run",
+        published: 0,
+      });
+    }
+
+    // Find VIP posts ready to publish (score >= VIP_THRESHOLD)
+    // Exclude posts already included in a digest
     const postsToPublish = await prisma.post.findMany({
       where: {
         status: PostStatus.APPROVED,
         publishedToX: false,
-        relevanceScore: { gte: MIN_RELEVANCE_SCORE },
+        includedInDigest: false,
+        relevanceScore: { gte: POSTING_CONFIG.VIP_THRESHOLD },
         translatedSummary: { not: "" },
       },
       orderBy: [{ relevanceScore: "desc" }, { createdAt: "asc" }],
-      take: MAX_POSTS_PER_RUN,
+      take: remainingAllowed,
     });
 
     if (postsToPublish.length === 0) {
       return NextResponse.json({
-        message: "No posts to publish",
+        message: "No VIP posts to publish",
         published: 0,
+        threshold: POSTING_CONFIG.VIP_THRESHOLD,
       });
     }
 
@@ -54,7 +123,12 @@ export async function GET(request: NextRequest) {
       failed: 0,
       skipped: 0,
       errors: [] as string[],
-      tweets: [] as { postId: string; tweetId: string; hasImage: boolean; imageSource: string }[],
+      tweets: [] as {
+        postId: string;
+        tweetId: string;
+        hasImage: boolean;
+        imageSource: string;
+      }[],
     };
 
     // Publish each post with delay to avoid rate limiting
@@ -145,6 +219,9 @@ export async function GET(request: NextRequest) {
           },
         });
 
+        // Log the posting
+        await logPosting("VIP", tweetResponse.data.id, [post.id]);
+
         results.published++;
         results.tweets.push({
           postId: post.id,
@@ -166,13 +243,14 @@ export async function GET(request: NextRequest) {
 
         results.failed++;
         results.errors.push(`${post.id}: ${errorMessage} (attempt ${totalAttempts}/${MAX_ATTEMPTS}${maxReached ? " - max reached" : ""})`);
-        console.error(`Failed to publish post ${post.id} (attempt ${totalAttempts}):`, error);
+        console.error(`Failed to publish VIP post ${post.id} (attempt ${totalAttempts}):`, error);
       }
     }
 
     return NextResponse.json({
-      message: "Cron publish completed",
+      message: "VIP cron publish completed",
       timestamp: new Date().toISOString(),
+      threshold: POSTING_CONFIG.VIP_THRESHOLD,
       maxAttemptsPerPost: MAX_ATTEMPTS,
       results,
     });
