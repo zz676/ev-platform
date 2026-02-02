@@ -1,7 +1,7 @@
 """NIO (蔚来) official news scraper."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple
 from bs4 import Tag
 
 from .base import BaseSource, Article
@@ -59,20 +59,38 @@ class NIOSource(BaseSource):
             if link and not link.startswith("http"):
                 link = f"{self.base_url}{link}"
 
-            # Find date - NIO uses YYYY-MM-DD format
-            date_elem = item.select_one("[class*='date'], time, span")
-            date_str = date_elem.get_text() if date_elem else ""
-            pub_date = self._parse_date(date_str)
-
-            # Generate source ID
-            source_id = self._generate_source_id(link, pub_date)
+            # Step 1: Try to extract date from listing page
+            listing_date_selectors = [
+                "[class*='date']",
+                "time",
+                "[class*='time']",
+                "[class*='publish']",
+                "span[class*='meta']",
+            ]
+            pub_date = self._extract_date_from_selectors(item, listing_date_selectors)
 
             # Fetch full article content if we have a link
             content = ""
             media_urls = []
+            detail_date = None
 
             if link:
-                content, media_urls = self._fetch_full_article(link)
+                content, media_urls, detail_date = self._fetch_full_article(link)
+
+            # Step 2: Use detail page date if listing date extraction failed
+            if pub_date is None and detail_date is not None:
+                pub_date = detail_date
+
+            # Step 3: Try URL pattern extraction (NIO URLs contain YYYYMMDD)
+            if pub_date is None:
+                pub_date = self._extract_date_from_url(link)
+
+            # Step 4: Final fallback with warning
+            if pub_date is None:
+                pub_date = self._parse_date_with_fallback("", link)
+
+            # Generate source ID
+            source_id = self._generate_source_id(link, pub_date)
 
             return Article(
                 source_id=source_id,
@@ -90,10 +108,30 @@ class NIOSource(BaseSource):
             print(f"Error parsing NIO article: {e}")
             return None
 
-    def _fetch_full_article(self, url: str) -> tuple[str, list[str]]:
-        """Fetch full article content from detail page."""
+    def _fetch_full_article(self, url: str) -> Tuple[str, list[str], Optional[datetime]]:
+        """Fetch full article content from detail page.
+
+        Returns:
+            Tuple of (content, media_urls, date)
+        """
         try:
             soup = self._get_soup(url)
+
+            # Extract date from detail page
+            # Step 1: Try meta tags first
+            pub_date = self._extract_date_from_meta(soup)
+
+            # Step 2: Try NIO-specific selectors
+            if pub_date is None:
+                detail_date_selectors = [
+                    "[class*='article'] [class*='date']",
+                    "[class*='article'] time",
+                    "[class*='news'] [class*='date']",
+                    ".publish-date",
+                    "[class*='publish']",
+                    "[class*='meta'] time",
+                ]
+                pub_date = self._extract_date_from_selectors(soup, detail_date_selectors)
 
             # Find article body - NIO uses React CSS modules
             body = soup.select_one(
@@ -115,18 +153,9 @@ class NIOSource(BaseSource):
                     if img.get("src") and not img.get("src").startswith("data:")
                 ]
 
-                return content, media_urls
+                return content, media_urls, pub_date
 
         except Exception as e:
             print(f"Error fetching full article: {e}")
 
-        return "", []
-
-    def _parse_date(self, date_str: str) -> datetime:
-        """Parse date string to datetime."""
-        from dateutil import parser
-
-        try:
-            return parser.parse(date_str)
-        except Exception:
-            return datetime.now()
+        return "", [], None

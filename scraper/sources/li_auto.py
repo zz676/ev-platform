@@ -1,7 +1,7 @@
 """Li Auto (理想) official news scraper."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple
 from bs4 import Tag
 
 from .base import BaseSource, Article
@@ -62,18 +62,35 @@ class LiAutoSource(BaseSource):
             if link and not link.startswith("http"):
                 link = f"{self.base_url}{link}"
 
-            # Date is typically in a sibling or parent element - format: "Jan 31, 2026"
+            # Step 1: Try to extract date from listing page (parent/sibling elements)
+            # Format expected: "Jan 31, 2026"
             parent = item.find_parent()
-            date_elem = parent.select_one(".date, time, [class*='date']") if parent else None
-            date_str = date_elem.get_text() if date_elem else ""
-            pub_date = self._parse_date(date_str)
-
-            source_id = self._generate_source_id(link, pub_date)
+            listing_date_selectors = [
+                ".date",
+                "time",
+                "[class*='date']",
+                ".nir-widget--field",
+                "[class*='nir'] [class*='date']",
+            ]
+            pub_date = None
+            if parent:
+                pub_date = self._extract_date_from_selectors(parent, listing_date_selectors)
 
             content = ""
             media_urls = []
+            detail_date = None
             if link:
-                content, media_urls = self._fetch_full_article(link)
+                content, media_urls, detail_date = self._fetch_full_article(link)
+
+            # Step 2: Use detail page date if listing date extraction failed
+            if pub_date is None and detail_date is not None:
+                pub_date = detail_date
+
+            # Step 3: Final fallback with warning
+            if pub_date is None:
+                pub_date = self._parse_date_with_fallback("", link)
+
+            source_id = self._generate_source_id(link, pub_date)
 
             return Article(
                 source_id=source_id,
@@ -91,10 +108,32 @@ class LiAutoSource(BaseSource):
             print(f"Error parsing Li Auto article: {e}")
             return None
 
-    def _fetch_full_article(self, url: str) -> tuple[str, list[str]]:
-        """Fetch full article content."""
+    def _fetch_full_article(self, url: str) -> Tuple[str, list[str], Optional[datetime]]:
+        """Fetch full article content.
+
+        Returns:
+            Tuple of (content, media_urls, date)
+        """
         try:
             soup = self._get_soup(url)
+
+            # Extract date from detail page
+            # Step 1: Try meta tags first
+            pub_date = self._extract_date_from_meta(soup)
+
+            # Step 2: Try Li Auto IR-specific selectors (uses nir-widget classes like XPeng)
+            if pub_date is None:
+                detail_date_selectors = [
+                    ".nir-widget--news-date",
+                    ".nir-widget--field-date",
+                    ".nir-widget--news-header time",
+                    ".nir-widget--news-header [class*='date']",
+                    "[class*='nir'] time",
+                    "[class*='nir'] [class*='date']",
+                    ".article-date",
+                    ".publish-date",
+                ]
+                pub_date = self._extract_date_from_selectors(soup, detail_date_selectors)
 
             body = soup.select_one(
                 ".nir-widget--news-body, .article-body, article"
@@ -113,18 +152,9 @@ class LiAutoSource(BaseSource):
                     if img.get("src") and not img.get("src").startswith("data:")
                 ]
 
-                return content, media_urls
+                return content, media_urls, pub_date
 
         except Exception as e:
             print(f"Error fetching full article: {e}")
 
-        return "", []
-
-    def _parse_date(self, date_str: str) -> datetime:
-        """Parse date string."""
-        from dateutil import parser
-
-        try:
-            return parser.parse(date_str)
-        except Exception:
-            return datetime.now()
+        return "", [], None

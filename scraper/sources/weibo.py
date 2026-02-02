@@ -194,8 +194,13 @@ class WeiboSource(BaseSource):
             if not text:
                 return None
 
-            # Parse date
-            created_at = self._parse_weibo_date(mblog.get("created_at", ""))
+            # Generate URL first (needed for logging)
+            user = mblog.get("user", {})
+            post_user_id = user.get("id", "")
+            source_url = f"https://weibo.com/{post_user_id}/{bid}"
+
+            # Parse date (pass URL for logging if fallback occurs)
+            created_at = self._parse_weibo_date(mblog.get("created_at", ""), source_url)
 
             # Extract images
             pics = mblog.get("pics", [])
@@ -208,11 +213,6 @@ class WeiboSource(BaseSource):
                     media_urls.append(large_url)
                 elif regular_url:
                     media_urls.append(regular_url)
-
-            # Generate URL
-            user = mblog.get("user", {})
-            post_user_id = user.get("id", "")
-            source_url = f"https://weibo.com/{post_user_id}/{bid}"
 
             # Generate title from text (first 50 chars)
             title = text[:50] + "..." if len(text) > 50 else text
@@ -263,7 +263,7 @@ class WeiboSource(BaseSource):
 
         return text.strip()
 
-    def _parse_weibo_date(self, date_str: str) -> datetime:
+    def _parse_weibo_date(self, date_str: str, post_url: str = "") -> datetime:
         """Parse Weibo's various date formats.
 
         Weibo uses relative formats like:
@@ -276,6 +276,7 @@ class WeiboSource(BaseSource):
 
         Args:
             date_str: Date string from Weibo API
+            post_url: URL of the post (for logging)
 
         Returns:
             Parsed datetime object
@@ -283,6 +284,8 @@ class WeiboSource(BaseSource):
         now = datetime.now()
 
         if not date_str:
+            if post_url:
+                print(f"    WARNING: Empty date string for {post_url}, using current time")
             return now
 
         # Just now
@@ -323,4 +326,6 @@ class WeiboSource(BaseSource):
         except Exception:
             pass
 
+        if post_url:
+            print(f"    WARNING: Could not parse date '{date_str}' for {post_url}, using current time")
         return now
