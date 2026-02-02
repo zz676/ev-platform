@@ -1,254 +1,239 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { PostStatus } from "@prisma/client";
+import { NewsCard } from "@/components/cards/NewsCard";
+import { HeroCard } from "@/components/cards/HeroCard";
+import { SideNewsCard } from "@/components/cards/SideNewsCard";
+import Link from "next/link";
 
-// Render at request time, not build time (database not available during build)
 export const dynamic = "force-dynamic";
 
-// Brand display labels
-const BRAND_LABELS: Record<string, string> = {
-  BYD: "BYD",
-  NIO: "NIO",
-  XPENG: "XPeng",
-  LI_AUTO: "Li Auto",
-  ZEEKR: "Zeekr",
-  XIAOMI: "Xiaomi",
-  TESLA_CHINA: "Tesla China",
-  OTHER_BRAND: "Other",
-  INDUSTRY: "Industry",
+type Post = {
+  id: string;
+  source: string;
+  sourceUrl: string;
+  sourceAuthor: string;
+  sourceDate: Date;
+  originalTitle: string | null;
+  translatedTitle: string | null;
+  originalContent: string | null;
+  translatedContent: string | null;
+  translatedSummary: string | null;
+  originalMediaUrls: string[];
+  categories: string[];
+  relevanceScore: number;
+  createdAt: Date;
 };
 
-// Format relative time
-function formatRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffHours < 1) return "Just now";
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-  return date.toLocaleDateString();
-}
-
-export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
   const { locale } = await params;
-  const t = await getTranslations("Home");
+  const t = await getTranslations("Feed");
 
-  // Fetch posts from database with new normalized relations
-  const posts = await prisma.post.findMany({
-    where: {
-      status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
-      archivedAt: null,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 6,
-    include: {
-      content: true,
-      translation: true,
-      xPublication: {
-        select: {
-          tweetUrl: true,
-          likes: true,
-          retweets: true,
-        },
+  // Fetch posts from database with error handling
+  let posts: Post[] = [];
+  try {
+    posts = await prisma.post.findMany({
+      where: {
+        status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
       },
-    },
-  });
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        source: true,
+        sourceUrl: true,
+        sourceAuthor: true,
+        sourceDate: true,
+        originalTitle: true,
+        translatedTitle: true,
+        originalContent: true,
+        translatedContent: true,
+        translatedSummary: true,
+        originalMediaUrls: true,
+        categories: true,
+        relevanceScore: true,
+        createdAt: true,
+      },
+    });
+  } catch {
+    // Database unavailable - show empty state
+    console.error("Failed to fetch posts from database");
+  }
+
+  // Split posts for USAToday-style layout:
+  // Posts 0-1: Left column news cards (2 cards)
+  // Post 2: Center featured article
+  // Posts 3-8: Right column headlines (6 items)
+  // Posts 9+: More News section below
+  const leftColumnPosts = posts.slice(0, 2);
+  const featuredPost = posts[2];
+  const topHeadlines = posts.slice(3, 9);
+  const moreNews = posts.slice(9);
+
+  // Helper to get localized title
+  const getTitle = (post: Post) =>
+    locale === "zh"
+      ? post.originalTitle || post.translatedTitle
+      : post.translatedTitle || post.originalTitle;
+
+  // Helper to get summary
+  const getSummary = (post: Post) =>
+    post.translatedSummary ||
+    (locale === "zh"
+      ? post.originalContent?.slice(0, 150)
+      : post.translatedContent?.slice(0, 150));
+
+  // Helper to get image
+  const getImage = (post: Post) =>
+    post.originalMediaUrls && post.originalMediaUrls.length > 0
+      ? post.originalMediaUrls[0]
+      : undefined;
+
+  // Helper to format relative time
+  const formatRelativeTime = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
 
   return (
-    <main className="min-h-screen">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">⚡</span>
-              <h1 className="text-2xl font-bold">{t("title")}</h1>
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Main Content */}
+      {posts.length > 0 ? (
+        <div className="space-y-4">
+          {/* Featured Section - USAToday Style 3-Column Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[250px_1fr_280px] gap-6">
+            {/* Left Column - 2 News Cards (stacked) */}
+            <div className="flex flex-col justify-between gap-4 order-2 md:order-1 lg:order-1 h-[500px]">
+              {leftColumnPosts.map((post) => (
+                <SideNewsCard
+                  key={post.id}
+                  id={post.id}
+                  title={getTitle(post) || "Untitled"}
+                  summary={getSummary(post) || ""}
+                  category={post.categories[0] || "News"}
+                  source={post.sourceAuthor}
+                  timestamp={post.sourceDate.toISOString()}
+                  imageUrl={getImage(post)}
+                  locale={locale}
+                />
+              ))}
             </div>
-            <nav className="flex items-center gap-6">
-              <Link href="/en" className="hover:opacity-80">EN</Link>
-              <Link href="/zh" className="hover:opacity-80">中文</Link>
-              <Link
-                href="/login"
-                className="bg-white/20 text-white px-4 py-2 rounded-full font-medium hover:bg-white/30"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/subscribe"
-                className="bg-white text-purple-600 px-4 py-2 rounded-full font-medium hover:bg-opacity-90"
-              >
-                {t("subscribe")}
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-b from-purple-600 to-purple-700 text-white py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            {t("hero.title")}
-          </h2>
-          <p className="text-xl text-purple-100 max-w-2xl mx-auto mb-8">
-            {t("hero.subtitle")}
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">BYD</span>
-            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">NIO</span>
-            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">XPeng</span>
-            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">Li Auto</span>
-            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">Xiaomi</span>
-            <span className="bg-white/20 px-4 py-2 rounded-full text-sm">Zeekr</span>
-          </div>
-        </div>
-      </section>
+            {/* Center Column - Featured Card */}
+            <div className="order-1 md:col-span-2 lg:col-span-1 lg:order-2">
+              {featuredPost && (
+                <HeroCard
+                  id={featuredPost.id}
+                  title={getTitle(featuredPost) || "Untitled"}
+                  category={featuredPost.categories[0] || "News"}
+                  source={featuredPost.sourceAuthor}
+                  timestamp={featuredPost.sourceDate.toISOString()}
+                  imageUrl={getImage(featuredPost)}
+                  locale={locale}
+                  size="large"
+                />
+              )}
+            </div>
 
-      {/* News Feed */}
-      <section className="py-12 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <h3 className="text-2xl font-bold text-gray-800 mb-8">{t("latestNews")}</h3>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {posts.length > 0 ? (
-              posts.map((post) => {
-                // Get content from normalized tables, fall back to deprecated fields
-                const originalTitle = post.content?.title ?? post.originalTitle;
-                const originalContent = post.content?.content ?? post.originalContent;
-                const translatedTitle = post.translation?.title ?? post.translatedTitle;
-                const translatedContent = post.translation?.content ?? post.translatedContent;
-                const translatedSummary = post.translation?.summary ?? post.translatedSummary;
-
-                const title = locale === "zh" ? originalTitle : translatedTitle;
-                const summary = translatedSummary || (locale === "zh" ? originalContent : translatedContent);
-                const brandLabel = BRAND_LABELS[post.brand] || post.brand;
-
-                return (
-                  <article
-                    key={post.id}
-                    className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6"
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-sm font-medium">
-                        {brandLabel}
-                      </span>
-                      {post.topics.slice(0, 1).map((topic) => (
-                        <span key={topic} className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm">
-                          {topic.toLowerCase().replace(/_/g, " ")}
+            {/* Right Column - Top Headlines (with vertical divider) */}
+            <div className="order-3 border-l-0 lg:border-l lg:border-ev-green-200 lg:pl-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">
+                {locale === "zh" ? "热门新闻" : "Top Headlines"}
+              </h2>
+              <ul className="space-y-3">
+                {topHeadlines.map((post) => (
+                  <li key={post.id}>
+                    <Link
+                      href={`/${locale}/post/${post.id}`}
+                      className="block group"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="text-ev-green-500 font-bold text-sm mt-0.5">
+                          •
                         </span>
-                      ))}
-                      <span className="text-gray-400 text-sm ml-auto">
-                        {formatRelativeTime(post.sourceDate)}
-                      </span>
-                    </div>
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                      {title || "Untitled"}
-                    </h4>
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                      {summary?.slice(0, 150)}...
-                    </p>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">Source: {post.sourceAuthor}</span>
-                      <div className="flex items-center gap-3">
-                        {post.xPublication?.tweetUrl && (
-                          <a
-                            href={post.xPublication.tweetUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-gray-400 hover:text-blue-500"
-                            title="View on X"
-                          >
-                            X
-                          </a>
-                        )}
-                        <Link href={post.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">
-                          {t("readMore")} →
-                        </Link>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-medium text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-snug">
+                            {getTitle(post) || "Untitled"}
+                          </h3>
+                          <span className="text-xs text-gray-400 mt-1 block">
+                            {formatRelativeTime(post.sourceDate)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                );
-              })
-            ) : (
-              <div className="col-span-3 text-center text-gray-500 py-8">
-                No news available yet. Check back soon!
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* More News Section */}
+          {moreNews.length > 0 && (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-lg font-bold text-gray-900">
+                  {locale === "zh" ? "更多新闻" : "More News"}
+                </h2>
+                <div className="flex-1 h-px bg-gray-200" />
               </div>
-            )}
-          </div>
-
-          <div className="flex justify-center mt-8">
-            <button className="
-              relative
-              bg-white text-gray-700
-              px-10 py-3
-              rounded-full
-              font-semibold tracking-wider text-sm
-              border-2 border-lime-400
-              transition-all duration-300 ease-out
-              hover:bg-lime-50 hover:border-lime-500 hover:scale-105
-              hover:shadow-[0_0_20px_rgba(163,230,53,0.4)]
-              active:scale-95
-              before:absolute before:inset-0 before:rounded-full
-              before:border-2 before:border-lime-400
-              before:animate-ping before:opacity-20
-            ">
-              MORE
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Subscribe CTA */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4 text-center">
-          <h3 className="text-3xl font-bold text-gray-800 mb-4">
-            {t("cta.title")}
-          </h3>
-          <p className="text-gray-600 mb-8 max-w-xl mx-auto">
-            {t("cta.description")}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-            <Link
-              href="/register"
-              className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors text-center"
-            >
-              Create Free Account
-            </Link>
-            <Link
-              href="/subscribe"
-              className="flex-1 border border-purple-600 text-purple-600 px-6 py-3 rounded-lg font-medium hover:bg-purple-50 transition-colors text-center"
-            >
-              {t("subscribe")}
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center gap-2 mb-4 md:mb-0">
-              <span className="text-2xl">⚡</span>
-              <span className="font-bold">China EV News</span>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {moreNews.map((post) => (
+                  <NewsCard
+                    key={post.id}
+                    id={post.id}
+                    title={getTitle(post) || "Untitled"}
+                    summary={getSummary(post) || ""}
+                    category={post.categories[0] || "News"}
+                    source={post.sourceAuthor}
+                    sourceUrl={post.sourceUrl}
+                    timestamp={post.sourceDate}
+                    imageUrl={getImage(post)}
+                    relevanceScore={post.relevanceScore}
+                    locale={locale}
+                  />
+                ))}
+              </div>
+              {/* More Button */}
+              <div className="mt-6 flex justify-center">
+                <button className="relative px-6 py-2 text-xs font-semibold tracking-wider text-gray-600 rounded-full border-2 border-lime-400 hover:border-lime-500 hover:text-gray-800 transition-all duration-300 hover:shadow-[0_0_12px_rgba(163,230,53,0.5)] before:absolute before:inset-0 before:rounded-full before:border-2 before:border-lime-400 before:animate-pulse before:opacity-40">
+                  MORE
+                </button>
+              </div>
             </div>
-            <div className="flex gap-6 text-gray-400">
-              <Link href="/about" className="hover:text-white">About</Link>
-              <Link href="/contact" className="hover:text-white">Contact</Link>
-              <Link href="/privacy" className="hover:text-white">Privacy</Link>
-              <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">
-                X
-              </a>
-            </div>
-          </div>
-          <div className="text-center text-gray-500 text-sm mt-8">
-            © 2025 China EV News. All rights reserved.
-          </div>
+          )}
         </div>
-      </footer>
-    </main>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+              />
+            </svg>
+          </div>
+          <p className="text-gray-500">{t("noResults")}</p>
+        </div>
+      )}
+    </div>
   );
 }
