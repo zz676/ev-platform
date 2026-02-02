@@ -412,6 +412,7 @@ def run_scraper(
             for article in articles:
                 article.relevance_score = 50  # Default score
                 article.translated_title = article.original_title
+                article.translated_content = article.original_content  # Avoid null in webhook
                 article.translated_summary = article.original_title or "EV News"
                 all_articles.append(article.to_dict())
                 processed_count += 1
@@ -457,9 +458,6 @@ def run_scraper(
 
         # Print summary
         print_summary(stats, dry_run=False)
-
-        if not success:
-            sys.exit(1)
 
     return stats
 
@@ -507,12 +505,16 @@ Examples:
 
     args = parser.parse_args()
 
-    run_scraper(
+    stats = run_scraper(
         sources=args.sources,
         limit=args.limit,
         skip_ai=args.skip_ai,
         dry_run=args.dry_run,
     )
+
+    # Exit with error code if webhook failed (only for CLI usage)
+    if not args.dry_run and stats.get("webhook", {}).get("status") == "ERROR":
+        sys.exit(1)
 
 
 if __name__ == "__main__":
