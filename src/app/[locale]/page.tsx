@@ -33,34 +33,64 @@ export default async function Home({
   const { locale } = await params;
   const t = await getTranslations("Feed");
 
+  // Time window constants
+  const now = Date.now();
+  const fortyEightHoursAgo = new Date(now - 48 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const oneMonthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+  const postSelect = {
+    id: true,
+    source: true,
+    sourceUrl: true,
+    sourceAuthor: true,
+    sourceDate: true,
+    originalTitle: true,
+    translatedTitle: true,
+    originalContent: true,
+    translatedContent: true,
+    translatedSummary: true,
+    originalMediaUrls: true,
+    categories: true,
+    relevanceScore: true,
+    createdAt: true,
+  };
+
   // Fetch posts from database with error handling
-  let posts: Post[] = [];
+  let featuredPost: Post | null = null;
+  let poolPosts: Post[] = [];
   let totalPosts = 0;
-  const initialLimit = 20;
+
   try {
-    const [fetchedPosts, count] = await Promise.all([
-      prisma.post.findMany({
+    // Fetch candidates for featured post selection
+    const [recentHighQuality, recentBest, weekBest, count] = await Promise.all([
+      // Posts from last 48h with score >= 90
+      prisma.post.findFirst({
         where: {
           status: { not: PostStatus.REJECTED },
+          createdAt: { gte: fortyEightHoursAgo },
+          relevanceScore: { gte: 90 },
         },
-        orderBy: { createdAt: "desc" },
-        take: initialLimit,
-        select: {
-          id: true,
-          source: true,
-          sourceUrl: true,
-          sourceAuthor: true,
-          sourceDate: true,
-          originalTitle: true,
-          translatedTitle: true,
-          originalContent: true,
-          translatedContent: true,
-          translatedSummary: true,
-          originalMediaUrls: true,
-          categories: true,
-          relevanceScore: true,
-          createdAt: true,
+        orderBy: { relevanceScore: "desc" },
+        select: postSelect,
+      }),
+      // Best from last 48h (any score)
+      prisma.post.findFirst({
+        where: {
+          status: { not: PostStatus.REJECTED },
+          createdAt: { gte: fortyEightHoursAgo },
         },
+        orderBy: { relevanceScore: "desc" },
+        select: postSelect,
+      }),
+      // Best from last 7 days
+      prisma.post.findFirst({
+        where: {
+          status: { not: PostStatus.REJECTED },
+          createdAt: { gte: sevenDaysAgo },
+        },
+        orderBy: { relevanceScore: "desc" },
+        select: postSelect,
       }),
       prisma.post.count({
         where: {
@@ -68,22 +98,62 @@ export default async function Home({
         },
       }),
     ]);
-    posts = fetchedPosts;
+
     totalPosts = count;
+
+    // Select featured post using smart selection logic
+    // Priority: fresh high-quality (score >= 90 from last 48h)
+    featuredPost = recentHighQuality;
+    if (!featuredPost) {
+      // Fallback: compare 48h best vs 7d best, pick higher score
+      if (recentBest && weekBest) {
+        featuredPost =
+          recentBest.relevanceScore >= weekBest.relevanceScore
+            ? recentBest
+            : weekBest;
+      } else {
+        featuredPost = recentBest || weekBest;
+      }
+    }
+
+    // Fetch pool for other sections (excluding featured), sorted by score
+    poolPosts = await prisma.post.findMany({
+      where: {
+        status: { not: PostStatus.REJECTED },
+        createdAt: { gte: sevenDaysAgo },
+        ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
+      },
+      orderBy: { relevanceScore: "desc" },
+      take: 20,
+      select: postSelect,
+    });
+
+    // Fallback to 1 month if not enough posts
+    if (poolPosts.length < 10) {
+      poolPosts = await prisma.post.findMany({
+        where: {
+          status: { not: PostStatus.REJECTED },
+          createdAt: { gte: oneMonthAgo },
+          ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
+        },
+        orderBy: { relevanceScore: "desc" },
+        take: 20,
+        select: postSelect,
+      });
+    }
   } catch {
     // Database unavailable - show empty state
     console.error("Failed to fetch posts from database");
   }
 
-  // Split posts for USAToday-style layout:
-  // Posts 0-1: Left column news cards (2 cards)
-  // Post 2: Center featured article
-  // Posts 3-8: Right column headlines (6 items)
-  // Posts 9+: More News section below
-  const leftColumnPosts = posts.slice(0, 2);
-  const featuredPost = posts[2];
-  const topHeadlines = posts.slice(3, 9);
-  const moreNews = posts.slice(9);
+  // Split posts for layout:
+  // Featured: Smart selection (center)
+  // Posts 0-1: Left column cards
+  // Posts 2-9: Top Headlines (8 items)
+  // Posts 10+: More News section
+  const leftColumnPosts = poolPosts.slice(0, 2);
+  const topHeadlines = poolPosts.slice(2, 10);
+  const moreNews = poolPosts.slice(10);
 
   // Helper to get localized title
   const getTitle = (post: Post) =>
@@ -121,7 +191,7 @@ export default async function Home({
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Main Content */}
-      {posts.length > 0 ? (
+      {featuredPost || poolPosts.length > 0 ? (
         <div className="space-y-4">
           {/* Featured Section - USAToday Style 3-Column Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[250px_1fr_280px] gap-6">
@@ -206,8 +276,8 @@ export default async function Home({
               }))}
               locale={locale}
               sectionTitle={locale === "zh" ? "更多新闻" : "More News"}
-              totalInitialPosts={posts.length}
-              initialHasMore={totalPosts > initialLimit}
+              totalInitialPosts={poolPosts.length + (featuredPost ? 1 : 0)}
+              initialHasMore={totalPosts > 20}
             />
           )}
         </div>
