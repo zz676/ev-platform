@@ -1,0 +1,150 @@
+"use client";
+
+import { useState } from "react";
+import { PostRow } from "./PostRow";
+import { RefreshCw, CheckCircle2 } from "lucide-react";
+
+interface Post {
+  id: string;
+  translatedTitle: string | null;
+  originalTitle: string | null;
+  source: string;
+  sourceUrl: string;
+  sourceDate: string;
+  relevanceScore: number;
+  status: string;
+}
+
+interface PostsTableProps {
+  posts: Post[];
+  onApprove: (id: string) => Promise<void>;
+  onReject: (id: string) => Promise<void>;
+  onApproveAll: () => Promise<void>;
+  onRefresh: () => void;
+  isLoading: boolean;
+}
+
+export function PostsTable({
+  posts,
+  onApprove,
+  onReject,
+  onApproveAll,
+  onRefresh,
+  isLoading,
+}: PostsTableProps) {
+  const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
+  const [isApprovingAll, setIsApprovingAll] = useState(false);
+
+  const handleApprove = async (id: string) => {
+    setUpdatingIds((prev) => new Set(prev).add(id));
+    try {
+      await onApprove(id);
+    } finally {
+      setUpdatingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    setUpdatingIds((prev) => new Set(prev).add(id));
+    try {
+      await onReject(id);
+    } finally {
+      setUpdatingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const handleApproveAll = async () => {
+    setIsApprovingAll(true);
+    try {
+      await onApproveAll();
+    } finally {
+      setIsApprovingAll(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      {/* Table Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <h2 className="font-semibold text-gray-900">Pending Posts</h2>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+          {posts.length > 0 && (
+            <button
+              onClick={handleApproveAll}
+              disabled={isApprovingAll || isLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-green-500 hover:bg-green-600 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Approve All ({posts.length})
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      {isLoading && posts.length === 0 ? (
+        <div className="px-4 py-12 text-center text-gray-500">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-3 text-gray-400" />
+          <p>Loading posts...</p>
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="px-4 py-12 text-center text-gray-500">
+          <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-400" />
+          <p className="font-medium text-gray-900">All caught up!</p>
+          <p className="text-sm mt-1">No pending posts to review.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Title
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Source
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Score
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {posts.map((post) => (
+                <PostRow
+                  key={post.id}
+                  post={post}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  isUpdating={updatingIds.has(post.id)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
