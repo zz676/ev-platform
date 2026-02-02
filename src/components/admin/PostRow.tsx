@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, X, ExternalLink } from "lucide-react";
+import { Check, X, ExternalLink, Share2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { PostStatus } from "./AdminStats";
 
 interface Post {
   id: string;
@@ -12,13 +13,18 @@ interface Post {
   sourceDate: string;
   relevanceScore: number;
   status: string;
+  publishedToX?: boolean;
+  xPostId?: string | null;
 }
 
 interface PostRowProps {
   post: Post;
+  activeStatus: PostStatus;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
+  onPostToX?: (id: string) => void;
   isUpdating: boolean;
+  isPostingToX?: boolean;
 }
 
 function formatDate(dateString: string): string {
@@ -37,8 +43,10 @@ function getScoreColor(score: number): string {
   return "bg-gray-100 text-gray-700";
 }
 
-export function PostRow({ post, onApprove, onReject, isUpdating }: PostRowProps) {
+export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, isUpdating, isPostingToX }: PostRowProps) {
   const title = post.translatedTitle || post.originalTitle || "Untitled";
+  const canPostToX = post.status === "APPROVED" && !post.publishedToX && onPostToX;
+  const showApproveReject = activeStatus === "PENDING";
 
   return (
     <tr className="border-b border-gray-100 hover:bg-gray-50">
@@ -78,22 +86,52 @@ export function PostRow({ post, onApprove, onReject, isUpdating }: PostRowProps)
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => onApprove(post.id)}
-            disabled={isUpdating}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded-lg transition-colors disabled:opacity-50"
-          >
-            <Check className="h-3.5 w-3.5" />
-            Approve
-          </button>
-          <button
-            onClick={() => onReject(post.id)}
-            disabled={isUpdating}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors disabled:opacity-50"
-          >
-            <X className="h-3.5 w-3.5" />
-            Reject
-          </button>
+          {showApproveReject && (
+            <>
+              <button
+                onClick={() => onApprove(post.id)}
+                disabled={isUpdating}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Check className="h-3.5 w-3.5" />
+                Approve
+              </button>
+              <button
+                onClick={() => onReject(post.id)}
+                disabled={isUpdating}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <X className="h-3.5 w-3.5" />
+                Reject
+              </button>
+            </>
+          )}
+          {canPostToX && (
+            <button
+              onClick={() => onPostToX(post.id)}
+              disabled={isPostingToX}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {isPostingToX ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Share2 className="h-3.5 w-3.5" />
+              )}
+              {isPostingToX ? "Posting..." : "Post to X"}
+            </button>
+          )}
+          {post.publishedToX && post.xPostId && (
+            <a
+              href={`https://x.com/i/status/${post.xPostId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Posted
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
         </div>
       </td>
     </tr>
