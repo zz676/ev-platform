@@ -207,8 +207,12 @@ export default async function Home({
               </div>
               {/* More Button */}
               <div className="mt-6 flex justify-center">
-                <button className="relative px-6 py-2 text-xs font-semibold tracking-wider text-gray-600 rounded-full border-2 border-lime-400 hover:border-lime-500 hover:text-gray-800 transition-all duration-300 hover:shadow-[0_0_12px_rgba(163,230,53,0.5)] before:absolute before:inset-0 before:rounded-full before:border-2 before:border-lime-400 before:animate-pulse before:opacity-40">
-                  MORE
+                <button className="relative px-2 py-1 text-sm font-semibold tracking-widest text-lime-400 hover:text-lime-300 transition-colors duration-300 drop-shadow-[0_0_8px_rgba(163,230,53,0.8)]">
+                  <span className="relative">
+                    MORE
+                    {/* Underline with glow */}
+                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-lime-400 shadow-[0_0_8px_rgba(163,230,53,0.8)]" />
+                  </span>
                 </button>
               </div>
             </div>
