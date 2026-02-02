@@ -8,27 +8,26 @@ from .base import BaseSource, Article
 
 
 class NIOSource(BaseSource):
-    """Scraper for NIO Investor Relations press releases."""
+    """Scraper for NIO official news page."""
 
     name = "NIO"
     source_type = "OFFICIAL"
-    base_url = "https://ir.nio.com"
-    news_url = "https://ir.nio.com/news-events/press-releases"
+    base_url = "https://www.nio.com"
+    news_url = "https://www.nio.com/news"
 
     def fetch_articles(self, limit: int = 10) -> list[Article]:
-        """Fetch press releases from NIO IR page."""
+        """Fetch news from NIO news page."""
         articles = []
 
         try:
             soup = self._get_soup(self.news_url)
 
-            # Find all press release items
-            # NIO IR page typically uses a list structure
-            items = soup.select(".nir-widget--list .nir-widget--field")
+            # NIO news page uses React CSS modules with class names like news_newsItem__xxx
+            items = soup.select("[class*='news_newsItem']")
 
             if not items:
                 # Try alternative selectors
-                items = soup.select("article, .news-item, .press-release")
+                items = soup.select("article, .news-item, [class*='newsItem']")
 
             for item in items[:limit]:
                 article = self._parse_article(item)
@@ -43,19 +42,25 @@ class NIOSource(BaseSource):
     def _parse_article(self, item: Tag) -> Optional[Article]:
         """Parse a single article item."""
         try:
-            # Find title and link
-            title_elem = item.select_one("a, .title, h3, h4")
+            # Find title and link - NIO uses anchor tags containing the news item
+            title_elem = item.select_one("a")
+            if not title_elem:
+                # The item itself might be the link
+                title_elem = item if item.name == "a" else None
             if not title_elem:
                 return None
 
-            title = self._clean_text(title_elem.get_text())
+            # Find the title text - look for heading or text content
+            title_text_elem = item.select_one("h2, h3, h4, [class*='title']")
+            title = self._clean_text(title_text_elem.get_text()) if title_text_elem else self._clean_text(title_elem.get_text())
+
             link = title_elem.get("href", "")
 
             if link and not link.startswith("http"):
                 link = f"{self.base_url}{link}"
 
-            # Find date
-            date_elem = item.select_one(".date, time, .nir-widget--field--date")
+            # Find date - NIO uses YYYY-MM-DD format
+            date_elem = item.select_one("[class*='date'], time, span")
             date_str = date_elem.get_text() if date_elem else ""
             pub_date = self._parse_date(date_str)
 
@@ -90,9 +95,9 @@ class NIOSource(BaseSource):
         try:
             soup = self._get_soup(url)
 
-            # Find article body
+            # Find article body - NIO uses React CSS modules
             body = soup.select_one(
-                ".nir-widget--news-body, .article-body, article, .content"
+                "[class*='article'], [class*='content'], article, .content"
             )
 
             if body:

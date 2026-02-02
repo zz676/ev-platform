@@ -27,28 +27,28 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 SOURCES = {
     "nio": {
         "name": "NIO",
-        "ir_url": "https://ir.nio.com/news-events/press-releases",
+        "news_url": "https://www.nio.com/news",
         "enabled": True,
     },
     "xpeng": {
         "name": "XPeng",
-        "ir_url": "https://ir.xiaopeng.com/news-releases",
+        "ir_url": "https://ir.xiaopeng.com/",
         "enabled": True,
     },
     "li_auto": {
         "name": "Li Auto",
-        "ir_url": "https://ir.lixiang.com/news-releases",
+        "ir_url": "https://ir.lixiang.com/",
         "enabled": True,
     },
     "byd": {
         "name": "BYD",
-        "news_url": "https://www.byd.com/en/news",
-        "enabled": True,
+        "news_url": "https://www.byd.com/cn/news",
+        "enabled": False,  # Vue.js client-side rendering requires Playwright
     },
     "zeekr": {
         "name": "Zeekr",
         "ir_url": "https://ir.zeekr.com/news-releases",
-        "enabled": True,
+        "enabled": False,  # Not implemented yet
     },
     "leapmotor": {
         "name": "Leapmotor",

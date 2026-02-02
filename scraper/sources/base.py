@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
-import requests
+import httpx
 from bs4 import BeautifulSoup
 
 import sys
@@ -62,13 +62,12 @@ class BaseSource(ABC):
     source_type: str = "OFFICIAL"
 
     def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": USER_AGENT,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
-        })
-        self.timeout = REQUEST_TIMEOUT
+        # Use default httpx client with default headers
+        # Some IR sites have bot protection that blocks custom Chrome-like user agents
+        self.client = httpx.Client(
+            timeout=REQUEST_TIMEOUT,
+            follow_redirects=True,
+        )
 
     @abstractmethod
     def fetch_articles(self, limit: int = 10) -> list[Article]:
@@ -84,7 +83,7 @@ class BaseSource(ABC):
 
     def _get_soup(self, url: str) -> BeautifulSoup:
         """Fetch URL and return BeautifulSoup object."""
-        response = self.session.get(url, timeout=self.timeout)
+        response = self.client.get(url)
         response.raise_for_status()
         return BeautifulSoup(response.content, "lxml")
 
