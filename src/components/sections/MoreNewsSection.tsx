@@ -20,6 +20,7 @@ type MoreNewsSectionProps = {
   locale: string;
   sectionTitle: string;
   totalInitialPosts: number; // Total posts loaded on initial page (e.g., 20)
+  initialHasMore: boolean; // Whether there are more posts to load
 };
 
 export function MoreNewsSection({
@@ -27,11 +28,12 @@ export function MoreNewsSection({
   locale,
   sectionTitle,
   totalInitialPosts,
+  initialHasMore,
 }: MoreNewsSectionProps) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [skip, setSkip] = useState(totalInitialPosts); // Skip posts already shown
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(initialHasMore);
   const limit = 6;
 
   const loadMore = async () => {
@@ -39,12 +41,12 @@ export function MoreNewsSection({
 
     setLoading(true);
     try {
-      // Use skip-based pagination by calculating page number
-      const page = Math.floor(skip / limit) + 1;
-      const res = await fetch(
-        `/api/posts?page=${page}&limit=${limit}&lang=${locale}`
-      );
+      // Use skip-based pagination directly
+      const url = `/api/posts?skip=${skip}&limit=${limit}&lang=${locale}`;
+      console.log("[MoreNews] Fetching:", url);
+      const res = await fetch(url);
       const data = await res.json();
+      console.log("[MoreNews] Response:", { postsCount: data.posts?.length, pagination: data.pagination });
 
       if (data.posts && data.posts.length > 0) {
         const newPosts: Post[] = data.posts.map(

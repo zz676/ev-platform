@@ -102,6 +102,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const status = searchParams.get("status") || "PENDING";
     const xStatus = searchParams.get("xStatus"); // Filter by X publication status
+    const search = searchParams.get("search")?.trim(); // Search query
 
     const skip = (page - 1) * limit;
 
@@ -109,6 +110,40 @@ export async function GET(request: Request) {
     const where: Prisma.PostWhereInput = {
       status: status as "PENDING" | "APPROVED" | "PUBLISHED" | "REJECTED",
     };
+
+    // Add search filter if specified
+    // Supports: "exact phrase" (with quotes) or multi-word search (without quotes)
+    if (search) {
+      // Check if search is wrapped in quotes (exact phrase)
+      const isExactPhrase = /^["'].*["']$/.test(search);
+      const cleanSearch = search.replace(/^["']|["']$/g, "").trim();
+
+      if (isExactPhrase) {
+        // Exact phrase: search for the exact substring
+        where.OR = [
+          { translatedTitle: { contains: cleanSearch, mode: "insensitive" } },
+          { originalTitle: { contains: cleanSearch, mode: "insensitive" } },
+        ];
+      } else {
+        // Multi-word: ALL terms must appear in at least one title
+        const searchTerms = cleanSearch.split(/\s+/).filter(term => term.length > 0);
+
+        if (searchTerms.length === 1) {
+          where.OR = [
+            { translatedTitle: { contains: searchTerms[0], mode: "insensitive" } },
+            { originalTitle: { contains: searchTerms[0], mode: "insensitive" } },
+          ];
+        } else {
+          // Each term must appear in either title
+          where.AND = searchTerms.map(term => ({
+            OR: [
+              { translatedTitle: { contains: term, mode: "insensitive" } },
+              { originalTitle: { contains: term, mode: "insensitive" } },
+            ],
+          }));
+        }
+      }
+    }
 
     // Add X status filter if specified
     if (xStatus === "failed") {
