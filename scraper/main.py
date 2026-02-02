@@ -447,11 +447,15 @@ def run_scraper(
         success = submit_to_webhook(all_articles, batch_id, stats)
         if success:
             print("\nScraper run completed successfully!")
-            # Trigger X publishing after successful scrape
-            print("\n" + "="*50)
-            print("Triggering X/Twitter auto-publish...")
-            print("="*50)
-            trigger_x_publish(stats)
+            # Trigger X publishing after successful scrape (unless disabled)
+            if os.getenv("SKIP_X_PUBLISH", "").lower() == "true":
+                print("\n[SKIP_X_PUBLISH=true] Skipping X/Twitter auto-publish")
+                stats["x_publish"]["status"] = "SKIPPED (disabled)"
+            else:
+                print("\n" + "="*50)
+                print("Triggering X/Twitter auto-publish...")
+                print("="*50)
+                trigger_x_publish(stats)
         else:
             print("\nScraper run completed with errors")
             stats["x_publish"]["status"] = "SKIPPED"
