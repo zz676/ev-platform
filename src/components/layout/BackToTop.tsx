@@ -27,7 +27,7 @@ export function BackToTop() {
   return (
     <button
       onClick={scrollToTop}
-      className="fixed bottom-24 right-6 z-50 group"
+      className="fixed bottom-24 right-4 xl:right-[calc((100vw-80rem)/2-3rem)] z-50 group"
       aria-label="Back to top"
     >
       {/* Outer glowing ring */}
