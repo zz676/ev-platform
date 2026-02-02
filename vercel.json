@@ -1,1 +1,16 @@
-{}
+{
+  "crons": [
+    {
+      "path": "/api/cron/publish",
+      "schedule": "0 6,12,15,18,22 * * *"
+    },
+    {
+      "path": "/api/cron/digest-aggregate",
+      "schedule": "30 12,21 * * *"
+    },
+    {
+      "path": "/api/cron/digest",
+      "schedule": "0 13,22 * * *"
+    }
+  ]
+}

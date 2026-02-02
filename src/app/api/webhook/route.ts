@@ -5,6 +5,7 @@ import { Source, PostStatus } from "@prisma/client";
 import crypto from "crypto";
 import { put } from "@vercel/blob";
 import { generatePostImage } from "@/lib/ai";
+import { POSTING_CONFIG } from "@/lib/config/posting";
 
 // Webhook secret for authenticating scraper requests
 const WEBHOOK_SECRET = process.env.SCRAPER_WEBHOOK_SECRET;
@@ -161,6 +162,10 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          // Auto-approve if relevanceScore >= MIN_RELEVANCE_SCORE
+          const shouldAutoApprove =
+            postData.relevanceScore >= POSTING_CONFIG.MIN_RELEVANCE_SCORE;
+
           await prisma.post.create({
             data: {
               id: postId,
@@ -177,7 +182,8 @@ export async function POST(request: NextRequest) {
               translatedSummary: postData.translatedSummary || "",
               categories: postData.categories,
               relevanceScore: postData.relevanceScore,
-              status: PostStatus.PENDING,
+              status: shouldAutoApprove ? PostStatus.APPROVED : PostStatus.PENDING,
+              approvedAt: shouldAutoApprove ? new Date() : null,
               updatedAt: new Date(),
             },
           });
