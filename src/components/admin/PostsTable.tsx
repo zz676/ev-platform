@@ -5,6 +5,14 @@ import { PostRow } from "./PostRow";
 import { RefreshCw, CheckCircle2 } from "lucide-react";
 import type { PostStatus } from "./AdminStats";
 
+interface XPublication {
+  status: "PENDING" | "PUBLISHING" | "PUBLISHED" | "FAILED" | "SKIPPED";
+  attempts: number;
+  lastError: string | null;
+  tweetId: string | null;
+  tweetUrl: string | null;
+}
+
 interface Post {
   id: string;
   translatedTitle: string | null;
@@ -16,6 +24,7 @@ interface Post {
   status: string;
   publishedToX?: boolean;
   xPostId?: string | null;
+  XPublication?: XPublication | null;
 }
 
 interface PostsTableProps {
@@ -27,6 +36,7 @@ interface PostsTableProps {
   onApproveAll: () => Promise<void>;
   onRefresh: () => void;
   isLoading: boolean;
+  maxXAttempts?: number;
 }
 
 const getStatusTitle = (status?: PostStatus): string => {
@@ -58,6 +68,7 @@ export function PostsTable({
   onApproveAll,
   onRefresh,
   isLoading,
+  maxXAttempts = 2,
 }: PostsTableProps) {
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [postingToXIds, setPostingToXIds] = useState<Set<string>>(new Set());
@@ -169,6 +180,9 @@ export function PostsTable({
                   Score
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  X Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -184,6 +198,7 @@ export function PostsTable({
                   onPostToX={onPostToX ? handlePostToX : undefined}
                   isUpdating={updatingIds.has(post.id)}
                   isPostingToX={postingToXIds.has(post.id)}
+                  maxXAttempts={maxXAttempts}
                 />
               ))}
             </tbody>

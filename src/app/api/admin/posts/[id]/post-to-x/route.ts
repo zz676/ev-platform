@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { PostStatus } from "@prisma/client";
+import { PostStatus, ImageSource } from "@prisma/client";
 import { postTweet, formatTweetContent, uploadMedia } from "@/lib/twitter";
 import { generatePostImage } from "@/lib/ai";
 import { requireApiAdmin } from "@/lib/auth/api-auth";
+import {
+  canManualRetry,
+  startPublishingAttempt,
+  recordPublishSuccess,
+  recordPublishFailure,
+  MAX_ATTEMPTS,
+} from "@/lib/x-publication";
 
 export async function POST(
   request: Request,
@@ -33,11 +40,13 @@ export async function POST(
       );
     }
 
-    if (post.publishedToX) {
+    // Check if manual retry is allowed (always allowed unless already published)
+    const { allowed, reason, xPublication } = await canManualRetry(id);
+    if (!allowed) {
       return NextResponse.json(
         {
-          error: "Post already published to X",
-          tweetUrl: `https://x.com/i/status/${post.xPostId}`,
+          error: reason || "Cannot post to X",
+          tweetUrl: post.xPostId ? `https://x.com/i/status/${post.xPostId}` : undefined,
         },
         { status: 400 }
       );
@@ -50,63 +59,95 @@ export async function POST(
       );
     }
 
-    const tweetText = formatTweetContent({
-      translatedTitle: post.translatedTitle,
-      translatedSummary: post.translatedSummary,
-      categories: post.categories,
-      source: post.source,
-      sourceUrl: post.sourceUrl,
-    });
-
-    // Try to attach an image
-    let mediaIds: string[] | undefined;
-    let imageSource: "scraped" | "ai-generated" | "none" | "failed" = "none";
+    // Start tracking this attempt (manual retry)
+    const { attempts } = await startPublishingAttempt(id, { isManualRetry: true });
+    console.log(`Manual publish attempt ${attempts} for post ${id} (previous attempts: ${xPublication?.attempts || 0})`);
 
     try {
-      let imageUrl: string | undefined;
+      const tweetText = formatTweetContent({
+        translatedTitle: post.translatedTitle,
+        translatedSummary: post.translatedSummary,
+        categories: post.categories,
+        source: post.source,
+        sourceUrl: post.sourceUrl,
+      });
 
-      if (post.originalMediaUrls && post.originalMediaUrls.length > 0) {
-        imageUrl = post.originalMediaUrls[0];
-        imageSource = "scraped";
-      } else {
-        imageUrl = await generatePostImage(
-          post.translatedTitle || post.originalTitle || "EV News",
-          post.translatedSummary
-        );
-        if (imageUrl) {
-          imageSource = "ai-generated";
+      // Try to attach an image
+      let mediaIds: string[] | undefined;
+      let mediaId: string | undefined;
+      let imageSource: ImageSource = ImageSource.NONE;
+
+      try {
+        let imageUrl: string | undefined;
+
+        if (post.originalMediaUrls && post.originalMediaUrls.length > 0) {
+          imageUrl = post.originalMediaUrls[0];
+          imageSource = ImageSource.SCRAPED;
+        } else {
+          imageUrl = await generatePostImage(
+            post.translatedTitle || post.originalTitle || "EV News",
+            post.translatedSummary
+          );
+          if (imageUrl) {
+            imageSource = ImageSource.AI_GENERATED;
+          }
         }
+
+        if (imageUrl) {
+          mediaId = await uploadMedia(imageUrl);
+          mediaIds = [mediaId];
+        }
+      } catch (imageError) {
+        console.error(`Image processing failed for post ${post.id}:`, imageError);
+        imageSource = ImageSource.FAILED;
       }
 
-      if (imageUrl) {
-        const mediaId = await uploadMedia(imageUrl);
-        mediaIds = [mediaId];
-      }
-    } catch (imageError) {
-      console.error(`Image processing failed for post ${post.id}:`, imageError);
-      imageSource = "failed";
+      const tweetResponse = await postTweet(tweetText, mediaIds);
+
+      // Record success in XPublication
+      await recordPublishSuccess(id, {
+        tweetId: tweetResponse.data.id,
+        imageSource,
+        mediaId,
+      });
+
+      // Update post in database
+      await prisma.post.update({
+        where: { id: post.id },
+        data: {
+          publishedToX: true,
+          xPostId: tweetResponse.data.id,
+          xPublishedAt: new Date(),
+          status: PostStatus.PUBLISHED,
+          updatedAt: new Date(),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        tweetId: tweetResponse.data.id,
+        tweetUrl: `https://x.com/i/status/${tweetResponse.data.id}`,
+        hasImage: !!mediaIds,
+        imageSource: imageSource.toLowerCase(),
+        attempts,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+      // Record failure in XPublication
+      const { attempts: totalAttempts, maxReached } = await recordPublishFailure(id, errorMessage);
+
+      console.error(`Error posting to X (attempt ${totalAttempts}):`, error);
+      return NextResponse.json(
+        {
+          error: `Failed to post to X: ${errorMessage}`,
+          attempts: totalAttempts,
+          maxAttempts: MAX_ATTEMPTS,
+          maxReached,
+        },
+        { status: 500 }
+      );
     }
-
-    const tweetResponse = await postTweet(tweetText, mediaIds);
-
-    await prisma.post.update({
-      where: { id: post.id },
-      data: {
-        publishedToX: true,
-        xPostId: tweetResponse.data.id,
-        xPublishedAt: new Date(),
-        status: PostStatus.PUBLISHED,
-        updatedAt: new Date(),
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      tweetId: tweetResponse.data.id,
-      tweetUrl: `https://x.com/i/status/${tweetResponse.data.id}`,
-      hasImage: !!mediaIds,
-      imageSource,
-    });
   } catch (error) {
     console.error("Error posting to X:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
