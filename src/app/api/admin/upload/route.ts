@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { requireApiAdmin } from "@/lib/auth/api-auth";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function POST(request: Request) {
+  // Require admin authentication
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) {
+    return authResult.error;
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

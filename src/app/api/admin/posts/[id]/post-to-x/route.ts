@@ -3,11 +3,18 @@ import { prisma } from "@/lib/prisma";
 import { PostStatus } from "@prisma/client";
 import { postTweet, formatTweetContent, uploadMedia } from "@/lib/twitter";
 import { generatePostImage } from "@/lib/ai";
+import { requireApiAdmin } from "@/lib/auth/api-auth";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Require admin authentication
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) {
+    return authResult.error;
+  }
+
   try {
     const { id } = await params;
 
