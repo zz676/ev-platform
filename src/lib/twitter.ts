@@ -1,71 +1,76 @@
 import crypto from "crypto";
 
-// X API v2 credentials
-const API_KEY = process.env.X_API_KEY!;
-const API_SECRET = process.env.X_API_SECRET!;
-const ACCESS_TOKEN = process.env.X_ACCESS_TOKEN!;
-const ACCESS_TOKEN_SECRET = process.env.X_ACCESS_TOKEN_SECRET!;
-
-// X API endpoints (migrated to x.com domain as of 2025)
+// X API v2 endpoints (official docs: https://docs.x.com)
 const MEDIA_UPLOAD_URL = "https://api.x.com/2/media/upload";
 const TWEETS_URL = "https://api.x.com/2/tweets";
 
+// Credentials from environment
+const getCredentials = () => ({
+  apiKey: process.env.X_API_KEY!,
+  apiSecret: process.env.X_API_SECRET!,
+  accessToken: process.env.X_ACCESS_TOKEN!,
+  accessTokenSecret: process.env.X_ACCESS_TOKEN_SECRET!,
+});
+
 // OAuth 1.0a signature generation
-function generateOAuthSignature(
+export function generateOAuthSignature(
   method: string,
   url: string,
   params: Record<string, string>,
   consumerSecret: string,
   tokenSecret: string
 ): string {
-  // Sort parameters alphabetically
   const sortedParams = Object.keys(params)
     .sort()
     .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
     .join("&");
 
-  // Create signature base string
   const signatureBaseString = [
     method.toUpperCase(),
     encodeURIComponent(url),
     encodeURIComponent(sortedParams),
   ].join("&");
 
-  // Create signing key
   const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`;
 
-  // Generate HMAC-SHA1 signature
-  const signature = crypto
+  return crypto
     .createHmac("sha1", signingKey)
     .update(signatureBaseString)
     .digest("base64");
-
-  return signature;
 }
 
-// Generate OAuth 1.0a header
-function generateOAuthHeader(method: string, url: string): string {
+// Generate OAuth 1.0a Authorization header
+export function generateOAuthHeader(
+  method: string,
+  url: string,
+  credentials?: {
+    apiKey: string;
+    apiSecret: string;
+    accessToken: string;
+    accessTokenSecret: string;
+  }
+): string {
+  const creds = credentials || getCredentials();
+
   const oauthParams: Record<string, string> = {
-    oauth_consumer_key: API_KEY,
+    oauth_consumer_key: creds.apiKey,
     oauth_nonce: crypto.randomBytes(16).toString("hex"),
     oauth_signature_method: "HMAC-SHA1",
     oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-    oauth_token: ACCESS_TOKEN,
+    oauth_token: creds.accessToken,
     oauth_version: "1.0",
   };
 
-  // Generate signature
   const signature = generateOAuthSignature(
     method,
     url,
     oauthParams,
-    API_SECRET,
-    ACCESS_TOKEN_SECRET
+    creds.apiSecret,
+    creds.accessTokenSecret
   );
 
   oauthParams.oauth_signature = signature;
 
-  // Build Authorization header
   const headerParams = Object.keys(oauthParams)
     .sort()
     .map((key) => `${encodeURIComponent(key)}="${encodeURIComponent(oauthParams[key])}"`)
@@ -74,6 +79,7 @@ function generateOAuthHeader(method: string, url: string): string {
   return `OAuth ${headerParams}`;
 }
 
+// Types
 export interface Tweet {
   id: string;
   text: string;
@@ -83,13 +89,6 @@ export interface TweetResponse {
   data: Tweet;
 }
 
-export interface TwitterError {
-  title: string;
-  detail: string;
-  type: string;
-}
-
-// v2 Media Upload Response
 export interface MediaUploadResponse {
   data: {
     id: string;
@@ -97,43 +96,37 @@ export interface MediaUploadResponse {
     expires_after_secs?: number;
     size?: number;
   };
-  meta?: Record<string, unknown>;
 }
 
 // Download image from URL and return as base64
-async function downloadImageAsBase64(imageUrl: string): Promise<string> {
+export async function downloadImageAsBase64(imageUrl: string): Promise<string> {
   const response = await fetch(imageUrl);
   if (!response.ok) {
     throw new Error(`Failed to download image: ${response.status}`);
   }
 
   const arrayBuffer = await response.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString("base64");
-  return base64;
+  return Buffer.from(arrayBuffer).toString("base64");
 }
 
-// Upload media to X and get media_id (v2 API)
+// Upload media to X (v2 API)
 export async function uploadMedia(imageUrl: string): Promise<string> {
-  if (!API_KEY || !API_SECRET || !ACCESS_TOKEN || !ACCESS_TOKEN_SECRET) {
+  const creds = getCredentials();
+  if (!creds.apiKey || !creds.apiSecret || !creds.accessToken || !creds.accessTokenSecret) {
     throw new Error("X API credentials not configured");
   }
 
-  // Download image and convert to base64
   const base64Data = await downloadImageAsBase64(imageUrl);
 
-  // v2 API uses JSON body with media (base64) and media_category
   const payload = {
     media: base64Data,
     media_category: "tweet_image",
   };
 
-  // Generate OAuth header (no body params in signature for JSON)
-  const authHeader = generateOAuthHeader("POST", MEDIA_UPLOAD_URL);
-
   const response = await fetch(MEDIA_UPLOAD_URL, {
     method: "POST",
     headers: {
-      Authorization: authHeader,
+      Authorization: generateOAuthHeader("POST", MEDIA_UPLOAD_URL),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
@@ -141,25 +134,23 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("X Media Upload error:", errorText);
     throw new Error(`X Media Upload error: ${response.status} - ${errorText}`);
   }
 
   const result: MediaUploadResponse = await response.json();
-  console.log(`Media uploaded successfully: ${result.data.id}`);
   return result.data.id;
 }
 
-// Post a tweet (optionally with media)
+// Post a tweet (v2 API)
 export async function postTweet(
   text: string,
   mediaIds?: string[]
 ): Promise<TweetResponse> {
-  if (!API_KEY || !API_SECRET || !ACCESS_TOKEN || !ACCESS_TOKEN_SECRET) {
+  const creds = getCredentials();
+  if (!creds.apiKey || !creds.apiSecret || !creds.accessToken || !creds.accessTokenSecret) {
     throw new Error("X API credentials not configured");
   }
 
-  // Build tweet payload
   const payload: { text: string; media?: { media_ids: string[] } } = { text };
 
   if (mediaIds && mediaIds.length > 0) {
@@ -177,14 +168,14 @@ export async function postTweet(
 
   if (!response.ok) {
     const error = await response.json();
-    console.error("X API error:", error);
-    throw new Error(`X API error: ${error.detail || error.title || "Unknown error"}`);
+    const errorMsg = error.errors?.[0]?.message || error.detail || error.title || "Unknown error";
+    throw new Error(`X API error: ${errorMsg}`);
   }
 
   return response.json();
 }
 
-// Format post for X
+// Format post content for X (280 char limit)
 export function formatTweetContent(post: {
   translatedTitle?: string | null;
   translatedSummary: string;
@@ -194,7 +185,6 @@ export function formatTweetContent(post: {
 }): string {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://chinaevnews.com";
 
-  // Category emoji mapping
   const categoryEmojis: Record<string, string> = {
     BYD: "🔋",
     NIO: "🔵",
@@ -209,48 +199,40 @@ export function formatTweetContent(post: {
     default: "🚗",
   };
 
-  // Get category for display
   const mainCategory = post.categories[0] || "EV News";
   const emoji = categoryEmojis[mainCategory] || categoryEmojis.default;
 
-  // Format source
-  const sourceLabel = {
+  const sourceLabel: Record<string, string> = {
     OFFICIAL: "Official",
     MEDIA: "Media",
     WEIBO: "Weibo",
     MANUAL: "Report",
-  }[post.source] || post.source;
+  };
 
-  // Build tweet parts
   const title = post.translatedTitle
     ? `${emoji} ${mainCategory} | ${post.translatedTitle}`
     : `${emoji} ${mainCategory}`;
 
-  const summary = post.translatedSummary;
-
-  // Generate hashtags from categories
   const hashtags = ["#ChinaEV"];
   for (const cat of post.categories.slice(0, 3)) {
     const tag = cat.replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
     if (tag) hashtags.push(`#${tag}`);
   }
 
-  // Assemble tweet with character limit
-  const footer = `\n\n📊 Source: ${sourceLabel}\n🔗 ${siteUrl}\n\n${hashtags.join(" ")}`;
-  const maxSummaryLength = 280 - title.length - footer.length - 5; // 5 for newlines
+  const footer = `\n\n📊 Source: ${sourceLabel[post.source] || post.source}\n🔗 ${siteUrl}\n\n${hashtags.join(" ")}`;
+  const maxSummaryLength = 280 - title.length - footer.length - 5;
 
-  const truncatedSummary = summary.length > maxSummaryLength
-    ? summary.substring(0, maxSummaryLength - 3) + "..."
-    : summary;
+  const truncatedSummary = post.translatedSummary.length > maxSummaryLength
+    ? post.translatedSummary.substring(0, maxSummaryLength - 3) + "..."
+    : post.translatedSummary;
 
   return `${title}\n\n${truncatedSummary}${footer}`;
 }
 
-// Verify credentials
+// Verify credentials using bearer token
 export async function verifyCredentials(): Promise<boolean> {
   try {
-    const url = "https://api.x.com/2/users/me";
-    const response = await fetch(url, {
+    const response = await fetch("https://api.x.com/2/users/me", {
       headers: {
         Authorization: `Bearer ${process.env.X_BEARER_TOKEN}`,
       },

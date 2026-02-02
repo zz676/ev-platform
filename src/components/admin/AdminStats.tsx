@@ -57,7 +57,7 @@ interface AdminStatsProps {
     published: number;
   };
   activeStatus?: PostStatus;
-  onStatusChange?: (status: PostStatus) => void;
+  onStatusChange?: (status: PostStatus | undefined) => void;
 }
 
 export function AdminStats({ stats, activeStatus, onStatusChange }: AdminStatsProps) {
@@ -68,6 +68,8 @@ export function AdminStats({ stats, activeStatus, onStatusChange }: AdminStatsPr
         value={stats.total}
         icon={<FileText className="h-5 w-5" />}
         color="gray"
+        onClick={() => onStatusChange?.(undefined)}
+        isActive={activeStatus === undefined}
       />
       <StatCard
         label="Pending Review"
