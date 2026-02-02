@@ -1,8 +1,16 @@
 "use client";
 
-import { Check, X, ExternalLink, Share2, Loader2 } from "lucide-react";
+import { Check, X, ExternalLink, Share2, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PostStatus } from "./AdminStats";
+
+interface XPublication {
+  status: "PENDING" | "PUBLISHING" | "PUBLISHED" | "FAILED" | "SKIPPED";
+  attempts: number;
+  lastError: string | null;
+  tweetId: string | null;
+  tweetUrl: string | null;
+}
 
 interface Post {
   id: string;
@@ -15,6 +23,7 @@ interface Post {
   status: string;
   publishedToX?: boolean;
   xPostId?: string | null;
+  XPublication?: XPublication | null;
 }
 
 interface PostRowProps {
@@ -25,6 +34,7 @@ interface PostRowProps {
   onPostToX?: (id: string) => void;
   isUpdating: boolean;
   isPostingToX?: boolean;
+  maxXAttempts?: number;
 }
 
 function formatDate(dateString: string): string {
@@ -43,9 +53,18 @@ function getScoreColor(score: number): string {
   return "bg-gray-100 text-gray-700";
 }
 
-export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, isUpdating, isPostingToX }: PostRowProps) {
+export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, isUpdating, isPostingToX, maxXAttempts = 2 }: PostRowProps) {
   const title = post.translatedTitle || post.originalTitle || "Untitled";
-  const canPostToX = post.status === "APPROVED" && !post.publishedToX && onPostToX;
+  const xPub = post.XPublication;
+  const isXFailed = xPub?.status === "FAILED";
+  const isXPublished = xPub?.status === "PUBLISHED" || post.publishedToX;
+
+  // Can post to X if: approved status AND (not published OR failed with retry allowed)
+  const canPostToX =
+    (post.status === "APPROVED" || post.status === "PUBLISHED") &&
+    !isXPublished &&
+    onPostToX;
+
   // Show approve/reject when filtering pending OR when showing all and post is pending
   const showApproveReject = activeStatus === "PENDING" || (!activeStatus && post.status === "PENDING");
 
@@ -86,6 +105,32 @@ export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, is
         </span>
       </td>
       <td className="px-4 py-3">
+        {/* X Status indicator */}
+        {isXPublished ? (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+            <Check className="h-3 w-3" />
+            Published
+          </span>
+        ) : isXFailed ? (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded cursor-help"
+            title={xPub?.lastError || "Publishing failed"}
+          >
+            <AlertCircle className="h-3 w-3" />
+            Failed ({xPub?.attempts || 0}/{maxXAttempts})
+          </span>
+        ) : xPub?.status === "PENDING" || xPub?.status === "PUBLISHING" ? (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 rounded">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Pending
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-500 rounded">
+            -
+          </span>
+        )}
+      </td>
+      <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           {showApproveReject && (
             <>
@@ -111,25 +156,30 @@ export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, is
             <button
               onClick={() => onPostToX(post.id)}
               disabled={isPostingToX}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50"
+              className={cn(
+                "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors disabled:opacity-50",
+                isXFailed
+                  ? "bg-orange-500 hover:bg-orange-600"
+                  : "bg-blue-500 hover:bg-blue-600"
+              )}
             >
               {isPostingToX ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Share2 className="h-3.5 w-3.5" />
               )}
-              {isPostingToX ? "Posting..." : "Post to X"}
+              {isPostingToX ? "Posting..." : isXFailed ? "Retry" : "Post to X"}
             </button>
           )}
-          {post.publishedToX && post.xPostId && (
+          {isXPublished && (xPub?.tweetUrl || post.xPostId) && (
             <a
-              href={`https://x.com/i/status/${post.xPostId}`}
+              href={xPub?.tweetUrl || `https://x.com/i/status/${post.xPostId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
             >
               <Check className="h-3.5 w-3.5" />
-              Posted
+              View
               <ExternalLink className="h-3 w-3" />
             </a>
           )}

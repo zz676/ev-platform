@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { XPublishStatus, Prisma } from "@prisma/client";
 import crypto from "crypto";
 import { requireApiAdmin } from "@/lib/auth/api-auth";
+import { MAX_ATTEMPTS } from "@/lib/x-publication";
 
 // POST: Create a new manual post
 export async function POST(request: Request) {
@@ -99,14 +101,31 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const status = searchParams.get("status") || "PENDING";
+    const xStatus = searchParams.get("xStatus"); // Filter by X publication status
 
     const skip = (page - 1) * limit;
 
+    // Build the where clause
+    const where: Prisma.PostWhereInput = {
+      status: status as "PENDING" | "APPROVED" | "PUBLISHED" | "REJECTED",
+    };
+
+    // Add X status filter if specified
+    if (xStatus === "failed") {
+      where.XPublication = {
+        status: XPublishStatus.FAILED,
+      };
+    } else if (xStatus === "published") {
+      where.XPublication = {
+        status: XPublishStatus.PUBLISHED,
+      };
+    } else if (xStatus === "not_posted") {
+      where.XPublication = null;
+    }
+
     const [posts, total] = await Promise.all([
       prisma.post.findMany({
-        where: {
-          status: status as "PENDING" | "APPROVED" | "PUBLISHED" | "REJECTED",
-        },
+        where,
         select: {
           id: true,
           translatedTitle: true,
@@ -117,6 +136,17 @@ export async function GET(request: Request) {
           relevanceScore: true,
           status: true,
           createdAt: true,
+          publishedToX: true,
+          xPostId: true,
+          XPublication: {
+            select: {
+              status: true,
+              attempts: true,
+              lastError: true,
+              tweetId: true,
+              tweetUrl: true,
+            },
+          },
         },
         orderBy: [
           { relevanceScore: "desc" },
@@ -125,20 +155,24 @@ export async function GET(request: Request) {
         skip,
         take: limit,
       }),
-      prisma.post.count({
-        where: {
-          status: status as "PENDING" | "APPROVED" | "PUBLISHED" | "REJECTED",
-        },
-      }),
+      prisma.post.count({ where }),
     ]);
 
     // Get stats for all statuses
-    const stats = await prisma.post.groupBy({
-      by: ["status"],
-      _count: {
-        id: true,
-      },
-    });
+    const [statusStats, xFailedCount] = await Promise.all([
+      prisma.post.groupBy({
+        by: ["status"],
+        _count: {
+          id: true,
+        },
+      }),
+      // Count posts with failed X publications
+      prisma.xPublication.count({
+        where: {
+          status: XPublishStatus.FAILED,
+        },
+      }),
+    ]);
 
     const statsMap = {
       total: 0,
@@ -146,9 +180,10 @@ export async function GET(request: Request) {
       approved: 0,
       published: 0,
       rejected: 0,
+      xFailed: xFailedCount,
     };
 
-    stats.forEach((stat) => {
+    statusStats.forEach((stat) => {
       const count = stat._count.id;
       statsMap.total += count;
       switch (stat.status) {
@@ -170,6 +205,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       posts,
       stats: statsMap,
+      maxXAttempts: MAX_ATTEMPTS,
       pagination: {
         page,
         limit,
