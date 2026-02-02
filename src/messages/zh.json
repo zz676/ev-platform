@@ -1,6 +1,6 @@
 {
   "Home": {
-    "title": "EV Juice",
+    "title": "鲜电",
     "subscribe": "订阅",
     "hero": {
       "title": "洞察中国电动车革命",
@@ -31,7 +31,9 @@
     "policy": "政策"
   },
   "Header": {
+    "brand": "鲜电",
     "login": "登录",
+    "welcome": "欢迎来到鲜电",
     "logout": "退出",
     "search": "搜索...",
     "account": "账户",
@@ -112,6 +114,7 @@
     "retry": "重试"
   },
   "Footer": {
+    "brand": "鲜电",
     "stayUpdated": "保持更新",
     "stayUpdatedDesc": "获取中国电动车新闻和市场资讯",
     "emailPlaceholder": "your@email.com",

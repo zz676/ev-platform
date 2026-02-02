@@ -102,7 +102,7 @@ export function Footer() {
 
         {/* Bottom Row */}
         <div className="flex justify-between items-center mt-3 pt-[0.45rem] border-t border-ev-green-200 text-xs text-gray-500">
-          <p>© 2025 EV Juice</p>
+          <p>© 2025 {t("brand")}</p>
           <p className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 bg-ev-green-500 rounded-full"></span>
             {t("tagline")}

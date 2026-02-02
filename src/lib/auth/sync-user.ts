@@ -4,7 +4,8 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 // Admin emails that should be granted admin role
 const ADMIN_EMAILS = [
   "admin@evjuice.com",
-  "zhizhouzhou@gmail.com",
+  "zhishengzhou1984@gmail.com",
+  "ev.juice.info@gmail.com",
 ];
 
 export async function syncUserToPrisma(supabaseUser: SupabaseUser) {
@@ -21,6 +22,7 @@ export async function syncUserToPrisma(supabaseUser: SupabaseUser) {
                     supabaseUser.user_metadata?.picture;
 
   // Upsert user - create if doesn't exist, update if exists
+  // Note: role is only set on create, not on update - allows manual role management in DB
   const user = await prisma.user.upsert({
     where: { id: supabaseUser.id },
     update: {
@@ -28,8 +30,8 @@ export async function syncUserToPrisma(supabaseUser: SupabaseUser) {
       name,
       avatarUrl,
       emailVerified: supabaseUser.email_confirmed_at != null,
-      role: isAdmin ? "ADMIN" : "USER",
       updatedAt: new Date(),
+      // Don't overwrite role - preserve manually set roles in database
     },
     create: {
       id: supabaseUser.id,

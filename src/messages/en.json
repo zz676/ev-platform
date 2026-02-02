@@ -31,7 +31,9 @@
     "policy": "Policy"
   },
   "Header": {
+    "brand": "EV Juice",
     "login": "Login",
+    "welcome": "Welcome to EV Juice",
     "logout": "Logout",
     "search": "Search...",
     "account": "Account",
@@ -112,6 +114,7 @@
     "retry": "Retry"
   },
   "Footer": {
+    "brand": "EV Juice",
     "stayUpdated": "Stay Updated",
     "stayUpdatedDesc": "Get China EV news and market insights",
     "emailPlaceholder": "your@email.com",

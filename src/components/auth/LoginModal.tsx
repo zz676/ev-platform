@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Mail, Lock, User, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/components/context/AuthContext";
 import { useLoginModal } from "@/components/context/LoginModalContext";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 type TabType = "signin" | "signup";
@@ -11,6 +12,7 @@ type TabType = "signin" | "signup";
 export function LoginModal() {
   const { isOpen, close } = useLoginModal();
   const { loginWithGoogle, loginWithEmail, signUpWithEmail } = useAuth();
+  const t = useTranslations("Header");
 
   const [activeTab, setActiveTab] = useState<TabType>("signin");
   const [email, setEmail] = useState("");
@@ -129,7 +131,7 @@ export function LoginModal() {
           {/* Header */}
           <div className="p-6 pb-0">
             <h2 className="text-2xl font-bold text-gray-900 text-center">
-              Welcome to EV Juice
+              {t("welcome")}
             </h2>
             <p className="text-gray-500 text-center mt-1">
               {activeTab === "signin"

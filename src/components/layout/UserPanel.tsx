@@ -39,8 +39,8 @@ export function UserPanel() {
   const localeMatch = pathname.match(/^\/(en|zh)/);
   const locale = localeMatch ? localeMatch[1] : "en";
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     close();
   };
 

@@ -32,15 +32,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Admin emails - these users will be granted admin role
-const ADMIN_EMAILS = [
-  "admin@evjuice.com",
-  "zhizhouzhou@gmail.com",
-];
-
-function mapSupabaseUser(supabaseUser: SupabaseUser): User {
+function mapSupabaseUser(supabaseUser: SupabaseUser, dbRole?: "admin" | "user"): User {
   const email = supabaseUser.email || "";
-  const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
 
   return {
     id: supabaseUser.id,
@@ -50,7 +43,7 @@ function mapSupabaseUser(supabaseUser: SupabaseUser): User {
       email.split("@")[0] ||
       "User",
     email,
-    role: isAdmin ? "admin" : "user",
+    role: dbRole || "user", // Use role from database, default to user
     avatarUrl:
       supabaseUser.user_metadata?.avatar_url ||
       supabaseUser.user_metadata?.picture,
@@ -62,16 +55,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
 
-  // Sync user to database after auth state change
-  const syncUserToDb = useCallback(async (supabaseUser: SupabaseUser) => {
+  // Sync user to database and get role from DB
+  const syncUserToDb = useCallback(async (supabaseUser: SupabaseUser): Promise<"admin" | "user" | null> => {
     try {
-      await fetch("/api/auth/sync", {
+      const response = await fetch("/api/auth/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: supabaseUser.id }),
       });
+      if (response.ok) {
+        const data = await response.json();
+        // Return role from database (convert ADMIN/USER to admin/user)
+        return data.user?.role?.toLowerCase() as "admin" | "user" || "user";
+      }
+      return null;
     } catch (error) {
       console.error("Failed to sync user to database:", error);
+      return null;
     }
   }, []);
 
@@ -84,8 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } = await supabase.auth.getSession();
 
         if (session?.user) {
-          setUser(mapSupabaseUser(session.user));
-          syncUserToDb(session.user);
+          // Sync to DB and get role
+          const dbRole = await syncUserToDb(session.user);
+          setUser(mapSupabaseUser(session.user, dbRole || undefined));
         }
       } catch (error) {
         console.error("Error getting session:", error);
@@ -102,9 +103,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange(
       async (event: string, session: Session | null) => {
         if (session?.user) {
-          setUser(mapSupabaseUser(session.user));
           if (event === "SIGNED_IN") {
-            syncUserToDb(session.user);
+            // On sign in, sync to DB and get role
+            const dbRole = await syncUserToDb(session.user);
+            setUser(mapSupabaseUser(session.user, dbRole || undefined));
+          } else {
+            // For other events, just update user with current role
+            setUser((prev) => mapSupabaseUser(session.user, prev?.role));
           }
         } else {
           setUser(null);
@@ -178,8 +183,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUser(null);
+    try {
+      // Sign out from Supabase (clears session on server and local storage)
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (error) {
+      console.error("Error signing out:", error);
+    } finally {
+      // Always clear user state even if signOut fails
+      setUser(null);
+    }
   }, [supabase]);
 
   const isAdmin = user?.role === "admin";
