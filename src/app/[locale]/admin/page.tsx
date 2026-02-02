@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AdminStats } from "@/components/admin/AdminStats";
+import { AdminStats, PostStatus } from "@/components/admin/AdminStats";
 import { PostsTable } from "@/components/admin/PostsTable";
 import { CreatePostForm } from "@/components/admin/CreatePostForm";
 import { Shield, Plus } from "lucide-react";
@@ -15,6 +15,8 @@ interface Post {
   sourceDate: string;
   relevanceScore: number;
   status: string;
+  publishedToX?: boolean;
+  xPostId?: string | null;
 }
 
 interface Stats {
@@ -34,11 +36,12 @@ export default function AdminPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [activeStatus, setActiveStatus] = useState<PostStatus>("PENDING");
 
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async (status: PostStatus = activeStatus) => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/admin/posts?status=PENDING&limit=50");
+      const response = await fetch(`/api/admin/posts?status=${status}&limit=50`);
       if (!response.ok) throw new Error("Failed to fetch posts");
       const data = await response.json();
       setPosts(data.posts);
@@ -48,11 +51,15 @@ export default function AdminPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeStatus]);
 
   useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+    fetchPosts(activeStatus);
+  }, [activeStatus, fetchPosts]);
+
+  const handleStatusChange = (status: PostStatus) => {
+    setActiveStatus(status);
+  };
 
   const handleApprove = async (id: string) => {
     try {
@@ -120,6 +127,38 @@ export default function AdminPage() {
     }
   };
 
+  const handlePostToX = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin/posts/${id}/post-to-x`, {
+        method: "POST",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to post to X");
+      }
+
+      // Update the post in the list to reflect it's been posted
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, publishedToX: true, xPostId: data.tweetId }
+            : p
+        )
+      );
+      setStats((prev) => ({
+        ...prev,
+        published: prev.published + 1,
+      }));
+
+      // Show success notification (using alert for simplicity)
+      alert(`Successfully posted to X!\n\nView tweet: ${data.tweetUrl}`);
+    } catch (error) {
+      console.error("Error posting to X:", error);
+      // Don't throw or alert - just log the error
+    }
+  };
+
   const handleCreateSuccess = () => {
     setShowCreateForm(false);
     fetchPosts();
@@ -161,16 +200,22 @@ export default function AdminPage() {
 
       {/* Stats */}
       <div className="mb-6">
-        <AdminStats stats={stats} />
+        <AdminStats
+          stats={stats}
+          activeStatus={activeStatus}
+          onStatusChange={handleStatusChange}
+        />
       </div>
 
       {/* Posts Table */}
       <PostsTable
         posts={posts}
+        activeStatus={activeStatus}
         onApprove={handleApprove}
         onReject={handleReject}
+        onPostToX={handlePostToX}
         onApproveAll={handleApproveAll}
-        onRefresh={fetchPosts}
+        onRefresh={() => fetchPosts(activeStatus)}
         isLoading={isLoading}
       />
     </div>
