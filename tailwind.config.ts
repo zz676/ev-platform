@@ -78,6 +78,7 @@ const config: Config = {
       animation: {
         "spin-slow": "spin 3s linear infinite",
         "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+        "shimmer": "shimmer 2s ease-in-out infinite",
       },
       keyframes: {
         "glow-pulse": {
@@ -88,6 +89,14 @@ const config: Config = {
           "50%": {
             opacity: "1",
             transform: "scale(1.05)",
+          },
+        },
+        "shimmer": {
+          "0%": {
+            backgroundPosition: "200% 0",
+          },
+          "100%": {
+            backgroundPosition: "-200% 0",
           },
         },
       },
