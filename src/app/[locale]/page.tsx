@@ -3,6 +3,9 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { PostStatus } from "@prisma/client";
 
+// Render at request time, not build time (database not available during build)
+export const dynamic = "force-dynamic";
+
 // Format relative time
 function formatRelativeTime(date: Date): string {
   const now = new Date();
