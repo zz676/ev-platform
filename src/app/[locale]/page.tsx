@@ -6,6 +6,19 @@ import { PostStatus } from "@prisma/client";
 // Render at request time, not build time (database not available during build)
 export const dynamic = "force-dynamic";
 
+// Brand display labels
+const BRAND_LABELS: Record<string, string> = {
+  BYD: "BYD",
+  NIO: "NIO",
+  XPENG: "XPeng",
+  LI_AUTO: "Li Auto",
+  ZEEKR: "Zeekr",
+  XIAOMI: "Xiaomi",
+  TESLA_CHINA: "Tesla China",
+  OTHER_BRAND: "Other",
+  INDUSTRY: "Industry",
+};
+
 // Format relative time
 function formatRelativeTime(date: Date): string {
   const now = new Date();
@@ -23,26 +36,24 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const { locale } = await params;
   const t = await getTranslations("Home");
 
-  // Fetch posts from database
+  // Fetch posts from database with new normalized relations
   const posts = await prisma.post.findMany({
     where: {
       status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
+      archivedAt: null,
     },
     orderBy: { createdAt: "desc" },
     take: 6,
-    select: {
-      id: true,
-      source: true,
-      sourceUrl: true,
-      sourceAuthor: true,
-      sourceDate: true,
-      originalTitle: true,
-      translatedTitle: true,
-      originalContent: true,
-      translatedContent: true,
-      translatedSummary: true,
-      categories: true,
-      createdAt: true,
+    include: {
+      content: true,
+      translation: true,
+      xPublication: {
+        select: {
+          tweetUrl: true,
+          likes: true,
+          retweets: true,
+        },
+      },
     },
   });
 
@@ -59,6 +70,12 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             <nav className="flex items-center gap-6">
               <Link href="/en" className="hover:opacity-80">EN</Link>
               <Link href="/zh" className="hover:opacity-80">中文</Link>
+              <Link
+                href="/login"
+                className="bg-white/20 text-white px-4 py-2 rounded-full font-medium hover:bg-white/30"
+              >
+                Sign In
+              </Link>
               <Link
                 href="/subscribe"
                 className="bg-white text-purple-600 px-4 py-2 rounded-full font-medium hover:bg-opacity-90"
@@ -90,7 +107,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
         </div>
       </section>
 
-      {/* News Feed Placeholder */}
+      {/* News Feed */}
       <section className="py-12 bg-gray-50">
         <div className="container mx-auto px-4">
           <h3 className="text-2xl font-bold text-gray-800 mb-8">{t("latestNews")}</h3>
@@ -98,9 +115,16 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {posts.length > 0 ? (
               posts.map((post) => {
-                const title = locale === "zh" ? post.originalTitle : post.translatedTitle;
-                const summary = post.translatedSummary || (locale === "zh" ? post.originalContent : post.translatedContent);
-                const category = post.categories[0] || "News";
+                // Get content from normalized tables, fall back to deprecated fields
+                const originalTitle = post.content?.title ?? post.originalTitle;
+                const originalContent = post.content?.content ?? post.originalContent;
+                const translatedTitle = post.translation?.title ?? post.translatedTitle;
+                const translatedContent = post.translation?.content ?? post.translatedContent;
+                const translatedSummary = post.translation?.summary ?? post.translatedSummary;
+
+                const title = locale === "zh" ? originalTitle : translatedTitle;
+                const summary = translatedSummary || (locale === "zh" ? originalContent : translatedContent);
+                const brandLabel = BRAND_LABELS[post.brand] || post.brand;
 
                 return (
                   <article
@@ -109,9 +133,14 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
                   >
                     <div className="flex items-center gap-2 mb-3">
                       <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-sm font-medium">
-                        {category}
+                        {brandLabel}
                       </span>
-                      <span className="text-gray-400 text-sm">
+                      {post.topics.slice(0, 1).map((topic) => (
+                        <span key={topic} className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm">
+                          {topic.toLowerCase().replace(/_/g, " ")}
+                        </span>
+                      ))}
+                      <span className="text-gray-400 text-sm ml-auto">
                         {formatRelativeTime(post.sourceDate)}
                       </span>
                     </div>
@@ -123,9 +152,22 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
                     </p>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">Source: {post.sourceAuthor}</span>
-                      <Link href={post.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">
-                        {t("readMore")} →
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        {post.xPublication?.tweetUrl && (
+                          <a
+                            href={post.xPublication.tweetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-gray-400 hover:text-blue-500"
+                            title="View on X"
+                          >
+                            X
+                          </a>
+                        )}
+                        <Link href={post.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">
+                          {t("readMore")} →
+                        </Link>
+                      </div>
                     </div>
                   </article>
                 );
@@ -137,9 +179,23 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             )}
           </div>
 
-          <div className="text-center mt-8">
-            <button className="bg-purple-600 text-white px-8 py-3 rounded-full font-medium hover:bg-purple-700 transition-colors">
-              {t("loadMore")}
+          <div className="flex justify-center mt-8">
+            <button className="
+              relative
+              bg-white text-gray-700
+              px-10 py-3
+              rounded-full
+              font-semibold tracking-wider text-sm
+              border-2 border-lime-400
+              transition-all duration-300 ease-out
+              hover:bg-lime-50 hover:border-lime-500 hover:scale-105
+              hover:shadow-[0_0_20px_rgba(163,230,53,0.4)]
+              active:scale-95
+              before:absolute before:inset-0 before:rounded-full
+              before:border-2 before:border-lime-400
+              before:animate-ping before:opacity-20
+            ">
+              MORE
             </button>
           </div>
         </div>
@@ -154,19 +210,20 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
           <p className="text-gray-600 mb-8 max-w-xl mx-auto">
             {t("cta.description")}
           </p>
-          <form className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder={t("cta.emailPlaceholder")}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-            <button
-              type="submit"
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors"
+          <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+            <Link
+              href="/register"
+              className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors text-center"
+            >
+              Create Free Account
+            </Link>
+            <Link
+              href="/subscribe"
+              className="flex-1 border border-purple-600 text-purple-600 px-6 py-3 rounded-lg font-medium hover:bg-purple-50 transition-colors text-center"
             >
               {t("subscribe")}
-            </button>
-          </form>
+            </Link>
+          </div>
         </div>
       </section>
 
