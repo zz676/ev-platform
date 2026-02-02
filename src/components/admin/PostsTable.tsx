@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PostRow } from "./PostRow";
 import { RefreshCw, CheckCircle2 } from "lucide-react";
+import type { PostStatus } from "./AdminStats";
 
 interface Post {
   id: string;
@@ -13,26 +14,45 @@ interface Post {
   sourceDate: string;
   relevanceScore: number;
   status: string;
+  publishedToX?: boolean;
+  xPostId?: string | null;
 }
 
 interface PostsTableProps {
   posts: Post[];
+  activeStatus: PostStatus;
   onApprove: (id: string) => Promise<void>;
   onReject: (id: string) => Promise<void>;
+  onPostToX?: (id: string) => Promise<void>;
   onApproveAll: () => Promise<void>;
   onRefresh: () => void;
   isLoading: boolean;
 }
 
+const statusTitles: Record<PostStatus, string> = {
+  PENDING: "Pending Posts",
+  APPROVED: "Approved Posts",
+  PUBLISHED: "Published Posts",
+};
+
+const emptyMessages: Record<PostStatus, { title: string; subtitle: string }> = {
+  PENDING: { title: "All caught up!", subtitle: "No pending posts to review." },
+  APPROVED: { title: "No approved posts", subtitle: "Approve some posts to see them here." },
+  PUBLISHED: { title: "No published posts", subtitle: "Post approved content to X to see them here." },
+};
+
 export function PostsTable({
   posts,
+  activeStatus,
   onApprove,
   onReject,
+  onPostToX,
   onApproveAll,
   onRefresh,
   isLoading,
 }: PostsTableProps) {
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
+  const [postingToXIds, setPostingToXIds] = useState<Set<string>>(new Set());
   const [isApprovingAll, setIsApprovingAll] = useState(false);
 
   const handleApprove = async (id: string) => {
@@ -70,11 +90,25 @@ export function PostsTable({
     }
   };
 
+  const handlePostToX = async (id: string) => {
+    if (!onPostToX) return;
+    setPostingToXIds((prev) => new Set(prev).add(id));
+    try {
+      await onPostToX(id);
+    } finally {
+      setPostingToXIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       {/* Table Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <h2 className="font-semibold text-gray-900">Pending Posts</h2>
+        <h2 className="font-semibold text-gray-900">{statusTitles[activeStatus]}</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={onRefresh}
@@ -84,7 +118,7 @@ export function PostsTable({
             <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             Refresh
           </button>
-          {posts.length > 0 && (
+          {activeStatus === "PENDING" && posts.length > 0 && (
             <button
               onClick={handleApproveAll}
               disabled={isApprovingAll || isLoading}
@@ -106,8 +140,8 @@ export function PostsTable({
       ) : posts.length === 0 ? (
         <div className="px-4 py-12 text-center text-gray-500">
           <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-400" />
-          <p className="font-medium text-gray-900">All caught up!</p>
-          <p className="text-sm mt-1">No pending posts to review.</p>
+          <p className="font-medium text-gray-900">{emptyMessages[activeStatus].title}</p>
+          <p className="text-sm mt-1">{emptyMessages[activeStatus].subtitle}</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -136,9 +170,12 @@ export function PostsTable({
                 <PostRow
                   key={post.id}
                   post={post}
+                  activeStatus={activeStatus}
                   onApprove={handleApprove}
                   onReject={handleReject}
+                  onPostToX={onPostToX ? handlePostToX : undefined}
                   isUpdating={updatingIds.has(post.id)}
+                  isPostingToX={postingToXIds.has(post.id)}
                 />
               ))}
             </tbody>
