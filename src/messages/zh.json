@@ -35,6 +35,7 @@
     "logout": "退出",
     "search": "搜索...",
     "account": "账户",
+    "subscribe": "订阅",
     "nav": {
       "news": "新闻",
       "deliveries": "销量",
@@ -111,11 +112,22 @@
     "retry": "重试"
   },
   "Footer": {
-    "terms": "服务条款",
-    "privacy": "隐私政策",
-    "subscribe": "订阅",
-    "contact": "联系我们",
-    "followUs": "关注我们:"
+    "stayUpdated": "保持更新",
+    "stayUpdatedDesc": "获取中国电动车新闻和市场资讯",
+    "emailPlaceholder": "your@email.com",
+    "subscribeButton": "订阅",
+    "subscribeSuccess": "感谢订阅！",
+    "subscribeError": "出错了，请重试。",
+    "navigate": "导航",
+    "navNews": "新闻",
+    "navDeliveries": "销量",
+    "navTech": "科技",
+    "company": "公司",
+    "terms": "条款",
+    "privacy": "隐私",
+    "contact": "联系",
+    "connect": "关注",
+    "tagline": "洞察中国电动车革命"
   },
   "Search": {
     "title": "搜索",

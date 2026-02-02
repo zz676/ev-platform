@@ -35,6 +35,7 @@
     "logout": "Logout",
     "search": "Search...",
     "account": "Account",
+    "subscribe": "Subscribe",
     "nav": {
       "news": "News",
       "deliveries": "Deliveries",
@@ -111,11 +112,22 @@
     "retry": "Retry"
   },
   "Footer": {
-    "terms": "Terms of Service",
-    "privacy": "Privacy Policy",
-    "subscribe": "Subscribe",
+    "stayUpdated": "Stay Updated",
+    "stayUpdatedDesc": "Get China EV news and market insights",
+    "emailPlaceholder": "your@email.com",
+    "subscribeButton": "Subscribe",
+    "subscribeSuccess": "Thanks for subscribing!",
+    "subscribeError": "Something went wrong. Please try again.",
+    "navigate": "Navigate",
+    "navNews": "News",
+    "navDeliveries": "Deliveries",
+    "navTech": "Tech",
+    "company": "Company",
+    "terms": "Terms",
+    "privacy": "Privacy",
     "contact": "Contact",
-    "followUs": "Follow us:"
+    "connect": "Connect",
+    "tagline": "Your Window into China's EV Revolution"
   },
   "Search": {
     "title": "Search",

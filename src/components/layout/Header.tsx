@@ -70,6 +70,13 @@ export function Header() {
               {item.label}
             </Link>
           ))}
+          {/* Subscribe Link */}
+          <button
+            onClick={() => document.getElementById('subscribe')?.scrollIntoView({ behavior: 'smooth' })}
+            className="text-sm font-medium text-gray-600 hover:text-ev-green-600 underline transition-colors animate-shimmer bg-gradient-to-r from-gray-600 via-ev-green-500 to-gray-600 bg-[length:200%_100%] bg-clip-text text-transparent"
+          >
+            {t("subscribe")}
+          </button>
         </nav>
 
         {/* Right Section - Search + Profile/Login */}
