@@ -75,26 +75,23 @@ export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, is
           <p className="text-sm font-medium text-gray-900 truncate" title={title}>
             {title}
           </p>
-          <a
-            href={post.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-ev-green-600 mt-1"
-          >
-            View source
-            <ExternalLink className="h-3 w-3" />
-          </a>
         </div>
       </td>
-      <td className="px-4 py-3">
-        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
+      <td className="px-4 py-3 text-center">
+        <a
+          href={post.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200 hover:text-ev-green-600 transition-colors"
+        >
           {post.source}
-        </span>
+          <ExternalLink className="h-3 w-3" />
+        </a>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-500">
+      <td className="px-4 py-3 text-center text-sm text-gray-500">
         {formatDate(post.sourceDate)}
       </td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 text-center">
         <span
           className={cn(
             "inline-flex items-center px-2 py-1 text-xs font-medium rounded",
@@ -104,7 +101,7 @@ export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, is
           {post.relevanceScore}
         </span>
       </td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 text-center">
         {/* X Status indicator */}
         {isXPublished ? (
           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
@@ -130,8 +127,8 @@ export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, is
           </span>
         )}
       </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
+      <td className="px-4 py-3 text-center">
+        <div className="flex items-center justify-center gap-2">
           {showApproveReject && (
             <>
               <button
