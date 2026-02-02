@@ -91,7 +91,7 @@ export function Footer() {
             </div>
             <span className="text-ev-green-300">|</span>
             <a
-              href="https://x.com/evjuicy"
+              href="https://x.com/evjuice"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-600 hover:text-ev-green-600 transition-colors"
@@ -106,7 +106,7 @@ export function Footer() {
 
         {/* Bottom Row */}
         <div className="flex justify-between items-center mt-3 pt-3 border-t border-ev-green-200 text-xs text-gray-500">
-          <p>© 2025 EV Juicy</p>
+          <p>© 2025 EV Juice</p>
           <p className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 bg-ev-green-500 rounded-full"></span>
             {t("tagline")}

@@ -66,7 +66,7 @@ export function CreatePostForm({ onClose, onSuccess }: CreatePostFormProps) {
     content: "",
     summary: "",
     sourceUrl: "",
-    sourceAuthor: "EVJuicy",
+    sourceAuthor: "EVJuice",
     sourceDate: new Date().toISOString().split("T")[0],
     brand: "INDUSTRY",
     topics: [] as string[],

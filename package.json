@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.19.0",
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.45.0",
     "@vercel/blob": "^2.0.1",
     "class-variance-authority": "^0.7.0",

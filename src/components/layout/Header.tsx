@@ -6,14 +6,16 @@ import { Search, User, X } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/components/context/AuthContext";
 import { useUserPanel } from "@/components/context/UserPanelContext";
+import { useLoginModal } from "@/components/context/LoginModalContext";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, login, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const { open: openPanel } = useUserPanel();
+  const { open: openLoginModal } = useLoginModal();
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const t = useTranslations("Header");
@@ -47,12 +49,12 @@ export function Header() {
         <Link href={`/${locale}`} className="flex items-center gap-2 flex-shrink-0">
           <Image
             src="/icon-48.png"
-            alt="EV Juicy"
+            alt="EV Juice"
             width={36}
             height={36}
             className="w-9 h-9"
           />
-          <span className="font-bold text-xl" style={{ color: '#27c618' }}>EV Juicy</span>
+          <span className="font-bold text-xl" style={{ color: '#27c618' }}>EV Juice</span>
         </Link>
 
         {/* Navigation - Center */}
@@ -151,7 +153,7 @@ export function Header() {
             </button>
           ) : (
             <button
-              onClick={login}
+              onClick={openLoginModal}
               disabled={isLoading}
               className="flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
               aria-label="Login"

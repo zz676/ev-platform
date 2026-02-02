@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { requireApiAdmin } from "@/lib/auth/api-auth";
 
 // POST: Create a new manual post
 export async function POST(request: Request) {
+  // Require admin authentication
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) {
+    return authResult.error;
+  }
+
   try {
     const body = await request.json();
     const {
@@ -48,7 +55,7 @@ export async function POST(request: Request) {
         sourceId,
         source: "MANUAL",
         sourceUrl: sourceUrl || "",
-        sourceAuthor: sourceAuthor || "EVJuicy",
+        sourceAuthor: sourceAuthor || "EVJuice",
         sourceDate: postDate,
         originalTitle: title,
         originalContent: content,
@@ -81,6 +88,12 @@ export async function POST(request: Request) {
 
 // GET: List pending posts with pagination
 export async function GET(request: Request) {
+  // Require admin authentication
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) {
+    return authResult.error;
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -175,6 +188,12 @@ export async function GET(request: Request) {
 
 // PATCH: Bulk update posts
 export async function PATCH(request: Request) {
+  // Require admin authentication
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) {
+    return authResult.error;
+  }
+
   try {
     const body = await request.json();
     const { ids, status } = body;

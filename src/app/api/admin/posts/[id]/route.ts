@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireApiAdmin } from "@/lib/auth/api-auth";
 
 // PATCH: Update single post status
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Require admin authentication
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) {
+    return authResult.error;
+  }
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -50,6 +57,12 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Require admin authentication
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) {
+    return authResult.error;
+  }
+
   try {
     const { id } = await params;
 

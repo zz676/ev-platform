@@ -208,6 +208,7 @@ model User {
   passwordHash      String?
   emailVerified     Boolean             @default(false)
   emailVerifyToken  String?
+  role              UserRole            @default(USER)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime
   Account           Account[]
@@ -260,6 +261,11 @@ model XPublication {
 enum AuthProvider {
   GOOGLE
   GITHUB
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
 
 enum Brand {
