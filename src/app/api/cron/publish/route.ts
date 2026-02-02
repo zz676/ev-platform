@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         // Format tweet content
         const tweetText = formatTweetContent({
           translatedTitle: post.translatedTitle,
-          translatedSummary: post.translatedSummary,
+          translatedSummary: post.translatedSummary || "",
           categories: post.categories,
           source: post.source,
           sourceUrl: post.sourceUrl,
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
             console.log(`No scraped image for post ${post.id}, generating AI image...`);
             imageUrl = await generatePostImage(
               post.translatedTitle || post.originalTitle || "EV News",
-              post.translatedSummary
+              post.translatedSummary || ""
             );
             imageSource = "ai-generated";
           }

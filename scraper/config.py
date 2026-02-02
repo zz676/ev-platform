@@ -55,6 +55,10 @@ SOURCES = {
         "ir_url": "https://ir.leapmotor.com/",
         "enabled": False,  # Needs implementation
     },
+    "weibo": {
+        "name": "Weibo",
+        "enabled": True,
+    },
 }
 
 # AI Processing Settings

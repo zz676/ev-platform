@@ -8,66 +8,309 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model Post {
-  id                String     @id @default(cuid())
+model Account {
+  id                String       @id
+  userId            String
+  provider          AuthProvider
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         Int?
+  tokenType         String?
+  scope             String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime
+  User              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Source Information
-  sourceId          String     @unique
-  source            Source     @default(OFFICIAL)
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model EmailEvent {
+  id                String            @id
+  notificationId    String
+  event             EmailEventType
+  timestamp         DateTime          @default(now())
+  metadata          Json?
+  EmailNotification EmailNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+}
+
+model EmailNotification {
+  id         String       @id
+  userId     String
+  type       EmailType
+  subject    String
+  postIds    String[]
+  status     EmailStatus  @default(PENDING)
+  messageId  String?
+  error      String?
+  sentAt     DateTime?
+  createdAt  DateTime     @default(now())
+  EmailEvent EmailEvent[]
+  User       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([type, sentAt])
+  @@index([userId])
+}
+
+model MagicLink {
+  id        String   @id
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model Post {
+  id                String           @id
+  sourceId          String           @unique
+  source            Source           @default(OFFICIAL)
   sourceUrl         String
   sourceAuthor      String
   sourceDate        DateTime
-
-  // Original Content (Chinese)
   originalTitle     String?
-  originalContent   String     @db.Text
+  originalContent   String?
   originalMediaUrls String[]
-
-  // Translated Content (English)
   translatedTitle   String?
-  translatedContent String     @db.Text
-  translatedSummary String     // For X posts (short)
-
-  // Metadata
+  translatedContent String?
+  translatedSummary String?
   categories        String[]
-  relevanceScore    Int        @default(0) // 0-100
-
-  // Publishing Status
-  status            PostStatus @default(PENDING)
-  publishedToX      Boolean    @default(false)
+  relevanceScore    Int              @default(0)
+  status            PostStatus       @default(PENDING)
+  publishedToX      Boolean          @default(false)
   xPostId           String?
   xPublishedAt      DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime
+  archivedAt        DateTime?
+  brand             Brand            @default(INDUSTRY)
+  topics            Topic[]
+  PostContent       PostContent?
+  PostTranslation   PostTranslation?
+  SavedPost         SavedPost[]
+  XPublication      XPublication?
 
-  // Timestamps
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-
+  @@index([brand])
   @@index([source])
-  @@index([status])
-  @@index([createdAt])
-  @@index([relevanceScore])
+  @@index([status, archivedAt, createdAt(sort: Desc)], map: "idx_post_active_status_date")
+  @@index([createdAt, id], map: "idx_post_cursor")
+  @@index([status, relevanceScore(sort: Desc), createdAt], map: "idx_post_publish_queue")
+}
+
+model PostArchive {
+  id                String    @id
+  originalId        String
+  archiveMonth      String
+  sourceId          String
+  source            Source
+  sourceUrl         String
+  sourceAuthor      String
+  sourceDate        DateTime
+  brand             Brand
+  topics            Topic[]
+  relevanceScore    Int
+  originalTitle     String?
+  originalContent   String
+  mediaUrls         String[]
+  translatedTitle   String?
+  translatedContent String
+  translatedSummary String
+  tweetId           String?
+  tweetUrl          String?
+  publishedAt       DateTime?
+  likes             Int       @default(0)
+  retweets          Int       @default(0)
+  replies           Int       @default(0)
+  impressions       Int       @default(0)
+  createdAt         DateTime
+  archivedAt        DateTime  @default(now())
+
+  @@index([archiveMonth])
+  @@index([sourceId])
+}
+
+model PostContent {
+  id          String   @id
+  postId      String   @unique
+  title       String?
+  content     String
+  mediaUrls   String[]
+  contentHash String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  Post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model PostTranslation {
+  id           String   @id
+  postId       String   @unique
+  title        String?
+  content      String
+  summary      String
+  translatedBy String?
+  translatedAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+  Post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model SavedPost {
+  id      String   @id
+  userId  String
+  postId  String
+  savedAt DateTime @default(now())
+  Post    Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  User    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id
+  userId       String
+  sessionToken String   @unique
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Subscriber {
-  id          String    @id @default(cuid())
+  id          String    @id
   email       String    @unique
   language    Language  @default(EN)
   categories  String[]
   frequency   Frequency @default(DAILY)
   verified    Boolean   @default(false)
   verifyToken String?
-
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  updatedAt   DateTime
 
   @@index([verified])
 }
 
-enum Source {
-  OFFICIAL
-  MEDIA
-  WEIBO
-  MANUAL
+model User {
+  id                String              @id
+  email             String              @unique
+  name              String?
+  avatarUrl         String?
+  passwordHash      String?
+  emailVerified     Boolean             @default(false)
+  emailVerifyToken  String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  Account           Account[]
+  EmailNotification EmailNotification[]
+  SavedPost         SavedPost[]
+  Session           Session[]
+  UserPreference    UserPreference?
+
+  @@index([emailVerified])
+}
+
+model UserPreference {
+  id              String    @id
+  userId          String    @unique
+  brands          Brand[]
+  topics          Topic[]
+  digestFrequency Frequency @default(DAILY)
+  alertsEnabled   Boolean   @default(true)
+  alertThreshold  Int       @default(80)
+  language        Language  @default(EN)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime
+  User            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model XPublication {
+  id                  String         @id
+  postId              String         @unique
+  status              XPublishStatus @default(PENDING)
+  tweetId             String?
+  tweetUrl            String?
+  publishedAt         DateTime?
+  imageSource         ImageSource    @default(NONE)
+  mediaId             String?
+  attempts            Int            @default(0)
+  lastError           String?
+  nextRetryAt         DateTime?
+  likes               Int            @default(0)
+  retweets            Int            @default(0)
+  replies             Int            @default(0)
+  impressions         Int            @default(0)
+  engagementUpdatedAt DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime
+  Post                Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextRetryAt], map: "idx_xpub_pending")
+}
+
+enum AuthProvider {
+  GOOGLE
+  GITHUB
+}
+
+enum Brand {
+  BYD
+  NIO
+  XPENG
+  LI_AUTO
+  ZEEKR
+  XIAOMI
+  TESLA_CHINA
+  OTHER_BRAND
+  INDUSTRY
+}
+
+enum EmailEventType {
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  COMPLAINED
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum EmailType {
+  DIGEST
+  ALERT
+  WELCOME
+  VERIFY
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+  NONE
+}
+
+enum ImageSource {
+  SCRAPED
+  AI_GENERATED
+  NONE
+  FAILED
+}
+
+enum Language {
+  EN
+  ZH
 }
 
 enum PostStatus {
@@ -77,12 +320,31 @@ enum PostStatus {
   REJECTED
 }
 
-enum Language {
-  EN
-  ZH
+enum Source {
+  OFFICIAL
+  MEDIA
+  WEIBO
+  MANUAL
 }
 
-enum Frequency {
-  DAILY
-  WEEKLY
+enum Topic {
+  DELIVERY
+  EARNINGS
+  LAUNCH
+  TECHNOLOGY
+  CHARGING
+  POLICY
+  EXPANSION
+  RECALL
+  PARTNERSHIP
+  EXECUTIVE
+  OTHER
+}
+
+enum XPublishStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  SKIPPED
 }

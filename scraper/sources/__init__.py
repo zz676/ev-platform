@@ -5,6 +5,7 @@ from .nio import NIOSource
 from .xpeng import XPengSource
 from .li_auto import LiAutoSource
 from .byd import BYDSource
+from .weibo import WeiboSource
 
 __all__ = [
     "BaseSource",
@@ -13,4 +14,5 @@ __all__ = [
     "XPengSource",
     "LiAutoSource",
     "BYDSource",
+    "WeiboSource",
 ]

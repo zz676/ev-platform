@@ -43,11 +43,37 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // EV Green Theme Colors
+        "ev-green": {
+          50: "hsl(var(--ev-green-50))",
+          100: "hsl(var(--ev-green-100))",
+          200: "hsl(var(--ev-green-200))",
+          300: "hsl(var(--ev-green-300))",
+          400: "hsl(var(--ev-green-400))",
+          500: "hsl(var(--ev-green-500))",
+          600: "hsl(var(--ev-green-600))",
+          700: "hsl(var(--ev-green-700))",
+          800: "hsl(var(--ev-green-800))",
+          900: "hsl(var(--ev-green-900))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      width: {
+        sidebar: "240px",
+        "sidebar-collapsed": "64px",
+        "right-sidebar": "320px",
+      },
+      minWidth: {
+        sidebar: "240px",
+        "right-sidebar": "320px",
+      },
+      maxWidth: {
+        sidebar: "240px",
+        "right-sidebar": "320px",
       },
     },
   },
