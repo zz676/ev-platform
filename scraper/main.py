@@ -13,7 +13,7 @@ from typing import Any
 import requests
 
 from config import WEBHOOK_URL, WEBHOOK_SECRET, SOURCES
-from sources import NIOSource, XPengSource, LiAutoSource, BYDSource
+from sources import NIOSource, XPengSource, LiAutoSource, BYDSource, WeiboSource
 from processors import AIService, process_article
 
 
@@ -23,6 +23,7 @@ SOURCE_CLASSES = {
     "xpeng": XPengSource,
     "li_auto": LiAutoSource,
     "byd": BYDSource,
+    "weibo": WeiboSource,
 }
 
 

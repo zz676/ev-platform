@@ -3,9 +3,15 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 import { Source, PostStatus } from "@prisma/client";
 import crypto from "crypto";
+import { put } from "@vercel/blob";
+import { generatePostImage } from "@/lib/ai";
 
 // Webhook secret for authenticating scraper requests
 const WEBHOOK_SECRET = process.env.SCRAPER_WEBHOOK_SECRET;
+
+function generateId(): string {
+  return crypto.randomBytes(12).toString("hex");
+}
 
 // Schema for incoming post data from scraper
 const postDataSchema = z.object({
@@ -111,6 +117,7 @@ export async function POST(request: NextRequest) {
                 translatedSummary: postData.translatedSummary || "",
                 categories: postData.categories,
                 relevanceScore: postData.relevanceScore,
+                updatedAt: new Date(),
               },
             });
             results.updated++;
@@ -119,8 +126,44 @@ export async function POST(request: NextRequest) {
           }
         } else {
           // Create new post
+          const postId = generateId();
+          let mediaUrls = postData.originalMediaUrls;
+
+          // Generate AI image if no media URLs provided
+          if (!mediaUrls || mediaUrls.length === 0) {
+            try {
+              const title =
+                postData.translatedTitle ||
+                postData.originalTitle ||
+                "EV News";
+              const summary = postData.translatedSummary || "";
+
+              // Generate image using DALL-E
+              const imageUrl = await generatePostImage(title, summary);
+
+              // Download and upload to Vercel Blob for permanent storage
+              const imageResponse = await fetch(imageUrl);
+              const imageBlob = await imageResponse.blob();
+              const { url: blobUrl } = await put(
+                `posts/${postId}.png`,
+                imageBlob,
+                { access: "public" }
+              );
+
+              mediaUrls = [blobUrl];
+              console.log(`AI image generated and stored for post ${postId}`);
+            } catch (imageError) {
+              console.error(
+                `Failed to generate AI image for post ${postId}:`,
+                imageError
+              );
+              // Continue without image - don't fail the entire post creation
+            }
+          }
+
           await prisma.post.create({
             data: {
+              id: postId,
               sourceId: postData.sourceId,
               source: postData.source as Source,
               sourceUrl: postData.sourceUrl,
@@ -128,13 +171,14 @@ export async function POST(request: NextRequest) {
               sourceDate: postData.sourceDate,
               originalTitle: postData.originalTitle,
               originalContent: postData.originalContent,
-              originalMediaUrls: postData.originalMediaUrls,
+              originalMediaUrls: mediaUrls,
               translatedTitle: postData.translatedTitle,
               translatedContent: postData.translatedContent || "",
               translatedSummary: postData.translatedSummary || "",
               categories: postData.categories,
               relevanceScore: postData.relevanceScore,
               status: PostStatus.PENDING,
+              updatedAt: new Date(),
             },
           });
           results.created++;

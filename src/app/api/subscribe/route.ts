@@ -5,6 +5,10 @@ import { Language, Frequency } from "@prisma/client";
 import { Resend } from "resend";
 import crypto from "crypto";
 
+function generateId(): string {
+  return crypto.randomBytes(12).toString("hex");
+}
+
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
@@ -63,11 +67,13 @@ export async function POST(request: NextRequest) {
 
     const subscriber = await prisma.subscriber.create({
       data: {
+        id: generateId(),
         email,
         language: language as Language,
         categories,
         frequency: frequency as Frequency,
         verifyToken,
+        updatedAt: new Date(),
       },
     });
 
