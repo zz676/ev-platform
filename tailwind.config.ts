@@ -75,6 +75,22 @@ const config: Config = {
         sidebar: "240px",
         "right-sidebar": "320px",
       },
+      animation: {
+        "spin-slow": "spin 3s linear infinite",
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+      },
+      keyframes: {
+        "glow-pulse": {
+          "0%, 100%": {
+            opacity: "0.6",
+            transform: "scale(1)",
+          },
+          "50%": {
+            opacity: "1",
+            transform: "scale(1.05)",
+          },
+        },
+      },
     },
   },
   plugins: [],
