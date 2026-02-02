@@ -6,10 +6,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    // Pagination
-    const page = parseInt(searchParams.get("page") || "1");
+    // Pagination - supports both page-based and skip-based
     const limit = parseInt(searchParams.get("limit") || "10");
-    const skip = (page - 1) * limit;
+    const skipParam = searchParams.get("skip");
+    const page = parseInt(searchParams.get("page") || "1");
+    // Use explicit skip if provided, otherwise calculate from page
+    const skip = skipParam ? parseInt(skipParam) : (page - 1) * limit;
 
     // Filters
     const status = searchParams.get("status") as PostStatus | null;
@@ -23,8 +25,8 @@ export async function GET(request: NextRequest) {
     if (status) {
       where.status = status;
     } else {
-      // Default to showing only approved/published posts for public API
-      where.status = { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] };
+      // Default to showing all posts except rejected ones
+      where.status = { not: PostStatus.REJECTED };
     }
 
     if (source) {

@@ -35,30 +35,41 @@ export default async function Home({
 
   // Fetch posts from database with error handling
   let posts: Post[] = [];
+  let totalPosts = 0;
+  const initialLimit = 20;
   try {
-    posts = await prisma.post.findMany({
-      where: {
-        status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: {
-        id: true,
-        source: true,
-        sourceUrl: true,
-        sourceAuthor: true,
-        sourceDate: true,
-        originalTitle: true,
-        translatedTitle: true,
-        originalContent: true,
-        translatedContent: true,
-        translatedSummary: true,
-        originalMediaUrls: true,
-        categories: true,
-        relevanceScore: true,
-        createdAt: true,
-      },
-    });
+    const [fetchedPosts, count] = await Promise.all([
+      prisma.post.findMany({
+        where: {
+          status: { not: PostStatus.REJECTED },
+        },
+        orderBy: { createdAt: "desc" },
+        take: initialLimit,
+        select: {
+          id: true,
+          source: true,
+          sourceUrl: true,
+          sourceAuthor: true,
+          sourceDate: true,
+          originalTitle: true,
+          translatedTitle: true,
+          originalContent: true,
+          translatedContent: true,
+          translatedSummary: true,
+          originalMediaUrls: true,
+          categories: true,
+          relevanceScore: true,
+          createdAt: true,
+        },
+      }),
+      prisma.post.count({
+        where: {
+          status: { not: PostStatus.REJECTED },
+        },
+      }),
+    ]);
+    posts = fetchedPosts;
+    totalPosts = count;
   } catch {
     // Database unavailable - show empty state
     console.error("Failed to fetch posts from database");
@@ -196,6 +207,7 @@ export default async function Home({
               locale={locale}
               sectionTitle={locale === "zh" ? "更多新闻" : "More News"}
               totalInitialPosts={posts.length}
+              initialHasMore={totalPosts > initialLimit}
             />
           )}
         </div>
