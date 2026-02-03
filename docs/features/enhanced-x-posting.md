@@ -279,7 +279,7 @@ Uses Resend email service (existing setup).
 
 **Endpoint**: `GET /api/cron/publish`
 
-**Schedule**: `0 6,12,15,18,22 * * *` (5x daily)
+**Schedule**: `0 12 * * *` (daily at 12:00 UTC)
 
 **Logic**:
 1. Check daily rate limit
@@ -291,7 +291,7 @@ Uses Resend email service (existing setup).
 
 **Endpoint**: `GET /api/cron/digest-aggregate`
 
-**Schedule**: `30 12,21 * * *` (30 min before digest)
+**Schedule**: `30 12 * * *` (daily at 12:30 UTC)
 
 **Logic**:
 1. Query posts with score 50-84 since last digest
@@ -302,7 +302,7 @@ Uses Resend email service (existing setup).
 
 **Endpoint**: `GET /api/cron/digest`
 
-**Schedule**: `0 13,22 * * *` (2x daily)
+**Schedule**: `0 13 * * *` (daily at 13:00 UTC)
 
 **Logic**:
 1. Fetch pre-generated DigestContent
