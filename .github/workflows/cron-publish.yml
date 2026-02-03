@@ -1,0 +1,20 @@
+name: X Publishing Crons
+
+on:
+  schedule:
+    # VIP publish - 5x daily
+    - cron: '0 6,12,15,18,22 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger VIP Publish
+        run: |
+          curl -X GET "${{ secrets.VERCEL_URL }}/api/cron/publish" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --fail --silent --show-error
+        env:
+          VERCEL_URL: ${{ secrets.VERCEL_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

@@ -279,7 +279,9 @@ Uses Resend email service (existing setup).
 
 **Endpoint**: `GET /api/cron/publish`
 
-**Schedule**: `0 12 * * *` (daily at 12:00 UTC)
+**Schedule**: GitHub Actions - `0 6,12,15,18,22 * * *` (5x daily)
+
+**Workflow**: `.github/workflows/cron-publish.yml`
 
 **Logic**:
 1. Check daily rate limit
@@ -291,7 +293,9 @@ Uses Resend email service (existing setup).
 
 **Endpoint**: `GET /api/cron/digest-aggregate`
 
-**Schedule**: `30 12 * * *` (daily at 12:30 UTC)
+**Schedule**: GitHub Actions - `30 12,21 * * *` (2x daily, 30 min before digest)
+
+**Workflow**: `.github/workflows/cron-digest-aggregate.yml`
 
 **Logic**:
 1. Query posts with score 50-84 since last digest
@@ -302,7 +306,9 @@ Uses Resend email service (existing setup).
 
 **Endpoint**: `GET /api/cron/digest`
 
-**Schedule**: `0 13 * * *` (daily at 13:00 UTC)
+**Schedule**: GitHub Actions - `0 13,22 * * *` (2x daily)
+
+**Workflow**: `.github/workflows/cron-digest.yml`
 
 **Logic**:
 1. Fetch pre-generated DigestContent
@@ -333,8 +339,17 @@ Uses Resend email service (existing setup).
 | `/prisma/schema.prisma` | Added digest fields and new models |
 | `/src/app/api/webhook/route.ts` | Auto-approval logic |
 | `/src/app/api/cron/publish/route.ts` | VIP threshold, rate limiting |
-| `/vercel.json` | Cron schedules |
 | `/.env.example` | New environment variables |
+
+### GitHub Actions Workflows
+
+| File | Schedule | Purpose |
+|------|----------|---------|
+| `/.github/workflows/cron-publish.yml` | `0 6,12,15,18,22 * * *` | VIP publishing (5x daily) |
+| `/.github/workflows/cron-digest-aggregate.yml` | `30 12,21 * * *` | Digest aggregation (2x daily) |
+| `/.github/workflows/cron-digest.yml` | `0 13,22 * * *` | Digest posting (2x daily) |
+
+**Note**: Cron scheduling moved from Vercel to GitHub Actions due to Vercel hobby account limitations (1x/day max). GitHub Actions provides free execution within 2,000 minutes/month.
 
 ---
 

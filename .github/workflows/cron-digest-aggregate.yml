@@ -1,0 +1,20 @@
+name: Digest Aggregation Cron
+
+on:
+  schedule:
+    # 30 minutes before digest posts
+    - cron: '30 12,21 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Digest Aggregation
+        run: |
+          curl -X GET "${{ secrets.VERCEL_URL }}/api/cron/digest-aggregate" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --fail --silent --show-error
+        env:
+          VERCEL_URL: ${{ secrets.VERCEL_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
