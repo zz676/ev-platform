@@ -186,8 +186,9 @@ export default async function Home({
       ? post.originalContent?.slice(0, 150)
       : post.translatedContent?.slice(0, 150));
 
-  // Helper to get image for cards (uses cardImageUrl, falls back to placeholder)
-  const getImage = (post: Post) => post.cardImageUrl || undefined;
+  // Helper to get image for cards (uses cardImageUrl, falls back to originalMediaUrls)
+  const getImage = (post: Post) =>
+    post.cardImageUrl || post.originalMediaUrls?.[0] || undefined;
 
   // Helper to format relative time
   const formatRelativeTime = (date: Date): string => {
@@ -213,7 +214,7 @@ export default async function Home({
           {/* Featured Section - USAToday Style 3-Column Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[250px_1fr_280px] gap-4">
             {/* Left Column - 2 News Cards (stacked) */}
-            <div className="flex flex-col justify-between gap-4 order-2 md:order-1 lg:order-1 h-[425px]">
+            <div className="flex flex-col justify-between gap-4 order-2 md:order-1 lg:order-1 h-[468px]">
               {leftColumnPosts.map((post) => (
                 <SideNewsCard
                   key={post.id}
