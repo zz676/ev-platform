@@ -51,7 +51,7 @@ export default async function RootLayout({
               <UserPanelProvider>
                 <div className="min-h-screen bg-gray-50 flex flex-col">
                   <Header />
-                  <main className="pb-8 flex-grow">
+                  <main className="flex-grow">
                     {children}
                   </main>
                   <Footer />

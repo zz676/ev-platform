@@ -97,7 +97,7 @@ export default async function SearchPage({
   const getImage = (post: Post) => post.cardImageUrl || undefined;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="px-6 pt-3 max-w-7xl mx-auto">
       {/* Back link */}
       <Link
         href={`/${locale}`}

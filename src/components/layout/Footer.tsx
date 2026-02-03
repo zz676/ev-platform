@@ -40,7 +40,7 @@ export function Footer() {
 
   return (
     <footer className="bg-ev-green-50 text-gray-700">
-      <div className="px-6 lg:px-8 pt-4 pb-[0.8rem]">
+      <div className="px-6 lg:px-8 pt-2 pb-[0.4rem]">
         {/* Top Row */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           {/* Left - Stay Updated */}

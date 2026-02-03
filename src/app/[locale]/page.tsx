@@ -127,7 +127,7 @@ export default async function Home({
         ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
       },
       orderBy: { relevanceScore: "desc" },
-      take: 30,
+      take: 34,
       select: postSelect,
     });
 
@@ -140,7 +140,7 @@ export default async function Home({
           ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
         },
         orderBy: { relevanceScore: "desc" },
-        take: 30,
+        take: 34,
         select: postSelect,
       });
     }
@@ -167,11 +167,11 @@ export default async function Home({
   // Split posts for layout:
   // Featured: Smart selection (center)
   // Posts 0-1: Left column cards
-  // Posts 2-7: Top Headlines (6 items)
-  // Posts 8+: More News section
+  // Posts 2-11: Top Headlines (10 items)
+  // Posts 12+: More News section
   const leftColumnPosts = poolPosts.slice(0, 2);
-  const topHeadlines = poolPosts.slice(2, 8);
-  const moreNews = poolPosts.slice(8);
+  const topHeadlines = poolPosts.slice(2, 12);
+  const moreNews = poolPosts.slice(12);
 
   // Helper to get localized title
   const getTitle = (post: Post) =>
@@ -207,10 +207,10 @@ export default async function Home({
   return (
     <>
       <StockTicker />
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="px-6 pt-3 max-w-7xl mx-auto">
       {/* Main Content */}
       {featuredPost || poolPosts.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {/* Featured Section - USAToday Style 3-Column Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[250px_1fr_280px] gap-4">
             {/* Left Column - 2 News Cards (stacked) */}
@@ -246,22 +246,20 @@ export default async function Home({
               )}
             </div>
 
-            {/* Right Column - Top Headlines (with vertical divider) */}
-            <div className="order-3 border-l-0 lg:border-l lg:border-ev-green-200 lg:pl-4">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
+            {/* Right Column - Top Headlines */}
+            <div className="order-3 bg-lime-50/40 border border-lime-100 rounded-lg pt-[0.56rem] pb-3 px-3">
+              <h2 className="text-lg font-bold text-gray-900 mb-3">
                 {locale === "zh" ? "热门新闻" : "Top Headlines"}
               </h2>
-              <ul className="space-y-0.5">
+              <ul className="space-y-0">
                 {topHeadlines.map((post, index) => (
                   <li key={post.id}>
                     <Link
                       href={`/${locale}/post/${post.id}`}
-                      className="flex items-start gap-3 py-1.5 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors group"
+                      className="flex items-start gap-2 py-[0.29rem] px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors group"
                     >
-                      <span className="flex-shrink-0 w-6 h-6 bg-ev-green-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                        {index + 1}
-                      </span>
-                      <h3 className="text-[0.71rem] font-medium text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-snug pt-0.5">
+                      <span className="flex-shrink-0 w-1.5 h-1.5 bg-lime-400 rounded-full mt-[0.35rem]"></span>
+                      <h3 className="text-[0.78rem] font-medium text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-tight">
                         {getTitle(post) || "Untitled"}
                       </h3>
                     </Link>
@@ -286,9 +284,8 @@ export default async function Home({
                 relevanceScore: post.relevanceScore,
               }))}
               locale={locale}
-              sectionTitle={locale === "zh" ? "更多新闻" : "More News"}
               totalInitialPosts={poolPosts.length + (featuredPost ? 1 : 0)}
-              initialHasMore={totalPosts > 22}
+              initialHasMore={totalPosts > 26}
             />
           )}
         </div>
