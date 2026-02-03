@@ -233,7 +233,7 @@ export default async function Home({
               <h2 className="text-lg font-bold text-gray-900 mb-4">
                 {locale === "zh" ? "热门新闻" : "Top Headlines"}
               </h2>
-              <ul className="space-y-3">
+              <ul className="space-y-2">
                 {topHeadlines.map((post) => (
                   <li key={post.id}>
                     <Link
@@ -241,17 +241,12 @@ export default async function Home({
                       className="block group"
                     >
                       <div className="flex items-start gap-2">
-                        <span className="text-ev-green-500 font-bold text-sm mt-0.5">
+                        <span className="text-ev-green-500 font-bold text-[0.79rem] mt-0.5">
                           •
                         </span>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-medium text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-snug">
-                            {getTitle(post) || "Untitled"}
-                          </h3>
-                          <span className="text-xs text-gray-400 mt-1 block">
-                            {formatRelativeTime(post.sourceDate)}
-                          </span>
-                        </div>
+                        <h3 className="text-[0.79rem] font-medium text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-snug">
+                          {getTitle(post) || "Untitled"}
+                        </h3>
                       </div>
                     </Link>
                   </li>

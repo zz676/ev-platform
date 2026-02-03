@@ -125,7 +125,7 @@ export default async function SearchPage({
 
       {/* Results */}
       {posts.length > 0 ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {posts.map((post) => (
             <NewsCard
               key={post.id}
