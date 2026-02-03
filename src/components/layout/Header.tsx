@@ -54,7 +54,7 @@ export function Header() {
             height={36}
             className="w-9 h-9"
           />
-          <span className="font-bold text-xl" style={{ color: '#27c618' }}>{t("brand")}</span>
+          <span className="font-bold text-[1.4375rem]" style={{ color: '#27c618' }}>{t("brand")}</span>
         </Link>
 
         {/* Navigation - Center */}
