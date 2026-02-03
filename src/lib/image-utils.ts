@@ -243,13 +243,13 @@ function parseWebPDimensions(buffer: Buffer): ImageDimensions | null {
  * Check if an image has an acceptable aspect ratio for wide card layouts
  * @param width Image width
  * @param height Image height
- * @param minRatio Minimum acceptable width/height ratio (default 1.3 for reasonably wide images)
+ * @param minRatio Minimum acceptable width/height ratio (default 0.75 to allow 4:3 portrait images)
  * @returns true if aspect ratio is acceptable
  */
 export function isAcceptableAspectRatio(
   width: number,
   height: number,
-  minRatio = 1.3
+  minRatio = 0.75
 ): boolean {
   if (width <= 0 || height <= 0) return false;
   const ratio = width / height;
@@ -264,7 +264,7 @@ export function isAcceptableAspectRatio(
  */
 export async function checkImageRatio(
   url: string,
-  minRatio = 1.3
+  minRatio = 0.75
 ): Promise<boolean | null> {
   const dimensions = await getImageDimensions(url);
   if (!dimensions) return null;

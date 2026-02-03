@@ -29,8 +29,8 @@ const prisma = new PrismaClient();
 const FLUX_COST = 0.003; // Together AI FLUX.1-schnell
 const DALLE_COST = 0.08; // DALL-E 3 1792x1024 standard
 
-// Minimum acceptable aspect ratio (width/height)
-const MIN_RATIO = 1.3;
+// Minimum acceptable aspect ratio (width/height) - 0.75 allows 4:3 portrait images
+const MIN_RATIO = 0.75;
 
 // Maximum number of posts to generate AI images for (cost control)
 const GENERATE_LIMIT = 10;
