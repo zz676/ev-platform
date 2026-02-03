@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   Shield,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/context/AuthContext";
@@ -145,14 +146,14 @@ export function UserPanel() {
                 onClick={close}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  pathname.startsWith(`/${locale}/admin`)
+                  pathname === `/${locale}/admin` || pathname === `/${locale}/admin/`
                     ? "bg-ev-green-50 text-ev-green-700"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 )}
               >
                 <span
                   className={cn(
-                    pathname.startsWith(`/${locale}/admin`)
+                    pathname === `/${locale}/admin` || pathname === `/${locale}/admin/`
                       ? "text-ev-green-600"
                       : "text-gray-400"
                   )}
@@ -160,6 +161,27 @@ export function UserPanel() {
                   <Shield className="h-5 w-5" />
                 </span>
                 Admin Panel
+              </Link>
+              <Link
+                href={`/${locale}/admin/monitoring`}
+                onClick={close}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                  pathname.startsWith(`/${locale}/admin/monitoring`)
+                    ? "bg-ev-green-50 text-ev-green-700"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                )}
+              >
+                <span
+                  className={cn(
+                    pathname.startsWith(`/${locale}/admin/monitoring`)
+                      ? "text-ev-green-600"
+                      : "text-gray-400"
+                  )}
+                >
+                  <Activity className="h-5 w-5" />
+                </span>
+                Monitoring
               </Link>
             </>
           )}
