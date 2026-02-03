@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { put } from "@vercel/blob";
 import { generatePostImage } from "@/lib/ai";
 import { POSTING_CONFIG } from "@/lib/config/posting";
+import { checkImageRatio } from "@/lib/image-utils";
 
 // Webhook secret for authenticating scraper requests
 const WEBHOOK_SECRET = process.env.SCRAPER_WEBHOOK_SECRET;
@@ -129,9 +130,36 @@ export async function POST(request: NextRequest) {
           // Create new post
           const postId = generateId();
           let mediaUrls = postData.originalMediaUrls;
+          let needsImageGeneration = false;
 
-          // Generate AI image if no media URLs provided
+          // Check if we need AI image generation
           if (!mediaUrls || mediaUrls.length === 0) {
+            needsImageGeneration = true;
+          } else {
+            // Check if scraped image has acceptable aspect ratio (minimum 1.3:1)
+            const firstImageUrl = mediaUrls[0];
+            const isAcceptable = await checkImageRatio(firstImageUrl, 1.3);
+            if (isAcceptable === false) {
+              console.log(
+                `Scraped image has bad aspect ratio for post ${postId}, will need AI generation`
+              );
+              needsImageGeneration = true;
+            } else if (isAcceptable === null) {
+              console.log(
+                `Could not check image dimensions for post ${postId}, keeping original`
+              );
+            }
+          }
+
+          // Auto-approve if relevanceScore >= MIN_RELEVANCE_SCORE
+          const shouldAutoApprove =
+            postData.relevanceScore >= POSTING_CONFIG.MIN_RELEVANCE_SCORE;
+
+          // Only generate AI image immediately if:
+          // 1. We need image generation AND
+          // 2. Post will be auto-approved (high relevance)
+          // This saves DALL-E costs for posts that may never be approved
+          if (needsImageGeneration && shouldAutoApprove) {
             try {
               const title =
                 postData.translatedTitle ||
@@ -140,7 +168,10 @@ export async function POST(request: NextRequest) {
               const summary = postData.translatedSummary || "";
 
               // Generate image using DALL-E
-              const imageUrl = await generatePostImage(title, summary);
+              const imageUrl = await generatePostImage(title, summary, {
+                source: "webhook",
+                postId,
+              });
 
               // Download and upload to Vercel Blob for permanent storage
               const imageResponse = await fetch(imageUrl);
@@ -160,11 +191,14 @@ export async function POST(request: NextRequest) {
               );
               // Continue without image - don't fail the entire post creation
             }
+          } else if (needsImageGeneration) {
+            // For posts needing manual review, clear bad images so placeholder shows
+            // Image will be generated on approval
+            mediaUrls = [];
+            console.log(
+              `Post ${postId} needs image generation on approval (manual review)`
+            );
           }
-
-          // Auto-approve if relevanceScore >= MIN_RELEVANCE_SCORE
-          const shouldAutoApprove =
-            postData.relevanceScore >= POSTING_CONFIG.MIN_RELEVANCE_SCORE;
 
           await prisma.post.create({
             data: {

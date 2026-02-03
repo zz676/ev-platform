@@ -99,6 +99,7 @@ model Post {
   PostTranslation   PostTranslation?
   SavedPost         SavedPost[]
   XPublication      XPublication?
+  AIUsage           AIUsage[]
 
   @@index([brand])
   @@index([source])
@@ -382,4 +383,23 @@ model DigestContent {
 
   @@index([scheduledFor])
   @@index([status])
+}
+
+model AIUsage {
+  id        String   @id @default(cuid())
+  type      String   // "image_generation", "text_completion", etc.
+  model     String   // "dall-e-3"
+  size      String?  // "1792x1024"
+  cost      Float    // estimated cost in USD
+  success   Boolean
+  errorMsg  String?
+  postId    String?  // optional link to post
+  source    String   // "webhook", "admin_approve", "migration_script"
+  createdAt DateTime @default(now())
+
+  Post Post? @relation(fields: [postId], references: [id])
+
+  @@index([createdAt])
+  @@index([source])
+  @@index([postId])
 }

@@ -1,4 +1,33 @@
 import OpenAI from "openai";
+import prisma from "@/lib/prisma";
+
+// DALL-E pricing (as of 2024)
+const DALLE_COST = {
+  "dall-e-3": {
+    "1024x1024": { standard: 0.04, hd: 0.08 },
+    "1024x1792": { standard: 0.08, hd: 0.12 },
+    "1792x1024": { standard: 0.08, hd: 0.12 },
+  },
+} as const;
+
+// Track AI usage in database
+async function trackAIUsage(params: {
+  type: string;
+  model: string;
+  size?: string;
+  cost: number;
+  success: boolean;
+  errorMsg?: string;
+  postId?: string;
+  source: string;
+}): Promise<void> {
+  try {
+    await prisma.aIUsage.create({ data: params });
+  } catch (error) {
+    // Don't fail the main operation if tracking fails
+    console.error("Failed to track AI usage:", error);
+  }
+}
 
 // AI Provider configuration
 const providers = [
@@ -129,12 +158,34 @@ Requirements:
 // Generate image for X post using DALL-E (fallback when no scraped image)
 export async function generatePostImage(
   title: string,
-  summary: string
+  summary: string,
+  options?: {
+    source?: string;
+    postId?: string;
+  }
 ): Promise<string> {
+  const source = options?.source || "unknown";
+  const postId = options?.postId;
+  const model = "dall-e-3";
+  const size = "1792x1024";
+  const quality = "standard";
+  const cost = DALLE_COST[model][size][quality];
+
   // DALL-E requires OpenAI directly (not DeepSeek)
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) {
-    throw new Error("OpenAI API key required for image generation");
+    const error = "OpenAI API key required for image generation";
+    await trackAIUsage({
+      type: "image_generation",
+      model,
+      size,
+      cost: 0,
+      success: false,
+      errorMsg: error,
+      postId,
+      source,
+    });
+    throw new Error(error);
   }
 
   const openai = new OpenAI({
@@ -154,22 +205,74 @@ Style requirements:
 - No text or logos in the image
 - High quality, suitable for social media`;
 
-  const response = await openai.images.generate({
-    model: "dall-e-3",
-    prompt: imagePrompt,
-    n: 1,
-    size: "1024x1024",
-    quality: "standard",
-  });
+  try {
+    const response = await openai.images.generate({
+      model,
+      prompt: imagePrompt,
+      n: 1,
+      size,
+      quality,
+    });
 
-  if (!response.data || response.data.length === 0) {
-    throw new Error("Failed to generate image: no data returned");
-  }
-  const imageUrl = response.data[0].url;
-  if (!imageUrl) {
-    throw new Error("Failed to generate image: no URL returned");
-  }
+    if (!response.data || response.data.length === 0) {
+      const error = "Failed to generate image: no data returned";
+      await trackAIUsage({
+        type: "image_generation",
+        model,
+        size,
+        cost: 0,
+        success: false,
+        errorMsg: error,
+        postId,
+        source,
+      });
+      throw new Error(error);
+    }
 
-  console.log(`AI image generated successfully for: ${title.slice(0, 50)}...`);
-  return imageUrl;
+    const imageUrl = response.data[0].url;
+    if (!imageUrl) {
+      const error = "Failed to generate image: no URL returned";
+      await trackAIUsage({
+        type: "image_generation",
+        model,
+        size,
+        cost: 0,
+        success: false,
+        errorMsg: error,
+        postId,
+        source,
+      });
+      throw new Error(error);
+    }
+
+    // Track successful generation
+    await trackAIUsage({
+      type: "image_generation",
+      model,
+      size,
+      cost,
+      success: true,
+      postId,
+      source,
+    });
+
+    console.log(`AI image generated successfully for: ${title.slice(0, 50)}... [source: ${source}, cost: $${cost}]`);
+    return imageUrl;
+  } catch (error) {
+    // Track failed generation (if not already tracked above)
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    if (!errorMsg.includes("Failed to generate image")) {
+      await trackAIUsage({
+        type: "image_generation",
+        model,
+        size,
+        cost: 0,
+        success: false,
+        errorMsg,
+        postId,
+        source,
+      });
+    }
+    throw error;
+  }
 }
