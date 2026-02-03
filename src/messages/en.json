@@ -39,10 +39,9 @@
     "account": "Account",
     "subscribe": "Subscribe",
     "nav": {
-      "news": "News",
-      "deliveries": "Deliveries",
+      "market": "Market",
       "tech": "Tech",
-      "markets": "Markets",
+      "tesla": "Tesla",
       "policy": "Policy"
     }
   },
@@ -124,7 +123,7 @@
     "subscribeError": "Something went wrong. Please try again.",
     "navigate": "Navigate",
     "navNews": "News",
-    "navDeliveries": "Deliveries",
+    "navTesla": "Tesla",
     "navTech": "Tech",
     "company": "Company",
     "terms": "Terms",
