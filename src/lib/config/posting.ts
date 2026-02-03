@@ -26,6 +26,6 @@ export const POSTING_CONFIG = {
   ],
 
   // Site configuration
-  SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || "https://chinaevnews.com",
-  SITE_HASHTAGS: ["#ChinaEV", "#EVNews"],
+  SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || "https://evjuice.net",
+  SITE_HASHTAGS: ["#ChinaEV", "#EVNews", "#EVJuice"],
 };

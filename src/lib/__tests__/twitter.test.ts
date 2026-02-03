@@ -116,7 +116,7 @@ describe('twitter.ts', () => {
       expect(result).toContain('#BYD');
       expect(result).toContain('#Sales');
       expect(result).toContain('Source: Official');
-      expect(result).toContain('https://test.chinaevnews.com');
+      expect(result).toContain('https://test.evjuice.net');
     });
 
     it('should use correct emoji for different categories', () => {
