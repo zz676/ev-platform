@@ -4,6 +4,7 @@ import { PostStatus } from "@prisma/client";
 import { HeroCard } from "@/components/cards/HeroCard";
 import { SideNewsCard } from "@/components/cards/SideNewsCard";
 import { MoreNewsSection } from "@/components/sections/MoreNewsSection";
+import { StockTicker } from "@/components/ui/StockTicker";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -189,7 +190,9 @@ export default async function Home({
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <>
+      <StockTicker />
+      <div className="p-6 max-w-7xl mx-auto">
       {/* Main Content */}
       {featuredPost || poolPosts.length > 0 ? (
         <div className="space-y-4">
@@ -295,5 +298,6 @@ export default async function Home({
         </div>
       )}
     </div>
+    </>
   );
 }
