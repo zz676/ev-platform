@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { TrendingUp } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { CategoryBadge } from "@/components/ui/CategoryBadge";
 
 interface FeaturedCardProps {
@@ -42,7 +42,7 @@ export function FeaturedCard({
   relevanceScore,
   locale,
 }: FeaturedCardProps) {
-  const hasHighRelevance = relevanceScore && relevanceScore >= 70;
+  const isImportant = relevanceScore && relevanceScore >= 90;
 
   return (
     <article className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group">
@@ -74,10 +74,9 @@ export function FeaturedCard({
             </svg>
           </div>
         )}
-        {hasHighRelevance && (
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 bg-ev-green-500 text-white text-sm font-semibold rounded-md shadow-md">
-            <TrendingUp className="h-4 w-4" />
-            HIGH IMPACT
+        {isImportant && (
+          <div className="absolute top-3 right-3 p-1.5 bg-white/90 rounded-full shadow-sm">
+            <Sparkles className="h-4 w-4 text-amber-500" />
           </div>
         )}
       </div>

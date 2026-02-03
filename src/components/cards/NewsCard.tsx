@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Share2, ExternalLink, TrendingUp } from "lucide-react";
+import { Share2, ExternalLink, Sparkles } from "lucide-react";
 import { CategoryBadge } from "@/components/ui/CategoryBadge";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +44,7 @@ export function NewsCard({
   relevanceScore,
   locale,
 }: NewsCardProps) {
-  const hasHighRelevance = relevanceScore && relevanceScore >= 70;
+  const isImportant = relevanceScore && relevanceScore >= 90;
 
   return (
     <article className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
@@ -58,10 +58,9 @@ export function NewsCard({
             className="object-cover"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
-          {hasHighRelevance && (
-            <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-ev-green-500 text-white text-xs font-medium rounded">
-              <TrendingUp className="h-3 w-3" />
-              HIGH IMPACT
+          {isImportant && (
+            <div className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-sm">
+              <Sparkles className="h-4 w-4 text-amber-500" />
             </div>
           )}
         </div>
