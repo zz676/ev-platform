@@ -11,6 +11,21 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Log workflow start
+        run: |
+          echo "=========================================="
+          echo "EV News Scraper - GitHub Actions"
+          echo "=========================================="
+          echo "Triggered by: ${{ github.event_name }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Run number: ${{ github.run_number }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Runner OS: ${{ runner.os }}"
+          echo "Start time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "=========================================="
+
       - uses: actions/checkout@v4
 
       - name: Set up Python
@@ -20,16 +35,79 @@ jobs:
           cache: 'pip'
           cache-dependency-path: scraper/requirements.txt
 
+      - name: Log Python environment
+        run: |
+          echo "Python version: $(python --version)"
+          echo "Pip version: $(pip --version)"
+          echo "Working directory: $(pwd)"
+
       - name: Install dependencies
         run: |
+          echo "Installing Python dependencies..."
           cd scraper
           pip install -r requirements.txt
+          echo "Dependencies installed successfully"
 
       - name: Install Playwright browsers
-        run: playwright install chromium
+        run: |
+          echo "Installing Playwright Chromium..."
+          playwright install chromium
+          echo "Playwright installed successfully"
+
+      - name: Validate secrets
+        run: |
+          echo "Validating required secrets..."
+          missing_secrets=""
+
+          if [ -z "${{ secrets.WEBHOOK_URL }}" ]; then
+            missing_secrets="$missing_secrets WEBHOOK_URL"
+          else
+            echo "✓ WEBHOOK_URL is set"
+          fi
+
+          if [ -z "${{ secrets.SCRAPER_WEBHOOK_SECRET }}" ]; then
+            missing_secrets="$missing_secrets SCRAPER_WEBHOOK_SECRET"
+          else
+            echo "✓ SCRAPER_WEBHOOK_SECRET is set"
+          fi
+
+          if [ -z "${{ secrets.DEEPSEEK_API_KEY }}" ] && [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+            echo "⚠ WARNING: Neither DEEPSEEK_API_KEY nor OPENAI_API_KEY is set - AI processing will fail"
+          else
+            if [ -n "${{ secrets.DEEPSEEK_API_KEY }}" ]; then
+              echo "✓ DEEPSEEK_API_KEY is set"
+            fi
+            if [ -n "${{ secrets.OPENAI_API_KEY }}" ]; then
+              echo "✓ OPENAI_API_KEY is set"
+            fi
+          fi
+
+          if [ -n "$missing_secrets" ]; then
+            echo "❌ ERROR: Missing required secrets:$missing_secrets"
+            exit 1
+          fi
+
+          echo "All required secrets validated"
 
       - name: Run scraper
-        run: python scraper/main.py
+        id: scraper
+        run: |
+          echo "=========================================="
+          echo "Starting scraper..."
+          echo "Webhook URL: $WEBHOOK_URL"
+          echo "Skip X Publish: $SKIP_X_PUBLISH"
+          echo "=========================================="
+
+          # Run scraper and capture exit code
+          python scraper/main.py
+          exit_code=$?
+
+          echo "=========================================="
+          echo "Scraper finished with exit code: $exit_code"
+          echo "End time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "=========================================="
+
+          exit $exit_code
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -37,3 +115,17 @@ jobs:
           SCRAPER_WEBHOOK_SECRET: ${{ secrets.SCRAPER_WEBHOOK_SECRET }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SKIP_X_PUBLISH: 'true'  # X publishing handled by cron-publish.yml
+
+      - name: Log failure details
+        if: failure()
+        run: |
+          echo "=========================================="
+          echo "❌ SCRAPER FAILED"
+          echo "=========================================="
+          echo "Check the logs above for error details"
+          echo "Common issues:"
+          echo "  - Missing or invalid API keys"
+          echo "  - Network/timeout errors"
+          echo "  - Webhook endpoint unreachable"
+          echo "  - Source website changes"
+          echo "=========================================="
