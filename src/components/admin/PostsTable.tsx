@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PostRow } from "./PostRow";
-import { RefreshCw, CheckCircle2 } from "lucide-react";
+import { RefreshCw, CheckCircle2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import type { PostStatus } from "./AdminStats";
 
 interface XPublication {
@@ -20,12 +20,16 @@ interface Post {
   source: string;
   sourceUrl: string;
   sourceDate: string;
+  createdAt: string;
   relevanceScore: number;
   status: string;
   publishedToX?: boolean;
   xPostId?: string | null;
   XPublication?: XPublication | null;
 }
+
+export type SortColumn = "sourceDate" | "createdAt" | "relevanceScore" | "source";
+export type SortOrder = "asc" | "desc";
 
 interface PostsTableProps {
   posts: Post[];
@@ -37,6 +41,12 @@ interface PostsTableProps {
   onRefresh: () => void;
   isLoading: boolean;
   maxXAttempts?: number;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  sortBy: SortColumn;
+  sortOrder: SortOrder;
+  onSortChange: (column: SortColumn) => void;
 }
 
 const getStatusTitle = (status?: PostStatus): string => {
@@ -59,6 +69,39 @@ const getEmptyMessage = (status?: PostStatus): { title: string; subtitle: string
   return messages[status];
 };
 
+function SortableHeader({
+  label,
+  column,
+  currentSort,
+  currentOrder,
+  onSort,
+}: {
+  label: string;
+  column: SortColumn;
+  currentSort: SortColumn;
+  currentOrder: SortOrder;
+  onSort: (column: SortColumn) => void;
+}) {
+  const isActive = currentSort === column;
+  return (
+    <button
+      onClick={() => onSort(column)}
+      className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 transition-colors"
+    >
+      {label}
+      {isActive ? (
+        currentOrder === "asc" ? (
+          <ArrowUp className="h-3 w-3" />
+        ) : (
+          <ArrowDown className="h-3 w-3" />
+        )
+      ) : (
+        <ArrowUpDown className="h-3 w-3 opacity-50" />
+      )}
+    </button>
+  );
+}
+
 export function PostsTable({
   posts,
   activeStatus,
@@ -69,6 +112,12 @@ export function PostsTable({
   onRefresh,
   isLoading,
   maxXAttempts = 2,
+  currentPage,
+  totalPages,
+  onPageChange,
+  sortBy,
+  sortOrder,
+  onSortChange,
 }: PostsTableProps) {
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [postingToXIds, setPostingToXIds] = useState<Set<string>>(new Set());
@@ -170,14 +219,41 @@ export function PostsTable({
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Title
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Source
+                <th className="px-4 py-3 text-center">
+                  <SortableHeader
+                    label="Source"
+                    column="source"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={onSortChange}
+                  />
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
+                <th className="px-4 py-3 text-center">
+                  <SortableHeader
+                    label="Source Date"
+                    column="sourceDate"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={onSortChange}
+                  />
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Score
+                <th className="px-4 py-3 text-center">
+                  <SortableHeader
+                    label="Scraped"
+                    column="createdAt"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={onSortChange}
+                  />
+                </th>
+                <th className="px-4 py-3 text-center">
+                  <SortableHeader
+                    label="Score"
+                    column="relevanceScore"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={onSortChange}
+                  />
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   X Status
@@ -203,6 +279,33 @@ export function PostsTable({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+          <div className="text-sm text-gray-500">
+            Page {currentPage} of {totalPages}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onPageChange(currentPage - 1)}
+              disabled={currentPage <= 1 || isLoading}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Prev
+            </button>
+            <button
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages || isLoading}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>
