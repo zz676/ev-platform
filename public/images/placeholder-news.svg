@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0fdf4"/>
+      <stop offset="100%" style="stop-color:#dcfce7"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#bgGradient)"/>
+
+  <!-- EV icon - stylized electric car/plug -->
+  <g transform="translate(140, 90)">
+    <!-- Car body outline -->
+    <path d="M20 80 L30 50 L90 50 L100 80 L20 80" stroke="#16a34a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Car roof -->
+    <path d="M35 50 L45 30 L75 30 L85 50" stroke="#16a34a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Wheels -->
+    <circle cx="35" cy="80" r="10" stroke="#16a34a" stroke-width="3" fill="none"/>
+    <circle cx="85" cy="80" r="10" stroke="#16a34a" stroke-width="3" fill="none"/>
+    <!-- Electric bolt -->
+    <path d="M55 10 L50 25 L58 25 L52 45 L65 22 L57 22 L62 10 Z" fill="#22c55e"/>
+  </g>
+
+  <!-- Text -->
+  <text x="200" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="600" fill="#16a34a" text-anchor="middle">EV NEWS</text>
+  <text x="200" y="245" font-family="system-ui, -apple-system, sans-serif" font-size="12" fill="#86efac" text-anchor="middle">Electric Vehicle Platform</text>
+</svg>
