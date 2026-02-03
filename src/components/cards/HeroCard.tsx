@@ -4,6 +4,21 @@ import Image from "next/image";
 import Link from "next/link";
 import { PLACEHOLDER_IMAGE } from "@/lib/constants";
 
+// Brand logos mapping
+const brandLogos: Record<string, string> = {
+  NIO: "/images/brands/nio.svg",
+  XPENG: "/images/brands/xpeng.svg",
+  "LI AUTO": "/images/brands/li-auto.svg",
+  BYD: "/images/brands/byd.svg",
+  TESLA: "/images/brands/tesla.svg",
+};
+
+// Get brand logo from category
+function getBrandLogo(category: string): string | null {
+  const normalizedCategory = category.toUpperCase();
+  return brandLogos[normalizedCategory] || null;
+}
+
 interface HeroCardProps {
   id: string;
   title: string;
@@ -75,20 +90,11 @@ export function HeroCard({
           isLarge ? "p-6" : "p-3"
         }`}
       >
-        {/* Category Badge */}
-        <span
-          className={`inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide mb-2 ${
-            isLarge ? "bg-ev-green-500 text-white" : "bg-white/20 text-white/90"
-          }`}
-        >
-          {category}
-        </span>
-
         {/* Title */}
         <h2
           className={`font-bold text-white leading-tight group-hover:text-ev-green-300 transition-colors ${
             isLarge
-              ? "text-2xl md:text-3xl line-clamp-3"
+              ? "text-[1.275rem] md:text-[1.59rem] line-clamp-3"
               : "text-sm line-clamp-2"
           }`}
         >
@@ -101,9 +107,19 @@ export function HeroCard({
             isLarge ? "mt-3 text-sm" : "mt-1.5 text-xs"
           }`}
         >
-          <span className="font-medium">{source}</span>
+          {getBrandLogo(category) ? (
+            <Image
+              src={getBrandLogo(category)!}
+              alt={category}
+              width={40}
+              height={16}
+              className="h-4 w-auto object-contain brightness-0 invert opacity-70"
+            />
+          ) : (
+            <span className="font-medium">{category}</span>
+          )}
           <span>·</span>
-          <span>{formatRelativeTime(timestamp)}</span>
+          <span className="italic">{formatRelativeTime(timestamp)}</span>
         </div>
       </div>
     </Link>
