@@ -19,6 +19,7 @@ type Post = {
   translatedContent: string | null;
   translatedSummary: string | null;
   originalMediaUrls: string[];
+  cardImageUrl: string | null;
   categories: string[];
   relevanceScore: number;
   createdAt: Date;
@@ -68,6 +69,7 @@ export default async function SearchPage({
           translatedContent: true,
           translatedSummary: true,
           originalMediaUrls: true,
+          cardImageUrl: true,
           categories: true,
           relevanceScore: true,
           createdAt: true,
@@ -91,11 +93,8 @@ export default async function SearchPage({
       ? post.originalContent?.slice(0, 150)
       : post.translatedContent?.slice(0, 150));
 
-  // Helper to get image
-  const getImage = (post: Post) =>
-    post.originalMediaUrls && post.originalMediaUrls.length > 0
-      ? post.originalMediaUrls[0]
-      : undefined;
+  // Helper to get image for cards (uses cardImageUrl, falls back to placeholder)
+  const getImage = (post: Post) => post.cardImageUrl || undefined;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
