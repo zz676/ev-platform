@@ -35,6 +35,17 @@ let cachedData: StockData[] | null = null;
 let cacheTime: number = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Singleton instance of YahooFinance
+let yahooFinanceInstance: InstanceType<typeof import("yahoo-finance2").default> | null = null;
+
+async function getYahooFinance() {
+  if (!yahooFinanceInstance) {
+    const YahooFinance = (await import("yahoo-finance2")).default;
+    yahooFinanceInstance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
+  }
+  return yahooFinanceInstance;
+}
+
 interface YahooQuote {
   regularMarketPrice?: number;
   regularMarketChange?: number;
@@ -48,10 +59,7 @@ async function fetchStockData(): Promise<StockData[]> {
   }
 
   try {
-    // Dynamic import for yahoo-finance2 (CommonJS module)
-    const yahooFinance = await import("yahoo-finance2").then(
-      (m) => m.default || m
-    );
+    const yahooFinance = await getYahooFinance();
 
     // Fetch all stocks in parallel for better performance
     const results = await Promise.all(
@@ -66,7 +74,8 @@ async function fetchStockData(): Promise<StockData[]> {
             changePercent: quote?.regularMarketChangePercent || 0,
             category: stock.category,
           };
-        } catch {
+        } catch (err) {
+          console.error(`Failed to fetch ${stock.symbol}:`, err);
           // If individual stock fails, add with zeros
           return {
             symbol: stock.symbol,
@@ -85,7 +94,8 @@ async function fetchStockData(): Promise<StockData[]> {
     cacheTime = Date.now();
 
     return results;
-  } catch {
+  } catch (err) {
+    console.error("Failed to fetch stock data:", err);
     // Return cached data if available, otherwise return placeholder
     if (cachedData) {
       return cachedData;
