@@ -54,8 +54,8 @@ export async function PATCH(
       if (!mediaUrls || mediaUrls.length === 0) {
         needsImageGeneration = true;
       } else {
-        // Check if existing image has bad aspect ratio
-        const isAcceptable = await checkImageRatio(mediaUrls[0], 1.3);
+        // Check if existing image has acceptable aspect ratio (minimum 0.75:1)
+        const isAcceptable = await checkImageRatio(mediaUrls[0], 0.75);
         if (isAcceptable === false) {
           needsImageGeneration = true;
           console.log(`Post ${id} has bad image ratio, generating card image`);

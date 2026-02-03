@@ -137,9 +137,9 @@ export async function POST(request: NextRequest) {
           if (!originalMediaUrls || originalMediaUrls.length === 0) {
             needsImageGeneration = true;
           } else {
-            // Check if scraped image has acceptable aspect ratio (minimum 1.3:1)
+            // Check if scraped image has acceptable aspect ratio (minimum 0.75:1 to allow portrait images)
             const firstImageUrl = originalMediaUrls[0];
-            const isAcceptable = await checkImageRatio(firstImageUrl, 1.3);
+            const isAcceptable = await checkImageRatio(firstImageUrl, 0.75);
             if (isAcceptable === false) {
               console.log(
                 `Scraped image has bad aspect ratio for post ${postId}, will use placeholder in cards`
