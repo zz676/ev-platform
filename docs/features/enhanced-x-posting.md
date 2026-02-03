@@ -240,21 +240,28 @@ Summarize these EV news items into an engaging tweet.
 
 Rules:
 - Max 250 characters (leave room for link + hashtags)
-- Conversational, engaging tone
-- Highlight the most impactful news first
-- Use 1-2 relevant emojis
+- Format: intro line with emoji, then each news item as a bullet on its own line
+- Use "•" for bullets, one per line
+- Keep each bullet concise (under 40 chars)
 - No hashtags or links (added separately)
+
+Example:
+Watts New: Today in EV ⚡️
+  • BYD hits 50K monthly sales
+  • NIO unveils solid-state battery
+  • XPeng expands into Europe
 ```
 
 ### Example Output
 
 ```
-🚗 Big day for Chinese EVs! NIO expanded its swap network
-while XPeng celebrated a 15% delivery boost. Li Auto eyes
-Europe and BYD commits $2B to new production.
+Watts New: Today in EV ⚡️
+  • NIO expands swap network to 3,000
+  • XPeng delivery up 15%
+  • Li Auto eyes Europe expansion
 
-🔗 evjuice.net
-#ChinaEV #EVNews #EVJuice #EV #ElectricVehicle #Tesla
+🍋 evjuice.net
+#ChinaEV #EVNews #EVJuice #EV #ElectricVehicle
 ```
 
 ---
