@@ -17,7 +17,7 @@ import "../globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "EV Juice - China EV News & Analysis",
+  title: "EV Juice - Freshly Squeezed EV Insight | China • US • EU • Global",
   description:
     "Stay updated with the latest EV news from China. Covering BYD, NIO, XPeng, Li Auto, and more. Bilingual coverage in English and Chinese.",
   keywords: ["China EV", "Electric Vehicle", "BYD", "NIO", "XPeng", "Li Auto", "EV News"],
