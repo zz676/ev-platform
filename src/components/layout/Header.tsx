@@ -81,44 +81,8 @@ export function Header() {
           </button>
         </nav>
 
-        {/* Right Section - Language + Search + Profile/Login */}
+        {/* Right Section - Search + Language + Profile/Login */}
         <div className="flex items-center gap-3">
-          {/* Language Toggle */}
-          <button
-            onClick={() => {
-              const newLocale = locale === "en" ? "zh" : "en";
-              const newPath = pathname.replace(/^\/(en|zh)/, `/${newLocale}`);
-              router.push(newPath);
-            }}
-            className="flex items-center justify-between h-7 bg-gray-200 rounded-full px-2 relative w-[61px]"
-            aria-label="Switch language"
-          >
-            <span
-              className={`text-[10px] font-semibold z-10 transition-colors duration-200 ${
-                locale === "en" ? "text-transparent" : "text-gray-500"
-              }`}
-            >
-              EN
-            </span>
-            <span
-              className={`text-[10px] font-semibold z-10 transition-colors duration-200 ${
-                locale === "zh" ? "text-transparent" : "text-gray-500"
-              }`}
-            >
-              CH
-            </span>
-            {/* Sliding flag button */}
-            <span
-              className={`absolute top-0.5 h-6 w-8 bg-white rounded-full shadow-sm transition-all duration-200 flex items-center justify-center ${
-                locale === "zh" ? "right-0.5" : "left-0.5"
-              }`}
-            >
-              <span className="text-sm">
-                {locale === "en" ? "🇺🇸" : "🇨🇳"}
-              </span>
-            </span>
-          </button>
-
           {/* Search Button */}
           <div className="relative">
             {showSearch ? (
@@ -168,6 +132,42 @@ export function Header() {
               </button>
             )}
           </div>
+
+          {/* Language Toggle */}
+          <button
+            onClick={() => {
+              const newLocale = locale === "en" ? "zh" : "en";
+              const newPath = pathname.replace(/^\/(en|zh)/, `/${newLocale}`);
+              router.push(newPath);
+            }}
+            className="flex items-center justify-between h-7 bg-gray-200 rounded-full px-2 relative w-[61px]"
+            aria-label="Switch language"
+          >
+            <span
+              className={`text-[10px] font-semibold z-10 transition-colors duration-200 ${
+                locale === "en" ? "text-transparent" : "text-gray-500"
+              }`}
+            >
+              EN
+            </span>
+            <span
+              className={`text-[10px] font-semibold z-10 transition-colors duration-200 ${
+                locale === "zh" ? "text-transparent" : "text-gray-500"
+              }`}
+            >
+              CH
+            </span>
+            {/* Sliding flag button */}
+            <span
+              className={`absolute top-0.5 h-6 w-8 bg-white rounded-full shadow-sm transition-all duration-200 flex items-center justify-center ${
+                locale === "zh" ? "right-0.5" : "left-0.5"
+              }`}
+            >
+              <span className="text-sm">
+                {locale === "en" ? "🇺🇸" : "🇨🇳"}
+              </span>
+            </span>
+          </button>
 
           {/* Login/Profile Button */}
           {user ? (
