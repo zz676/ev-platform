@@ -4,19 +4,32 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Add connection limit to prevent pool exhaustion with PgBouncer
+// Optimize connection string for Supabase PgBouncer (session mode)
+// - connection_limit=1: Minimal connections per serverless instance
+// - pgbouncer=true: Enable PgBouncer compatibility mode
+// - pool_timeout=10: Fail fast if pool is exhausted
 const getDatabaseUrl = () => {
   const url = process.env.DATABASE_URL || "";
-  if (url && !url.includes("connection_limit")) {
-    const separator = url.includes("?") ? "&" : "?";
-    return `${url}${separator}connection_limit=5`;
+  if (!url) return url;
+
+  const urlObj = new URL(url);
+
+  // Set optimal parameters for serverless + PgBouncer
+  if (!urlObj.searchParams.has("connection_limit")) {
+    urlObj.searchParams.set("connection_limit", "1");
   }
-  return url;
+  if (!urlObj.searchParams.has("pgbouncer")) {
+    urlObj.searchParams.set("pgbouncer", "true");
+  }
+  if (!urlObj.searchParams.has("pool_timeout")) {
+    urlObj.searchParams.set("pool_timeout", "10");
+  }
+
+  return urlObj.toString();
 };
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+const createPrismaClient = () => {
+  return new PrismaClient({
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
@@ -27,7 +40,13 @@ export const prisma =
       },
     },
   });
+};
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// IMPORTANT: Always use singleton pattern in ALL environments
+// This prevents connection pool exhaustion in serverless (Vercel)
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+
+// Cache the client globally - critical for both dev AND production
+globalForPrisma.prisma = prisma;
 
 export default prisma;
