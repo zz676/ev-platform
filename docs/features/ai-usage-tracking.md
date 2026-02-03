@@ -1,23 +1,45 @@
-# AI Usage Tracking (DALL-E Cost Monitoring)
+# AI Usage Tracking (Image Generation Cost Monitoring)
 
 ## Overview
 
-This feature tracks all DALL-E API calls with cost, success/failure status, and source attribution. It provides visibility into AI spending and helps prevent runaway costs from migration scripts or bugs.
+This feature tracks all AI image generation API calls with cost, success/failure status, and source attribution. It uses **Together AI (FLUX.1)** as the primary provider (96% cheaper) with **DALL-E 3** as fallback.
 
 ## Problem Solved
 
-- **Cost visibility**: DALL-E costs ~$0.08 per image (1792x1024, standard quality) with no built-in tracking
+- **Cost visibility**: No built-in tracking for AI image generation costs
+- **Cost reduction**: DALL-E 3 costs $0.08/image vs FLUX.1 at $0.003/image (96% savings)
 - **Incident prevention**: A migration script ran 227 unnecessary API calls due to missing env var check
 - **No audit trail**: Previously only console.log tracking existed - no persistent metrics
 - **Source attribution**: Impossible to know if costs came from webhook auto-approve, admin actions, or scripts
 
 ## Solution
 
-1. New `AIUsage` database table to persist every DALL-E API call
-2. Track success/failure with error messages for debugging
-3. Associate calls with source (webhook, admin_approve, migration_script)
-4. Link to postId for traceability
+1. **Primary**: Together AI (FLUX.1-schnell) - $0.003/image
+2. **Fallback**: DALL-E 3 - $0.08/image (if Together AI fails or not configured)
+3. `AIUsage` database table to persist every API call
+4. Track success/failure with error messages for debugging
 5. Admin API endpoint for viewing usage statistics
+
+## Cost Comparison
+
+| Provider | Model | Cost/Image | Monthly (50 images/day) |
+|----------|-------|------------|-------------------------|
+| Together AI | FLUX.1-schnell | $0.003 | **$4.50** |
+| OpenAI | DALL-E 3 | $0.080 | $120.00 |
+
+**Savings: 96% ($115.50/month)**
+
+## Environment Variables
+
+```bash
+# Primary (recommended) - Together AI
+TOGETHER_API_KEY=your_together_api_key
+
+# Fallback - OpenAI DALL-E 3
+OPENAI_API_KEY=your_openai_api_key
+```
+
+If only `OPENAI_API_KEY` is set, DALL-E 3 will be used. If both are set, Together AI is tried first.
 
 ## Architecture
 
@@ -27,7 +49,7 @@ This feature tracks all DALL-E API calls with cost, success/failure status, and 
 model AIUsage {
   id        String   @id @default(cuid())
   type      String   // "image_generation", "text_completion", etc.
-  model     String   // "dall-e-3"
+  model     String   // "FLUX.1-schnell", "dall-e-3"
   size      String?  // "1792x1024"
   cost      Float    // estimated cost in USD
   success   Boolean
@@ -49,47 +71,36 @@ model AIUsage {
 Defined in `src/lib/ai.ts`:
 
 ```typescript
-const DALLE_COST = {
-  "dall-e-3": {
-    "1024x1024": { standard: 0.04, hd: 0.08 },
-    "1024x1792": { standard: 0.08, hd: 0.12 },
-    "1792x1024": { standard: 0.08, hd: 0.12 },
-  },
+const IMAGE_GEN_COST = {
+  // Together AI - FLUX.1 models
+  "FLUX.1-schnell": 0.003,
+  "FLUX.1-dev": 0.01,
+  "FLUX.1-pro": 0.025,
+  // DALL-E 3
+  "dall-e-3-1792x1024-standard": 0.08,
+  "dall-e-3-1792x1024-hd": 0.12,
+  "dall-e-3-1024x1024-standard": 0.04,
 } as const;
 ```
-
-Current configuration uses `1792x1024` + `standard` = **$0.08 per image**.
 
 ### Core Module: `src/lib/ai.ts`
 
 | Function | Purpose |
 |----------|---------|
 | `trackAIUsage(params)` | Internal function to persist usage record |
-| `generatePostImage(title, summary, options?)` | Generate DALL-E image with tracking |
-
-The `generatePostImage` function now accepts an optional `options` object:
-
-```typescript
-export async function generatePostImage(
-  title: string,
-  summary: string,
-  options?: {
-    source?: string;  // "webhook", "admin_approve", "migration_script"
-    postId?: string;  // Link to post for traceability
-  }
-): Promise<string>
-```
+| `generateWithTogetherAI(prompt, options)` | Generate with FLUX.1 |
+| `generateWithDALLE(prompt, options)` | Generate with DALL-E 3 |
+| `generatePostImage(title, summary, options?)` | Main function - tries Together AI first, falls back to DALL-E |
 
 ### Tracking Behavior
 
-| Scenario | cost | success | errorMsg |
-|----------|------|---------|----------|
-| Successful generation | $0.08 | true | null |
-| Missing API key | $0.00 | false | "OpenAI API key required..." |
-| API error (rate limit, etc.) | $0.00 | false | Error message from API |
-| No data returned | $0.00 | false | "Failed to generate image: no data returned" |
-
-**Important**: Tracking failures don't block the main operation. If database write fails, it logs to console and continues.
+| Scenario | Model | cost | success |
+|----------|-------|------|---------|
+| Together AI success | FLUX.1-schnell | $0.003 | true |
+| Together AI fails, DALL-E success | dall-e-3 | $0.08 | true |
+| Together AI fails (tracked) | FLUX.1-schnell | $0.00 | false |
+| DALL-E fails | dall-e-3 | $0.00 | false |
+| No API keys | none | $0.00 | false |
 
 ## API Endpoints
 
@@ -102,27 +113,27 @@ Returns comprehensive usage statistics. Requires admin authentication.
 ```json
 {
   "summary": {
-    "totalCost": 18.16,
+    "totalCost": 1.50,
     "totalCalls": 245,
     "successfulCalls": 227,
     "failedCalls": 18
   },
   "bySource": [
-    { "source": "webhook", "cost": 12.00, "count": 150 },
-    { "source": "admin_approve", "cost": 4.00, "count": 50 },
-    { "source": "migration_script", "cost": 2.16, "count": 27 }
+    { "source": "webhook", "cost": 0.90, "count": 150 },
+    { "source": "admin_approve", "cost": 0.30, "count": 50 },
+    { "source": "migration_script", "cost": 0.30, "count": 27 }
   ],
   "dailyUsage": [
-    { "date": "2024-01-15", "count": 12, "cost": 0.96 },
-    { "date": "2024-01-14", "count": 8, "cost": 0.64 }
+    { "date": "2024-01-15", "count": 12, "cost": 0.036 },
+    { "date": "2024-01-14", "count": 8, "cost": 0.024 }
   ],
   "recentUsage": [
     {
       "id": "clx123...",
       "type": "image_generation",
-      "model": "dall-e-3",
+      "model": "FLUX.1-schnell",
       "size": "1792x1024",
-      "cost": 0.08,
+      "cost": 0.003,
       "success": true,
       "errorMsg": null,
       "postId": "abc123",
@@ -131,39 +142,6 @@ Returns comprehensive usage statistics. Requires admin authentication.
     }
   ]
 }
-```
-
-## Call Sites
-
-### 1. Webhook Auto-Approve (`src/app/api/webhook/route.ts`)
-
-When a post has high relevance score and needs an AI image:
-
-```typescript
-const imageUrl = await generatePostImage(title, summary, {
-  source: "webhook",
-  postId,
-});
-```
-
-### 2. Admin Manual Approve (`src/app/api/admin/posts/[id]/route.ts`)
-
-When admin approves a post that needs an image:
-
-```typescript
-const imageUrl = await generatePostImage(title, summary, {
-  source: "admin_approve",
-  postId: id,
-});
-```
-
-### 3. Migration Script (`scripts/fix-image-ratios.ts`)
-
-When batch-fixing posts with bad aspect ratios:
-
-```typescript
-const newImageUrl = await generateImage(title, summary, post.id);
-// Internally tracks with source: "migration_script"
 ```
 
 ## Flow Diagram
@@ -176,31 +154,37 @@ const newImageUrl = await generateImage(title, summary, post.id);
                               │
                               ▼
                     ┌─────────────────┐
-                    │ Check API Key   │
+                    │ TOGETHER_API_KEY │
+                    │    exists?       │
                     └─────────────────┘
                               │
               ┌───────────────┴───────────────┐
               ▼                               ▼
-        [Key exists]                    [No key]
+           [Yes]                            [No]
               │                               │
-              ▼                               ▼
-      Call DALL-E API              Track failure (cost: $0)
+              ▼                               │
+    ┌─────────────────┐                       │
+    │ Try Together AI │                       │
+    │  (FLUX.1)       │                       │
+    └─────────────────┘                       │
               │                               │
-              ▼                               ▼
-      ┌───────────────┐                   Throw error
-      │ API Response  │
-      └───────────────┘
-              │
-      ┌───────┴───────┐
-      ▼               ▼
-   Success         Failure
-      │               │
-      ▼               ▼
-Track success     Track failure
-(cost: $0.08)     (cost: $0)
-      │               │
-      ▼               ▼
-Return image URL  Throw error
+      ┌───────┴───────┐                       │
+      ▼               ▼                       │
+   Success         Failure                    │
+      │               │                       │
+      ▼               ▼                       ▼
+Track success     Track failure ──────► Try DALL-E 3
+(cost: $0.003)    (cost: $0)                  │
+      │                               ┌───────┴───────┐
+      ▼                               ▼               ▼
+Return image URL                   Success         Failure
+                                      │               │
+                                      ▼               ▼
+                                Track success     Track failure
+                                (cost: $0.08)     (cost: $0)
+                                      │               │
+                                      ▼               ▼
+                                Return image URL  Throw error
 ```
 
 ## Files Modified
@@ -208,11 +192,11 @@ Return image URL  Throw error
 | File | Change |
 |------|--------|
 | `prisma/schema.prisma` | Added `AIUsage` model, added relation to `Post` |
-| `src/lib/ai.ts` | Added `trackAIUsage()`, updated `generatePostImage()` signature |
+| `src/lib/ai.ts` | Added Together AI support, DALL-E fallback, tracking |
 | `src/app/api/webhook/route.ts` | Pass `source: "webhook"` and `postId` |
 | `src/app/api/admin/posts/[id]/route.ts` | Pass `source: "admin_approve"` and `postId` |
-| `scripts/fix-image-ratios.ts` | Added tracking with `source: "migration_script"` |
-| `src/app/api/admin/ai-usage/route.ts` | NEW - Admin endpoint for usage stats |
+| `scripts/fix-image-ratios.ts` | Added Together AI with DALL-E fallback |
+| `src/app/api/admin/ai-usage/route.ts` | Admin endpoint for usage stats |
 
 ## Database Queries
 
@@ -222,6 +206,16 @@ Return image URL  Throw error
 SELECT SUM(cost) as total_cost, COUNT(*) as total_calls
 FROM "AIUsage"
 WHERE success = true;
+```
+
+### Spending by model
+
+```sql
+SELECT model, SUM(cost) as cost, COUNT(*) as calls
+FROM "AIUsage"
+WHERE success = true
+GROUP BY model
+ORDER BY cost DESC;
 ```
 
 ### Spending by source
@@ -237,43 +231,31 @@ ORDER BY cost DESC;
 ### Failed calls with errors
 
 ```sql
-SELECT "postId", source, "errorMsg", "createdAt"
+SELECT "postId", model, source, "errorMsg", "createdAt"
 FROM "AIUsage"
 WHERE success = false
 ORDER BY "createdAt" DESC
 LIMIT 20;
 ```
 
-### Daily cost for last week
-
-```sql
-SELECT DATE("createdAt") as date, SUM(cost) as cost, COUNT(*) as calls
-FROM "AIUsage"
-WHERE "createdAt" >= NOW() - INTERVAL '7 days'
-  AND success = true
-GROUP BY DATE("createdAt")
-ORDER BY date DESC;
-```
-
 ## Testing
 
-1. **Webhook tracking**: Submit a high-relevance post via webhook, verify AIUsage record created
-2. **Admin tracking**: Approve a post without image in admin, verify AIUsage record with source="admin_approve"
-3. **Failure tracking**: Remove OPENAI_API_KEY, try to generate, verify failure record created
-4. **API endpoint**: Call `/api/admin/ai-usage`, verify summary and breakdown data
-5. **Migration script**: Run with --dry-run first, then live, verify records created
-
-## Cost Alerts (Future)
-
-Potential improvements:
-- Slack/email alert when daily spend exceeds threshold
-- Auto-pause image generation if monthly budget exceeded
-- Dashboard widget showing real-time spending
-- Cost comparison: AI-generated vs scraped image ratio
+1. **Together AI**: Set `TOGETHER_API_KEY`, verify FLUX.1 is used (check logs for "FLUX.1")
+2. **Fallback**: Remove `TOGETHER_API_KEY`, verify DALL-E is used
+3. **Tracking**: Check `/api/admin/ai-usage` for records with correct model and cost
+4. **Migration script**: Run `npx tsx scripts/fix-image-ratios.ts --dry-run`
 
 ## Pricing Reference
 
-As of 2024, DALL-E 3 pricing:
+### Together AI (FLUX.1)
+
+| Model | Cost/Image |
+|-------|------------|
+| FLUX.1-schnell | $0.003 |
+| FLUX.1-dev | $0.010 |
+| FLUX.1-pro | $0.025 |
+
+### OpenAI (DALL-E 3)
 
 | Size | Standard | HD |
 |------|----------|-----|
@@ -281,6 +263,12 @@ As of 2024, DALL-E 3 pricing:
 | 1024x1792 | $0.080 | $0.120 |
 | 1792x1024 | $0.080 | $0.120 |
 
-Current config uses **1792x1024 standard = $0.08/image**.
+## Getting Together AI API Key
 
-For 100 posts/day with 50% needing AI images: ~$4/day = ~$120/month.
+1. Go to https://api.together.xyz
+2. Sign up / Log in
+3. Navigate to API Keys section
+4. Create a new API key
+5. Add to `.env.local`: `TOGETHER_API_KEY=your_key_here`
+
+Together AI offers $25 free credits for new accounts.

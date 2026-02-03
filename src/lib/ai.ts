@@ -1,13 +1,16 @@
 import OpenAI from "openai";
 import prisma from "@/lib/prisma";
 
-// DALL-E pricing (as of 2024)
-const DALLE_COST = {
-  "dall-e-3": {
-    "1024x1024": { standard: 0.04, hd: 0.08 },
-    "1024x1792": { standard: 0.08, hd: 0.12 },
-    "1792x1024": { standard: 0.08, hd: 0.12 },
-  },
+// Image generation pricing (as of 2024)
+const IMAGE_GEN_COST = {
+  // Together AI - FLUX.1 models
+  "FLUX.1-schnell": 0.003, // Fast, cheap
+  "FLUX.1-dev": 0.01,
+  "FLUX.1-pro": 0.025,
+  // DALL-E 3
+  "dall-e-3-1792x1024-standard": 0.08,
+  "dall-e-3-1792x1024-hd": 0.12,
+  "dall-e-3-1024x1024-standard": 0.04,
 } as const;
 
 // Track AI usage in database
@@ -155,7 +158,108 @@ Requirements:
   return response.choices[0].message.content;
 }
 
-// Generate image for X post using DALL-E (fallback when no scraped image)
+// Generate image using Together AI (FLUX.1)
+async function generateWithTogetherAI(
+  prompt: string,
+  options: { source: string; postId?: string }
+): Promise<string> {
+  const togetherKey = process.env.TOGETHER_API_KEY;
+  if (!togetherKey) {
+    throw new Error("TOGETHER_API_KEY not configured");
+  }
+
+  const model = "black-forest-labs/FLUX.1-schnell";
+  const cost = IMAGE_GEN_COST["FLUX.1-schnell"];
+
+  const response = await fetch("https://api.together.xyz/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${togetherKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      prompt,
+      width: 1792,
+      height: 1024,
+      n: 1,
+      response_format: "url",
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Together AI error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const imageUrl = data.data?.[0]?.url;
+
+  if (!imageUrl) {
+    throw new Error("Together AI: no image URL returned");
+  }
+
+  // Track successful generation
+  await trackAIUsage({
+    type: "image_generation",
+    model: "FLUX.1-schnell",
+    size: "1792x1024",
+    cost,
+    success: true,
+    postId: options.postId,
+    source: options.source,
+  });
+
+  console.log(`FLUX.1 image generated for: ${prompt.slice(0, 50)}... [source: ${options.source}, cost: $${cost}]`);
+  return imageUrl;
+}
+
+// Generate image using DALL-E 3 (fallback)
+async function generateWithDALLE(
+  prompt: string,
+  options: { source: string; postId?: string }
+): Promise<string> {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    throw new Error("OPENAI_API_KEY not configured");
+  }
+
+  const model = "dall-e-3";
+  const size = "1792x1024" as const;
+  const quality = "standard" as const;
+  const cost = IMAGE_GEN_COST["dall-e-3-1792x1024-standard"];
+
+  const openai = new OpenAI({ apiKey: openaiKey });
+
+  const response = await openai.images.generate({
+    model,
+    prompt,
+    n: 1,
+    size,
+    quality,
+  });
+
+  const imageUrl = response.data?.[0]?.url;
+  if (!imageUrl) {
+    throw new Error("DALL-E: no image URL returned");
+  }
+
+  // Track successful generation
+  await trackAIUsage({
+    type: "image_generation",
+    model: "dall-e-3",
+    size,
+    cost,
+    success: true,
+    postId: options.postId,
+    source: options.source,
+  });
+
+  console.log(`DALL-E 3 image generated for: ${prompt.slice(0, 50)}... [source: ${options.source}, cost: $${cost}]`);
+  return imageUrl;
+}
+
+// Generate image for X post - tries Together AI (FLUX.1) first, falls back to DALL-E 3
 export async function generatePostImage(
   title: string,
   summary: string,
@@ -166,31 +270,6 @@ export async function generatePostImage(
 ): Promise<string> {
   const source = options?.source || "unknown";
   const postId = options?.postId;
-  const model = "dall-e-3";
-  const size = "1792x1024";
-  const quality = "standard";
-  const cost = DALLE_COST[model][size][quality];
-
-  // DALL-E requires OpenAI directly (not DeepSeek)
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) {
-    const error = "OpenAI API key required for image generation";
-    await trackAIUsage({
-      type: "image_generation",
-      model,
-      size,
-      cost: 0,
-      success: false,
-      errorMsg: error,
-      postId,
-      source,
-    });
-    throw new Error(error);
-  }
-
-  const openai = new OpenAI({
-    apiKey: openaiKey,
-  });
 
   // Create a prompt that generates relevant EV imagery
   const imagePrompt = `A professional, modern photograph style image for an electric vehicle news article.
@@ -205,67 +284,19 @@ Style requirements:
 - No text or logos in the image
 - High quality, suitable for social media`;
 
-  try {
-    const response = await openai.images.generate({
-      model,
-      prompt: imagePrompt,
-      n: 1,
-      size,
-      quality,
-    });
+  // Try Together AI (FLUX.1) first - 96% cheaper
+  if (process.env.TOGETHER_API_KEY) {
+    try {
+      return await generateWithTogetherAI(imagePrompt, { source, postId });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.warn(`Together AI failed, falling back to DALL-E: ${errorMsg}`);
 
-    if (!response.data || response.data.length === 0) {
-      const error = "Failed to generate image: no data returned";
+      // Track the failure
       await trackAIUsage({
         type: "image_generation",
-        model,
-        size,
-        cost: 0,
-        success: false,
-        errorMsg: error,
-        postId,
-        source,
-      });
-      throw new Error(error);
-    }
-
-    const imageUrl = response.data[0].url;
-    if (!imageUrl) {
-      const error = "Failed to generate image: no URL returned";
-      await trackAIUsage({
-        type: "image_generation",
-        model,
-        size,
-        cost: 0,
-        success: false,
-        errorMsg: error,
-        postId,
-        source,
-      });
-      throw new Error(error);
-    }
-
-    // Track successful generation
-    await trackAIUsage({
-      type: "image_generation",
-      model,
-      size,
-      cost,
-      success: true,
-      postId,
-      source,
-    });
-
-    console.log(`AI image generated successfully for: ${title.slice(0, 50)}... [source: ${source}, cost: $${cost}]`);
-    return imageUrl;
-  } catch (error) {
-    // Track failed generation (if not already tracked above)
-    const errorMsg = error instanceof Error ? error.message : "Unknown error";
-    if (!errorMsg.includes("Failed to generate image")) {
-      await trackAIUsage({
-        type: "image_generation",
-        model,
-        size,
+        model: "FLUX.1-schnell",
+        size: "1792x1024",
         cost: 0,
         success: false,
         errorMsg,
@@ -273,6 +304,41 @@ Style requirements:
         source,
       });
     }
-    throw error;
   }
+
+  // Fallback to DALL-E 3
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      return await generateWithDALLE(imagePrompt, { source, postId });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+
+      // Track the failure
+      await trackAIUsage({
+        type: "image_generation",
+        model: "dall-e-3",
+        size: "1792x1024",
+        cost: 0,
+        success: false,
+        errorMsg,
+        postId,
+        source,
+      });
+
+      throw error;
+    }
+  }
+
+  // No API keys configured
+  const error = "No image generation API configured (need TOGETHER_API_KEY or OPENAI_API_KEY)";
+  await trackAIUsage({
+    type: "image_generation",
+    model: "none",
+    cost: 0,
+    success: false,
+    errorMsg: error,
+    postId,
+    source,
+  });
+  throw new Error(error);
 }
