@@ -48,13 +48,13 @@ export function HeroCard({
         isLarge ? "h-[500px]" : "h-[120px]"
       }`}
     >
-      {/* Background Image */}
-      <div className="absolute inset-0 bg-gray-800">
+      {/* Background with gradient fill for letterboxing */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900">
         <Image
           src={imageUrl || PLACEHOLDER_IMAGE}
           alt={title}
           fill
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          className="object-contain transition-transform duration-300 group-hover:scale-105"
           sizes={isLarge ? "(max-width: 768px) 100vw, 50vw" : "25vw"}
           priority={isLarge}
         />
