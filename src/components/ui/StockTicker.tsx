@@ -104,8 +104,11 @@ export function StockTicker() {
   );
 
   return (
-    <div
-      className="bg-lime-500 text-gray-900 py-[0.425rem] overflow-hidden"
+    <a
+      href="https://finance.yahoo.com/"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block bg-lime-500 text-gray-900 py-[0.425rem] overflow-hidden cursor-pointer"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -114,6 +117,6 @@ export function StockTicker() {
       >
         {tickerContent}
       </div>
-    </div>
+    </a>
   );
 }
