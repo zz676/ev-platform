@@ -7,7 +7,7 @@ import {
   ArrowLeft,
   ExternalLink,
   Share2,
-  TrendingUp,
+  Sparkles,
   Calendar,
   User,
   Hash,
@@ -61,14 +61,8 @@ function formatDate(date: Date): string {
   });
 }
 
-function getImpactLevel(score: number): {
-  label: string;
-  color: string;
-  key: "highImpact" | "mediumImpact" | "lowImpact";
-} {
-  if (score >= 70) return { label: "HIGH", color: "text-ev-green-600", key: "highImpact" };
-  if (score >= 40) return { label: "MEDIUM", color: "text-amber-600", key: "mediumImpact" };
-  return { label: "LOW", color: "text-gray-500", key: "lowImpact" };
+function isImportantArticle(score: number): boolean {
+  return score >= 90;
 }
 
 export function ArticleContent({
@@ -97,7 +91,7 @@ export function ArticleContent({
 
   const title = contentLanguage === "zh" ? originalTitle : translatedTitle;
   const content = contentLanguage === "zh" ? originalContent : translatedContent;
-  const impact = getImpactLevel(relevanceScore);
+  const isImportant = isImportantArticle(relevanceScore);
 
   return (
     <div className="flex gap-6 p-6">
@@ -131,13 +125,11 @@ export function ArticleContent({
               <span>{translations.published}:</span>
               <span className="text-gray-700">{formatDate(sourceDate)}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-gray-500">
-              <TrendingUp className="h-4 w-4" />
-              <span>{translations.impact}:</span>
-              <span className={cn("font-medium", impact.color)}>
-                {translations[impact.key]}
-              </span>
-            </div>
+            {isImportant && (
+              <div className="flex items-center gap-1.5 text-amber-500">
+                <Sparkles className="h-4 w-4" />
+              </div>
+            )}
           </div>
 
           {/* Header */}

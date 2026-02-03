@@ -365,6 +365,7 @@ export default function AdminPage() {
         isLoading={isLoading}
         maxXAttempts={maxXAttempts}
       />
+
     </div>
   );
 }

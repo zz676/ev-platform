@@ -67,7 +67,7 @@ export default async function Home({
       // Posts from last 48h with score >= 90
       prisma.post.findFirst({
         where: {
-          status: { not: PostStatus.REJECTED },
+          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
           createdAt: { gte: fortyEightHoursAgo },
           relevanceScore: { gte: 90 },
         },
@@ -77,7 +77,7 @@ export default async function Home({
       // Best from last 48h (any score)
       prisma.post.findFirst({
         where: {
-          status: { not: PostStatus.REJECTED },
+          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
           createdAt: { gte: fortyEightHoursAgo },
         },
         orderBy: { relevanceScore: "desc" },
@@ -86,7 +86,7 @@ export default async function Home({
       // Best from last 7 days
       prisma.post.findFirst({
         where: {
-          status: { not: PostStatus.REJECTED },
+          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
           createdAt: { gte: sevenDaysAgo },
         },
         orderBy: { relevanceScore: "desc" },
@@ -94,7 +94,7 @@ export default async function Home({
       }),
       prisma.post.count({
         where: {
-          status: { not: PostStatus.REJECTED },
+          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
         },
       }),
     ]);
@@ -119,7 +119,7 @@ export default async function Home({
     // Fetch pool for other sections (excluding featured), sorted by score
     poolPosts = await prisma.post.findMany({
       where: {
-        status: { not: PostStatus.REJECTED },
+        status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
         createdAt: { gte: sevenDaysAgo },
         ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
       },
@@ -132,7 +132,7 @@ export default async function Home({
     if (poolPosts.length < 10) {
       poolPosts = await prisma.post.findMany({
         where: {
-          status: { not: PostStatus.REJECTED },
+          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
           createdAt: { gte: oneMonthAgo },
           ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
         },

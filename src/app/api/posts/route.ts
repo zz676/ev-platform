@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
     if (status) {
       where.status = status;
     } else {
-      // Default to showing all posts except rejected ones
-      where.status = { not: PostStatus.REJECTED };
+      // Default to showing only approved/published posts
+      where.status = { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] };
     }
 
     if (source) {
