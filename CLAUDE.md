@@ -71,6 +71,17 @@ curl -s -H "Authorization: token ${TOKEN}" \
   "https://api.github.com/repos/zz676/ev-platform/pulls?state=open&head=zz676:<branch-name>"
 ```
 
+## Documentation
+After completing PRs, update related documentation in `/docs` if necessary:
+- If related docs exist under `/docs`, update them to reflect the changes
+- If no related docs exist, create one in the appropriate subfolder
+- If no appropriate subfolder exists, create one under `/docs`
+
+Current structure:
+- `/docs/design/` - Architecture and design decisions
+- `/docs/features/` - Feature specifications and implementations
+- `/docs/TODOs/` - Planned improvements
+
 ## Project Info
 - **Repo**: https://github.com/zz676/ev-platform
 - **Token file**: `~/.github-token-ev-platform`
