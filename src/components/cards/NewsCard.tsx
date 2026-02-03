@@ -2,9 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Share2, ExternalLink, Sparkles } from "lucide-react";
-import { CategoryBadge } from "@/components/ui/CategoryBadge";
-import { cn } from "@/lib/utils";
+import { Sparkles } from "lucide-react";
 
 interface NewsCardProps {
   id: string;
@@ -67,45 +65,18 @@ export function NewsCard({
       )}
 
       {/* Content */}
-      <div className="p-4">
-        {/* Category and time */}
-        <div className="flex items-center gap-2 mb-2">
-          <CategoryBadge category={category} />
+      <div className="pt-2 px-4 pb-4">
+        {/* Date */}
+        <div className="flex justify-end mb-2">
           <span className="text-xs text-gray-500">
             {formatRelativeTime(timestamp)}
           </span>
         </div>
 
         {/* Title */}
-        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-ev-green-600 transition-colors">
+        <h3 className="text-[0.9rem] font-semibold text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors">
           <Link href={`/${locale}/post/${id}`}>{title}</Link>
         </h3>
-
-        {/* Summary */}
-        <p className="text-sm text-gray-600 line-clamp-2 mb-3">{summary}</p>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <span className="text-xs text-gray-500">Source: {source}</span>
-          <div className="flex items-center gap-2">
-            <button
-              className="p-1.5 rounded hover:bg-gray-100 transition-colors"
-              aria-label="Share"
-            >
-              <Share2 className="h-4 w-4 text-gray-400" />
-            </button>
-            <Link
-              href={`/${locale}/post/${id}`}
-              className={cn(
-                "flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded",
-                "bg-ev-green-50 text-ev-green-700 hover:bg-ev-green-100 transition-colors"
-              )}
-            >
-              READ FULL
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          </div>
-        </div>
       </div>
     </article>
   );
