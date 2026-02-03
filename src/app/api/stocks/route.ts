@@ -6,14 +6,28 @@ interface StockData {
   price: number;
   change: number;
   changePercent: number;
+  category: "ev" | "traditional";
 }
 
-// Stock symbols for EV companies
+// Stock symbols for EV companies and traditional automakers
 const STOCKS = [
-  { symbol: "1211.HK", name: "BYD" },
-  { symbol: "LI", name: "Li Auto" },
-  { symbol: "NIO", name: "NIO" },
-  { symbol: "XPEV", name: "XPeng" },
+  // Top 10 EV Companies
+  { symbol: "TSLA", name: "Tesla", category: "ev" as const },
+  { symbol: "1211.HK", name: "BYD", category: "ev" as const },
+  { symbol: "LI", name: "Li Auto", category: "ev" as const },
+  { symbol: "NIO", name: "NIO", category: "ev" as const },
+  { symbol: "XPEV", name: "XPeng", category: "ev" as const },
+  { symbol: "RIVN", name: "Rivian", category: "ev" as const },
+  { symbol: "LCID", name: "Lucid", category: "ev" as const },
+  { symbol: "PSNY", name: "Polestar", category: "ev" as const },
+  { symbol: "VFS", name: "VinFast", category: "ev" as const },
+  { symbol: "ZEEKR", name: "Zeekr", category: "ev" as const },
+  // Top 5 Traditional Automakers
+  { symbol: "TM", name: "Toyota", category: "traditional" as const },
+  { symbol: "VWAGY", name: "Volkswagen", category: "traditional" as const },
+  { symbol: "GM", name: "General Motors", category: "traditional" as const },
+  { symbol: "F", name: "Ford", category: "traditional" as const },
+  { symbol: "STLA", name: "Stellantis", category: "traditional" as const },
 ];
 
 // Cache for stock data (5 minutes TTL)
@@ -39,29 +53,32 @@ async function fetchStockData(): Promise<StockData[]> {
       (m) => m.default || m
     );
 
-    const results: StockData[] = [];
-
-    for (const stock of STOCKS) {
-      try {
-        const quote = (await yahooFinance.quote(stock.symbol)) as YahooQuote;
-        results.push({
-          symbol: stock.symbol,
-          name: stock.name,
-          price: quote?.regularMarketPrice || 0,
-          change: quote?.regularMarketChange || 0,
-          changePercent: quote?.regularMarketChangePercent || 0,
-        });
-      } catch {
-        // If individual stock fails, add with zeros
-        results.push({
-          symbol: stock.symbol,
-          name: stock.name,
-          price: 0,
-          change: 0,
-          changePercent: 0,
-        });
-      }
-    }
+    // Fetch all stocks in parallel for better performance
+    const results = await Promise.all(
+      STOCKS.map(async (stock) => {
+        try {
+          const quote = (await yahooFinance.quote(stock.symbol)) as YahooQuote;
+          return {
+            symbol: stock.symbol,
+            name: stock.name,
+            price: quote?.regularMarketPrice || 0,
+            change: quote?.regularMarketChange || 0,
+            changePercent: quote?.regularMarketChangePercent || 0,
+            category: stock.category,
+          };
+        } catch {
+          // If individual stock fails, add with zeros
+          return {
+            symbol: stock.symbol,
+            name: stock.name,
+            price: 0,
+            change: 0,
+            changePercent: 0,
+            category: stock.category,
+          };
+        }
+      })
+    );
 
     // Update cache
     cachedData = results;
@@ -81,6 +98,7 @@ async function fetchStockData(): Promise<StockData[]> {
       price: 0,
       change: 0,
       changePercent: 0,
+      category: stock.category,
     }));
   }
 }

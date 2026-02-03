@@ -79,6 +79,7 @@ const config: Config = {
         "spin-slow": "spin 3s linear infinite",
         "glow-pulse": "glow-pulse 2s ease-in-out infinite",
         "shimmer": "shimmer 2s ease-in-out infinite",
+        "marquee": "marquee 30s linear infinite",
       },
       keyframes: {
         "glow-pulse": {
@@ -97,6 +98,14 @@ const config: Config = {
           },
           "100%": {
             backgroundPosition: "-200% 0",
+          },
+        },
+        "marquee": {
+          "0%": {
+            transform: "translateX(0)",
+          },
+          "100%": {
+            transform: "translateX(-50%)",
           },
         },
       },
