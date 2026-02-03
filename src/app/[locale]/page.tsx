@@ -124,7 +124,7 @@ export default async function Home({
         ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
       },
       orderBy: { relevanceScore: "desc" },
-      take: 20,
+      take: 22,
       select: postSelect,
     });
 
@@ -137,7 +137,7 @@ export default async function Home({
           ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
         },
         orderBy: { relevanceScore: "desc" },
-        take: 20,
+        take: 22,
         select: postSelect,
       });
     }
@@ -270,7 +270,7 @@ export default async function Home({
               locale={locale}
               sectionTitle={locale === "zh" ? "更多新闻" : "More News"}
               totalInitialPosts={poolPosts.length + (featuredPost ? 1 : 0)}
-              initialHasMore={totalPosts > 20}
+              initialHasMore={totalPosts > 22}
             />
           )}
         </div>
