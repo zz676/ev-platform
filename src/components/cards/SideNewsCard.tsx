@@ -50,7 +50,7 @@ export function SideNewsCard({
           src={imageUrl || PLACEHOLDER_IMAGE}
           alt={title}
           fill
-          className="object-contain"
+          className="object-cover"
           sizes="250px"
         />
       </div>

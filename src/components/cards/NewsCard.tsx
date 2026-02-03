@@ -53,7 +53,7 @@ export function NewsCard({
           src={imageUrl || PLACEHOLDER_IMAGE}
           alt={title}
           fill
-          className="object-contain"
+          className="object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         {isImportant && (
@@ -64,18 +64,18 @@ export function NewsCard({
       </div>
 
       {/* Content */}
-      <div className="pt-2 px-4 pb-4">
-        {/* Date */}
-        <div className="flex justify-end mb-2">
-          <span className="text-xs text-gray-500">
-            {formatRelativeTime(timestamp)}
-          </span>
-        </div>
-
+      <div className="pt-3 px-4 pb-4">
         {/* Title */}
         <h3 className="text-[0.9rem] font-semibold text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors">
           <Link href={`/${locale}/post/${id}`}>{title}</Link>
         </h3>
+
+        {/* Date */}
+        <div className="flex justify-end mt-2">
+          <span className="text-xs text-gray-500">
+            {formatRelativeTime(timestamp)}
+          </span>
+        </div>
       </div>
     </article>
   );

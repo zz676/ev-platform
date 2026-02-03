@@ -91,7 +91,7 @@ export function MoreNewsSection({
         <h2 className="text-lg font-bold text-gray-900">{sectionTitle}</h2>
         <div className="flex-1 h-px bg-gray-200" />
       </div>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
         {posts.map((post) => (
           <NewsCard
             key={post.id}

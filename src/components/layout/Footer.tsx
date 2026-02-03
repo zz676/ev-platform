@@ -75,7 +75,6 @@ export function Footer() {
           {/* Right - Navigation */}
           <div className="flex items-center gap-6 text-sm">
             <div className="flex items-center gap-4">
-              <Link href={`/${locale}`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("navNews")}</Link>
               <Link href={`/${locale}/deliveries`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("navDeliveries")}</Link>
               <Link href={`/${locale}/tech`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("navTech")}</Link>
             </div>
@@ -83,11 +82,11 @@ export function Footer() {
             <div className="flex items-center gap-4">
               <Link href={`/${locale}/terms`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("terms")}</Link>
               <Link href={`/${locale}/privacy`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("privacy")}</Link>
-              <Link href={`/${locale}/contact`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("contact")}</Link>
+              <a href="mailto:ev.juice.info@gmail.com" className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("contact")}</a>
             </div>
             <span className="text-ev-green-300">|</span>
             <a
-              href="https://x.com/evjuice"
+              href="https://x.com/the_ev_juice"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-600 hover:text-ev-green-600 transition-colors"

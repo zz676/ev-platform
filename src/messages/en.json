@@ -140,5 +140,9 @@
     "noResults": "No results found",
     "tryDifferent": "Try using different keywords",
     "enterQuery": "Enter a search term to find articles"
+  },
+  "UnderConstruction": {
+    "message": "Getting Juiced... Be sure to check back later!",
+    "backToNews": "Back to News"
   }
 }

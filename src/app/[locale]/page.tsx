@@ -197,7 +197,7 @@ export default async function Home({
       {featuredPost || poolPosts.length > 0 ? (
         <div className="space-y-4">
           {/* Featured Section - USAToday Style 3-Column Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[250px_1fr_280px] gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[250px_1fr_280px] gap-4">
             {/* Left Column - 2 News Cards (stacked) */}
             <div className="flex flex-col justify-between gap-4 order-2 md:order-1 lg:order-1 h-[500px]">
               {leftColumnPosts.map((post) => (
@@ -232,21 +232,21 @@ export default async function Home({
             </div>
 
             {/* Right Column - Top Headlines (with vertical divider) */}
-            <div className="order-3 border-l-0 lg:border-l lg:border-ev-green-200 lg:pl-6">
+            <div className="order-3 border-l-0 lg:border-l lg:border-ev-green-200 lg:pl-4">
               <h2 className="text-lg font-bold text-gray-900 mb-4">
                 {locale === "zh" ? "热门新闻" : "Top Headlines"}
               </h2>
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 {topHeadlines.map((post, index) => (
                   <li key={post.id}>
                     <Link
                       href={`/${locale}/post/${post.id}`}
-                      className="flex items-start gap-3 p-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors group"
+                      className="flex items-start gap-3 py-1.5 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors group"
                     >
                       <span className="flex-shrink-0 w-6 h-6 bg-ev-green-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                         {index + 1}
                       </span>
-                      <h3 className="text-[0.79rem] font-medium text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-snug pt-0.5">
+                      <h3 className="text-[0.71rem] font-medium text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-snug pt-0.5">
                         {getTitle(post) || "Untitled"}
                       </h3>
                     </Link>
