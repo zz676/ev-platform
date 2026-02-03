@@ -39,10 +39,9 @@
     "account": "账户",
     "subscribe": "订阅",
     "nav": {
-      "news": "新闻",
-      "deliveries": "销量",
+      "market": "市场",
       "tech": "科技",
-      "markets": "市场",
+      "tesla": "特斯拉",
       "policy": "政策"
     }
   },
@@ -124,7 +123,7 @@
     "subscribeError": "出错了，请重试。",
     "navigate": "导航",
     "navNews": "新闻",
-    "navDeliveries": "销量",
+    "navTesla": "特斯拉",
     "navTech": "科技",
     "company": "公司",
     "terms": "条款",

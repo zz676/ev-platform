@@ -76,7 +76,7 @@ export function Footer() {
           {/* Right - Navigation */}
           <div className="flex items-center gap-6 text-sm">
             <div className="flex items-center gap-4">
-              <Link href={`/${locale}/deliveries`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("navDeliveries")}</Link>
+              <Link href={`/${locale}/tesla`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("navTesla")}</Link>
               <Link href={`/${locale}/tech`} className="text-gray-600 hover:text-ev-green-600 transition-colors">{t("navTech")}</Link>
             </div>
             <span className="text-ev-green-300">|</span>
