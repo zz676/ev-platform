@@ -10,7 +10,8 @@
  *
  * Environment variables required:
  * - DATABASE_URL
- * - OPENAI_API_KEY
+ * - TOGETHER_API_KEY (primary - FLUX.1, cheaper)
+ * - OPENAI_API_KEY (fallback - DALL-E 3)
  * - BLOB_READ_WRITE_TOKEN
  */
 
@@ -24,8 +25,9 @@ import OpenAI from "openai";
 
 const prisma = new PrismaClient();
 
-// DALL-E cost for 1792x1024 standard quality
-const DALLE_COST = 0.08;
+// Image generation costs
+const FLUX_COST = 0.003; // Together AI FLUX.1-schnell
+const DALLE_COST = 0.08; // DALL-E 3 1792x1024 standard
 
 // Minimum acceptable aspect ratio (width/height)
 const MIN_RATIO = 1.3;
@@ -149,30 +151,108 @@ async function trackAIUsage(params: {
 }
 
 /**
- * Generate AI image using DALL-E
+ * Generate AI image using Together AI (FLUX.1)
+ */
+async function generateWithTogetherAI(
+  prompt: string,
+  postId: string
+): Promise<string> {
+  const togetherKey = process.env.TOGETHER_API_KEY;
+  if (!togetherKey) {
+    throw new Error("TOGETHER_API_KEY not configured");
+  }
+
+  const response = await fetch("https://api.together.xyz/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${togetherKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "black-forest-labs/FLUX.1-schnell",
+      prompt,
+      width: 1792,
+      height: 1024,
+      n: 1,
+      response_format: "url",
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Together AI error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const imageUrl = data.data?.[0]?.url;
+
+  if (!imageUrl) {
+    throw new Error("Together AI: no image URL returned");
+  }
+
+  // Track successful generation
+  await trackAIUsage({
+    type: "image_generation",
+    model: "FLUX.1-schnell",
+    size: "1792x1024",
+    cost: FLUX_COST,
+    success: true,
+    postId,
+    source: "migration_script",
+  });
+
+  return imageUrl;
+}
+
+/**
+ * Generate AI image using DALL-E 3 (fallback)
+ */
+async function generateWithDALLE(
+  prompt: string,
+  postId: string
+): Promise<string> {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    throw new Error("OPENAI_API_KEY not configured");
+  }
+
+  const openai = new OpenAI({ apiKey: openaiKey });
+
+  const response = await openai.images.generate({
+    model: "dall-e-3",
+    prompt,
+    n: 1,
+    size: "1792x1024",
+    quality: "standard",
+  });
+
+  const imageUrl = response.data?.[0]?.url;
+  if (!imageUrl) {
+    throw new Error("DALL-E: no image URL returned");
+  }
+
+  // Track successful generation
+  await trackAIUsage({
+    type: "image_generation",
+    model: "dall-e-3",
+    size: "1792x1024",
+    cost: DALLE_COST,
+    success: true,
+    postId,
+    source: "migration_script",
+  });
+
+  return imageUrl;
+}
+
+/**
+ * Generate AI image - tries Together AI (FLUX.1) first, falls back to DALL-E 3
  */
 async function generateImage(
   title: string,
   summary: string,
   postId: string
 ): Promise<string> {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) {
-    await trackAIUsage({
-      type: "image_generation",
-      model: "dall-e-3",
-      size: "1792x1024",
-      cost: 0,
-      success: false,
-      errorMsg: "OPENAI_API_KEY required",
-      postId,
-      source: "migration_script",
-    });
-    throw new Error("OPENAI_API_KEY required");
-  }
-
-  const openai = new OpenAI({ apiKey: openaiKey });
-
   const imagePrompt = `A professional, modern photograph style image for an electric vehicle news article.
 Topic: ${title}
 Context: ${summary.slice(0, 200)}
@@ -185,45 +265,38 @@ Style requirements:
 - No text or logos in the image
 - High quality, suitable for social media`;
 
-  try {
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: imagePrompt,
-      n: 1,
-      size: "1792x1024",
-      quality: "standard",
-    });
+  // Try Together AI (FLUX.1) first - 96% cheaper
+  if (process.env.TOGETHER_API_KEY) {
+    try {
+      const url = await generateWithTogetherAI(imagePrompt, postId);
+      console.log(`  Using FLUX.1 (cost: $${FLUX_COST})`);
+      return url;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.warn(`  Together AI failed: ${errorMsg}, trying DALL-E...`);
 
-    const imageUrl = response.data?.[0]?.url;
-    if (!imageUrl) {
       await trackAIUsage({
         type: "image_generation",
-        model: "dall-e-3",
+        model: "FLUX.1-schnell",
         size: "1792x1024",
         cost: 0,
         success: false,
-        errorMsg: "No image URL returned from DALL-E",
+        errorMsg,
         postId,
         source: "migration_script",
       });
-      throw new Error("No image URL returned from DALL-E");
     }
+  }
 
-    // Track successful generation
-    await trackAIUsage({
-      type: "image_generation",
-      model: "dall-e-3",
-      size: "1792x1024",
-      cost: DALLE_COST,
-      success: true,
-      postId,
-      source: "migration_script",
-    });
+  // Fallback to DALL-E 3
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const url = await generateWithDALLE(imagePrompt, postId);
+      console.log(`  Using DALL-E 3 (cost: $${DALLE_COST})`);
+      return url;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
 
-    return imageUrl;
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : "Unknown error";
-    if (!errorMsg.includes("No image URL")) {
       await trackAIUsage({
         type: "image_generation",
         model: "dall-e-3",
@@ -234,9 +307,23 @@ Style requirements:
         postId,
         source: "migration_script",
       });
+
+      throw error;
     }
-    throw error;
   }
+
+  // No API keys configured
+  const error = "No image generation API configured (need TOGETHER_API_KEY or OPENAI_API_KEY)";
+  await trackAIUsage({
+    type: "image_generation",
+    model: "none",
+    cost: 0,
+    success: false,
+    errorMsg: error,
+    postId,
+    source: "migration_script",
+  });
+  throw new Error(error);
 }
 
 /**
