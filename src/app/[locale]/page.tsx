@@ -142,6 +142,21 @@ export default async function Home({
         select: postSelect,
       });
     }
+
+    // Deduplicate posts by title (keep first occurrence which has highest score)
+    const seenTitles = new Set<string>();
+    if (featuredPost) {
+      const featuredTitle = featuredPost.translatedTitle || featuredPost.originalTitle;
+      if (featuredTitle) seenTitles.add(featuredTitle.toLowerCase().trim());
+    }
+    poolPosts = poolPosts.filter((post) => {
+      const title = post.translatedTitle || post.originalTitle;
+      if (!title) return true;
+      const normalizedTitle = title.toLowerCase().trim();
+      if (seenTitles.has(normalizedTitle)) return false;
+      seenTitles.add(normalizedTitle);
+      return true;
+    });
   } catch {
     // Database unavailable - show empty state
     console.error("Failed to fetch posts from database");
