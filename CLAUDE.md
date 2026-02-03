@@ -7,7 +7,13 @@
 - Never ask for confirmation before running commands - execute directly
 
 ## Git Workflow
-When user says "Commit", "Commit and merge", or similar, execute the **full flow** without asking for any permission or confirmation:
+
+### Command Meanings
+- **"commit"** = Commit ONLY (no push, no PR)
+- **"merge"** or **"push"** = Full flow: commit → create PR (if needed) → push → merge PR
+
+### Full Flow (for "merge" or "push")
+Execute without asking for any permission or confirmation:
 
 1. **ALWAYS check PR status first** before pushing:
    ```bash
@@ -33,7 +39,7 @@ When user says "Commit", "Commit and merge", or similar, execute the **full flow
    - `git commit` with descriptive message
    - Push new branch to remote
    - Create new PR via GitHub API
-5. **If user said "merge"** (e.g., "commit and merge"):
+5. **Merge the PR** (always for "merge"/"push" commands):
    - Merge the PR via GitHub API (squash merge)
    - Switch back to `main` and pull latest
    - Delete the feature branch locally
