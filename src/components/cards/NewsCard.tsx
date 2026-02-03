@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
+import { PLACEHOLDER_IMAGE } from "@/lib/constants";
 
 interface NewsCardProps {
   id: string;
@@ -47,22 +48,20 @@ export function NewsCard({
   return (
     <article className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
       {/* Image */}
-      {imageUrl && (
-        <div className="relative h-40 bg-gray-100">
-          <Image
-            src={imageUrl}
-            alt={title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          />
-          {isImportant && (
-            <div className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-sm">
-              <Sparkles className="h-4 w-4 text-amber-500" />
-            </div>
-          )}
-        </div>
-      )}
+      <div className="relative h-40 bg-gradient-to-br from-gray-100 to-gray-200">
+        <Image
+          src={imageUrl || PLACEHOLDER_IMAGE}
+          alt={title}
+          fill
+          className="object-contain"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        />
+        {isImportant && (
+          <div className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-sm">
+            <Sparkles className="h-4 w-4 text-amber-500" />
+          </div>
+        )}
+      </div>
 
       {/* Content */}
       <div className="pt-2 px-4 pb-4">

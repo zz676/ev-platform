@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { PLACEHOLDER_IMAGE } from "@/lib/constants";
 
 interface SideNewsCardProps {
   id: string;
@@ -44,32 +45,14 @@ export function SideNewsCard({
       className="block bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group"
     >
       {/* Image */}
-      <div className="relative h-[120px] bg-gray-100">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={title}
-            fill
-            className="object-cover"
-            sizes="250px"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-            <svg
-              className="w-10 h-10 text-gray-300"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-          </div>
-        )}
+      <div className="relative h-[120px] bg-gradient-to-br from-gray-100 to-gray-200">
+        <Image
+          src={imageUrl || PLACEHOLDER_IMAGE}
+          alt={title}
+          fill
+          className="object-contain"
+          sizes="250px"
+        />
       </div>
 
       {/* Content */}

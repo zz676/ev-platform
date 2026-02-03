@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ImageIcon } from "lucide-react";
+import { PLACEHOLDER_IMAGE } from "@/lib/constants";
 
 interface TopStoryItemProps {
   id: string;
@@ -56,22 +56,19 @@ export function TopStoryItem({
           <span>{source}</span>
           <span>·</span>
           <span>{formatRelativeTime(timestamp)}</span>
-          {imageUrl && <ImageIcon className="h-3 w-3 ml-1 text-gray-400" />}
         </div>
       </div>
 
       {/* Thumbnail */}
-      {imageUrl && (
-        <div className="flex-shrink-0 w-16 h-16 relative rounded-md overflow-hidden bg-gray-100">
-          <Image
-            src={imageUrl}
-            alt={title}
-            fill
-            className="object-cover"
-            sizes="64px"
-          />
-        </div>
-      )}
+      <div className="flex-shrink-0 w-16 h-16 relative rounded-md overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+        <Image
+          src={imageUrl || PLACEHOLDER_IMAGE}
+          alt={title}
+          fill
+          className="object-contain"
+          sizes="64px"
+        />
+      </div>
     </Link>
   );
 }
