@@ -167,9 +167,9 @@ export const POSTING_CONFIG = {
   DIGEST_INCLUDE_IMAGE: true,
   VIP_CHECK_HOURS: [6, 12, 15, 18, 22],
   DIGEST_HOURS: [13, 22],
-  ADMIN_EMAILS: ["admin@evjuice.com", ...],
-  SITE_URL: "https://chinaevnews.com",
-  SITE_HASHTAGS: ["#ChinaEV", "#EVNews"],
+  ADMIN_EMAILS: ["zhishengzhou1984@gmail.com","zhisheng.zhou003@gmail.com","ev.juice.info@gmail.com","admin@evjuice.com"],
+  SITE_URL: "https://evjuice.net",
+  SITE_HASHTAGS: ["#ChinaEV", "#EVNews", "#EVJuice", "#EV", "#ElectricVehicle"],
 };
 ```
 
@@ -235,7 +235,7 @@ model DigestContent {
 Located at `/src/lib/config/prompts.ts`:
 
 ```
-You are a social media editor for China EV News (@chinaevnews).
+You are a social media editor for EV Juice (@the_ev_juice).
 Summarize these EV news items into an engaging tweet.
 
 Rules:
@@ -253,8 +253,8 @@ Rules:
 while XPeng celebrated a 15% delivery boost. Li Auto eyes
 Europe and BYD commits $2B to new production.
 
-🔗 chinaevnews.com
-#ChinaEV #EVNews
+🔗 evjuice.net
+#ChinaEV #EVNews #EVJuice #EV #ElectricVehicle #Tesla
 ```
 
 ---

@@ -183,7 +183,7 @@ export function formatTweetContent(post: {
   source: string;
   sourceUrl: string;
 }): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://chinaevnews.com";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://evjuice.net";
 
   const categoryEmojis: Record<string, string> = {
     BYD: "🔋",

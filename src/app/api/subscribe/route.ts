@@ -107,12 +107,12 @@ async function sendVerificationEmail(email: string, token: string) {
   }
 
   await resend.emails.send({
-    from: "China EV News <noreply@chinaevnews.com>",
+    from: "EV Juice <noreply@evjuice.net>",
     to: email,
-    subject: "Verify your subscription to China EV News",
+    subject: "Verify your subscription to EV Juice",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #6366f1;">Welcome to China EV News!</h1>
+        <h1 style="color: #6366f1;">Welcome to EV Juice!</h1>
         <p>Thank you for subscribing to our newsletter.</p>
         <p>Please click the button below to verify your email address:</p>
         <a href="${verifyUrl}"

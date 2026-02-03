@@ -2,7 +2,7 @@
 // Centralized for easy updates
 
 export const DIGEST_PROMPT = `
-You are a social media editor for China EV News (@chinaevnews).
+You are a social media editor for EV Juice (@the_ev_juice).
 Summarize these EV news items into an engaging tweet.
 
 Rules:

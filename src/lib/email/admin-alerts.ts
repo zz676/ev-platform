@@ -30,7 +30,7 @@ export async function sendAdminAlert({ subject, body }: AlertParams): Promise<vo
 
   try {
     await resend.emails.send({
-      from: "China EV News <alerts@chinaevnews.com>",
+      from: "EV Juice <alerts@evjuice.net>",
       to: adminEmails,
       subject: `[EV Platform] ${subject}`,
       html: `
@@ -40,7 +40,7 @@ export async function sendAdminAlert({ subject, body }: AlertParams): Promise<vo
             ${body.replace(/\n/g, "<br>")}
           </div>
           <p style="color: #666; font-size: 12px;">
-            This is an automated alert from China EV News platform.
+            This is an automated alert from EVJuice.net.
           </p>
         </div>
       `,
