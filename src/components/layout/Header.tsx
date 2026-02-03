@@ -26,11 +26,11 @@ export function Header() {
 
   // Navigation items
   const navItems = [
-    { href: `/${locale}`, label: t("nav.news"), key: "news" },
-    { href: `/${locale}/deliveries`, label: t("nav.deliveries"), key: "deliveries" },
-    { href: `/${locale}/tech`, label: t("nav.tech"), key: "tech" },
-    { href: `/${locale}/markets`, label: t("nav.markets"), key: "markets" },
-    { href: `/${locale}/policy`, label: t("nav.policy"), key: "policy" },
+    { href: `/${locale}`, label: t("nav.news"), key: "news", enabled: true },
+    { href: `/${locale}/deliveries`, label: t("nav.deliveries"), key: "deliveries", enabled: true },
+    { href: `/${locale}/tech`, label: t("nav.tech"), key: "tech", enabled: true },
+    { href: `/${locale}/markets`, label: t("nav.markets"), key: "markets", enabled: true },
+    { href: `/${locale}/policy`, label: t("nav.policy"), key: "policy", enabled: true },
   ];
 
   // Check if a nav item is active
@@ -59,19 +59,28 @@ export function Header() {
 
         {/* Navigation - Center */}
         <nav className="hidden md:flex items-center gap-6">
-          {navItems.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={`text-sm font-medium transition-colors ${
-                isActive(item.href, item.key)
-                  ? "text-ev-green-600 font-semibold"
-                  : "text-gray-600 hover:text-ev-green-600"
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) =>
+            item.enabled ? (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={`text-sm font-medium transition-colors ${
+                  isActive(item.href, item.key)
+                    ? "text-ev-green-600 font-semibold"
+                    : "text-gray-600 hover:text-ev-green-600"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <span
+                key={item.key}
+                className="text-sm font-medium text-gray-600 cursor-default"
+              >
+                {item.label}
+              </span>
+            )
+          )}
           {/* Subscribe Link */}
           <button
             onClick={() => document.getElementById('subscribe')?.scrollIntoView({ behavior: 'smooth' })}

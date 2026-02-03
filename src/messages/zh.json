@@ -140,5 +140,9 @@
     "noResults": "未找到结果",
     "tryDifferent": "尝试使用其他关键词",
     "enterQuery": "输入关键词搜索文章"
+  },
+  "UnderConstruction": {
+    "message": "正在充电中... 记得回来看看！",
+    "backToNews": "返回新闻"
   }
 }
