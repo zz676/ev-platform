@@ -45,7 +45,7 @@ export function HeroCard({
     <Link
       href={`/${locale}/post/${id}`}
       className={`relative block overflow-hidden rounded-xl group ${
-        isLarge ? "h-[425px]" : "h-[120px]"
+        isLarge ? "h-[468px]" : "h-[120px]"
       }`}
     >
       {/* Background with gradient fill for letterboxing */}
