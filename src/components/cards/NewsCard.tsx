@@ -5,6 +5,21 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { PLACEHOLDER_IMAGE } from "@/lib/constants";
 
+// Brand logos mapping
+const brandLogos: Record<string, string> = {
+  NIO: "/images/brands/nio.svg",
+  XPENG: "/images/brands/xpeng.svg",
+  "LI AUTO": "/images/brands/li-auto.svg",
+  BYD: "/images/brands/byd.svg",
+  TESLA: "/images/brands/tesla.svg",
+};
+
+// Get brand logo from category
+function getBrandLogo(category: string): string | null {
+  const normalizedCategory = category.toUpperCase();
+  return brandLogos[normalizedCategory] || null;
+}
+
 interface NewsCardProps {
   id: string;
   title: string;
@@ -48,7 +63,7 @@ export function NewsCard({
   return (
     <article className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
       {/* Image */}
-      <div className="relative h-[100px] bg-gradient-to-br from-gray-100 to-gray-200">
+      <div className="relative h-[146px] bg-gradient-to-br from-gray-100 to-gray-200">
         <Image
           src={imageUrl || PLACEHOLDER_IMAGE}
           alt={title}
@@ -57,22 +72,33 @@ export function NewsCard({
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         {isImportant && (
-          <div className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-sm">
-            <Sparkles className="h-4 w-4 text-amber-500" />
+          <div className="absolute top-2 right-2 p-1 bg-lime-100/60 rounded-full">
+            <Sparkles className="h-3 w-3 text-lime-500" strokeWidth={3} />
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="pt-2 px-3 pb-2">
+      <div className="pt-[0.225rem] px-3 pb-[0.225rem]">
         {/* Title */}
-        <h3 className="text-[0.9rem] font-semibold text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors">
+        <h3 className="text-[0.81rem] leading-[1.275] text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors">
           <Link href={`/${locale}/post/${id}`}>{title}</Link>
         </h3>
 
-        {/* Date */}
-        <div className="flex justify-end mt-2">
-          <span className="text-xs text-gray-500">
+        {/* Source and Date */}
+        <div className="flex justify-between items-center">
+          {getBrandLogo(category) ? (
+            <Image
+              src={getBrandLogo(category)!}
+              alt={category}
+              width={40}
+              height={16}
+              className="h-4 w-auto object-contain"
+            />
+          ) : (
+            <span className="text-xs text-gray-400">{category}</span>
+          )}
+          <span className="text-xs text-gray-500 italic">
             {formatRelativeTime(timestamp)}
           </span>
         </div>

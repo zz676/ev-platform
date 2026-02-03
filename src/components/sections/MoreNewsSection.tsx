@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Newspaper } from "lucide-react";
 import { NewsCard } from "@/components/cards/NewsCard";
 
 type Post = {
@@ -18,7 +19,6 @@ type Post = {
 type MoreNewsSectionProps = {
   initialPosts: Post[];
   locale: string;
-  sectionTitle: string;
   totalInitialPosts: number; // Total posts loaded on initial page (e.g., 20)
   initialHasMore: boolean; // Whether there are more posts to load
 };
@@ -26,7 +26,6 @@ type MoreNewsSectionProps = {
 export function MoreNewsSection({
   initialPosts,
   locale,
-  sectionTitle,
   totalInitialPosts,
   initialHasMore,
 }: MoreNewsSectionProps) {
@@ -87,8 +86,8 @@ export function MoreNewsSection({
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-4">
-        <h2 className="text-lg font-bold text-gray-900">{sectionTitle}</h2>
+      <div className="flex items-center gap-3">
+        <Newspaper className="h-5 w-5 text-gray-400" />
         <div className="flex-1 h-px bg-gray-200" />
       </div>
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -109,7 +108,7 @@ export function MoreNewsSection({
         ))}
       </div>
       {hasMore && (
-        <div className="mt-6 flex justify-center">
+        <div className="mt-3 flex justify-center">
           <button
             onClick={loadMore}
             disabled={loading}
