@@ -27,5 +27,22 @@ export const POSTING_CONFIG = {
 
   // Site configuration
   SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || "https://evjuice.net",
-  SITE_HASHTAGS: ["#ChinaEV", "#EVNews", "#EVJuice"],
+  SITE_HASHTAGS: ["#ChinaEV", "#EVNews", "#EVJuice", "#EV", "#ElectricVehicle", "#CleanEnergy", "#AI"],
+
+  // Brand hashtags - extracted from content
+  BRAND_HASHTAGS: {
+    "BYD": "#BYD",
+    "NIO": "#NIO",
+    "XPeng": "#XPeng",
+    "XPENG": "#XPeng",
+    "Li Auto": "#LiAuto",
+    "LIXIANG": "#LiAuto",
+    "Tesla": "#Tesla",
+    "Zeekr": "#Zeekr",
+    "ZEEKR": "#Zeekr",
+    "Geely": "#Geely",
+    "CATL": "#CATL",
+    "Huawei": "#Huawei",
+    "Xiaomi": "#Xiaomi",
+  } as Record<string, string>,
 };
