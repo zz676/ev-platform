@@ -45,7 +45,7 @@ export function Footer() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           {/* Left - Stay Updated */}
           <div id="subscribe" className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <h3 className="text-gray-800 font-semibold">{t("stayUpdated")}</h3>
+            <h3 className="text-gray-500 font-semibold">{t("stayJuiced")}</h3>
             {status === "success" ? (
               <p className="text-sm text-ev-green-600 font-medium">{t("subscribeSuccess")}</p>
             ) : (
@@ -56,12 +56,13 @@ export function Footer() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t("emailPlaceholder")}
                   required
-                  className="px-3 py-1.5 text-sm bg-white border border-ev-green-200 rounded-md focus:outline-none focus:ring-1 focus:ring-ev-green-500 focus:border-transparent w-40 sm:w-48 focus:w-[11.5rem] sm:focus:w-[13.8rem] transition-all duration-200 text-gray-800 placeholder-gray-400"
+                  className="px-3 py-1.5 text-sm bg-white border border-ev-green-200 rounded-md focus:outline-none focus:ring-1 focus:ring-ev-green-500 focus:border-transparent w-32 sm:w-38 focus:w-64 sm:focus:w-76 transition-all duration-200 text-gray-800 placeholder-gray-400 placeholder:italic"
                 />
                 <button
                   type="submit"
                   disabled={status === "loading"}
-                  className="px-4 py-1.5 text-sm font-medium text-white bg-ev-green-500 hover:bg-ev-green-600 rounded-md transition-colors disabled:opacity-50"
+                  className="px-4 py-[0.4125rem] text-[0.825rem] font-medium text-white rounded-md transition-colors disabled:opacity-50 hover:opacity-80 italic"
+                  style={{ backgroundColor: 'rgb(81, 191, 36)' }}
                 >
                   {t("subscribeButton")}
                 </button>
