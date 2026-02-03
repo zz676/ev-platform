@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { CategoryBadge } from "@/components/ui/CategoryBadge";
 
 interface RelatedArticle {
   id: string;
@@ -35,23 +34,20 @@ export function RelatedArticles({
   if (articles.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
+    <div className="bg-white rounded-xl border border-gray-200 py-4 px-[0.85rem]">
       <h3 className="font-semibold text-gray-900 mb-4">{title}</h3>
-      <div className="space-y-4">
-        {articles.map((article) => (
+      <div className="divide-y divide-lime-200">
+        {articles.map((article, index) => (
           <Link
             key={article.id}
             href={`/${locale}/post/${article.id}`}
-            className="block group"
+            className={`block group ${index > 0 ? 'pt-[0.85rem]' : ''} ${index < articles.length - 1 ? 'pb-[0.85rem]' : ''}`}
           >
-            <div className="flex items-start gap-2 mb-1">
-              <CategoryBadge category={article.category} className="text-[10px] px-1.5" />
-              <span className="text-xs text-gray-500">
-                {formatRelativeTime(article.timestamp)}
-              </span>
-            </div>
-            <p className="text-sm text-gray-700 line-clamp-2 group-hover:text-ev-green-600 transition-colors">
+            <p className="text-sm text-gray-700 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-snug">
               {article.title}
+            </p>
+            <p className="text-xs text-gray-500 italic text-left mt-1">
+              {formatRelativeTime(article.timestamp)}
             </p>
           </Link>
         ))}
