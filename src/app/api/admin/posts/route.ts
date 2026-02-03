@@ -103,8 +103,23 @@ export async function GET(request: Request) {
     const status = searchParams.get("status") || "PENDING";
     const xStatus = searchParams.get("xStatus"); // Filter by X publication status
     const search = searchParams.get("search")?.trim(); // Search query
+    const sortBy = searchParams.get("sortBy") || "relevanceScore"; // Sort column
+    const sortOrder = searchParams.get("sortOrder") || "desc"; // Sort direction
 
     const skip = (page - 1) * limit;
+
+    // Build orderBy based on sort parameters
+    const validSortColumns = ["sourceDate", "createdAt", "relevanceScore", "source"];
+    const orderByColumn = validSortColumns.includes(sortBy) ? sortBy : "relevanceScore";
+    const orderByDirection = sortOrder === "asc" ? "asc" : "desc";
+
+    const orderBy: Prisma.PostOrderByWithRelationInput[] = [
+      { [orderByColumn]: orderByDirection },
+    ];
+    // Add secondary sort for consistency
+    if (orderByColumn !== "sourceDate") {
+      orderBy.push({ sourceDate: "desc" });
+    }
 
     // Build the where clause
     const where: Prisma.PostWhereInput = {
@@ -183,10 +198,7 @@ export async function GET(request: Request) {
             },
           },
         },
-        orderBy: [
-          { relevanceScore: "desc" },
-          { sourceDate: "desc" },
-        ],
+        orderBy,
         skip,
         take: limit,
       }),

@@ -19,6 +19,7 @@ interface Post {
   source: string;
   sourceUrl: string;
   sourceDate: string;
+  createdAt: string;
   relevanceScore: number;
   status: string;
   publishedToX?: boolean;
@@ -44,6 +45,14 @@ function formatDate(dateString: string): string {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+function formatShortDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
   });
 }
 
@@ -90,6 +99,9 @@ export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, is
       </td>
       <td className="px-4 py-3 text-center text-sm text-gray-500">
         {formatDate(post.sourceDate)}
+      </td>
+      <td className="px-4 py-3 text-center text-sm text-gray-500">
+        {formatShortDate(post.createdAt)}
       </td>
       <td className="px-4 py-3 text-center">
         <span

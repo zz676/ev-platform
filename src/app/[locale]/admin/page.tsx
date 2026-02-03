@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { AdminStats, PostStatus } from "@/components/admin/AdminStats";
-import { PostsTable } from "@/components/admin/PostsTable";
+import { PostsTable, SortColumn, SortOrder } from "@/components/admin/PostsTable";
 import { CreatePostForm } from "@/components/admin/CreatePostForm";
 import { Shield, Plus, AlertCircle, Search, X } from "lucide-react";
 
@@ -21,6 +21,7 @@ interface Post {
   source: string;
   sourceUrl: string;
   sourceDate: string;
+  createdAt: string;
   relevanceScore: number;
   status: string;
   publishedToX?: boolean;
@@ -54,15 +55,29 @@ export default function AdminPage() {
   const [xStatusFilter, setXStatusFilter] = useState<XStatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState<SortColumn>("relevanceScore");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
-  const fetchPosts = useCallback(async (status?: PostStatus, xStatus?: XStatusFilter, search?: string) => {
+  const fetchPosts = useCallback(async (
+    status?: PostStatus,
+    xStatus?: XStatusFilter,
+    search?: string,
+    page: number = 1,
+    sort: SortColumn = "relevanceScore",
+    order: SortOrder = "desc"
+  ) => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (status) params.append("status", status);
       if (xStatus && xStatus !== "all") params.append("xStatus", xStatus);
       if (search) params.append("search", search);
-      params.append("limit", "50");
+      params.append("page", page.toString());
+      params.append("limit", "20");
+      params.append("sortBy", sort);
+      params.append("sortOrder", order);
 
       const url = `/api/admin/posts?${params.toString()}`;
       const response = await fetch(url);
@@ -71,6 +86,10 @@ export default function AdminPage() {
       setPosts(data.posts);
       setStats(data.stats);
       if (data.maxXAttempts) setMaxXAttempts(data.maxXAttempts);
+      if (data.pagination) {
+        setCurrentPage(data.pagination.page);
+        setTotalPages(data.pagination.totalPages);
+      }
     } catch (error) {
       console.error("Error fetching posts:", error);
     } finally {
@@ -79,25 +98,45 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    fetchPosts(activeStatus, xStatusFilter, searchQuery);
-  }, [activeStatus, xStatusFilter, searchQuery, fetchPosts]);
+    fetchPosts(activeStatus, xStatusFilter, searchQuery, currentPage, sortBy, sortOrder);
+  }, [activeStatus, xStatusFilter, searchQuery, currentPage, sortBy, sortOrder, fetchPosts]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchQuery(searchInput);
+    setCurrentPage(1);
   };
 
   const clearSearch = () => {
     setSearchInput("");
     setSearchQuery("");
+    setCurrentPage(1);
   };
 
   const handleStatusChange = (status: PostStatus | undefined) => {
     setActiveStatus(status);
+    setCurrentPage(1);
   };
 
   const handleXStatusFilterChange = (filter: XStatusFilter) => {
     setXStatusFilter(filter);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleSortChange = (column: SortColumn) => {
+    if (column === sortBy) {
+      // Toggle order if same column
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      // New column, default to desc
+      setSortBy(column);
+      setSortOrder("desc");
+    }
+    setCurrentPage(1);
   };
 
   const handleApprove = async (id: string) => {
@@ -361,9 +400,15 @@ export default function AdminPage() {
         onReject={handleReject}
         onPostToX={handlePostToX}
         onApproveAll={handleApproveAll}
-        onRefresh={() => fetchPosts(activeStatus, xStatusFilter, searchQuery)}
+        onRefresh={() => fetchPosts(activeStatus, xStatusFilter, searchQuery, currentPage, sortBy, sortOrder)}
         isLoading={isLoading}
         maxXAttempts={maxXAttempts}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={handleSortChange}
       />
 
     </div>
