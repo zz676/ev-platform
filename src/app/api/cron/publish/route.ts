@@ -169,15 +169,17 @@ export async function GET(request: NextRequest) {
           try {
             let imageUrl: string | undefined;
 
-            // Priority 1: Use scraped image from original article
-            if (post.originalMediaUrls && post.originalMediaUrls.length > 0) {
-              imageUrl = post.originalMediaUrls[0];
-              imageSource = ImageSource.SCRAPED;
-              console.log(`Using scraped image for post ${post.id}: ${imageUrl}`);
+            // Priority 1: Use cardImageUrl (AI-generated or good-ratio original)
+            if (post.cardImageUrl) {
+              imageUrl = post.cardImageUrl;
+              // Determine source based on whether it matches originalMediaUrls
+              const isOriginal = post.originalMediaUrls?.includes(post.cardImageUrl);
+              imageSource = isOriginal ? ImageSource.SCRAPED : ImageSource.AI_GENERATED;
+              console.log(`Using card image for post ${post.id}: ${imageUrl} (${imageSource})`);
             }
-            // Priority 2: Generate AI image if no scraped image
+            // Priority 2: Generate AI image if no cardImageUrl
             else {
-              console.log(`No scraped image for post ${post.id}, generating AI image...`);
+              console.log(`No card image for post ${post.id}, generating AI image...`);
               imageUrl = await generatePostImage(
                 post.translatedTitle || post.originalTitle || "EV News",
                 post.translatedSummary || ""

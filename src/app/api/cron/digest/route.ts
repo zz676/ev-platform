@@ -135,11 +135,12 @@ export async function GET(request: NextRequest) {
     // Get top post for image
     const topPost = posts.find((p) => p.id === digestContent!.topPostId);
 
-    // Format final tweet with site link and hashtags
+    // Format final tweet with site link and hashtags (includes dynamic brand hashtags)
     const tweetText = formatDigestTweet(
       digestContent.content,
       POSTING_CONFIG.SITE_URL,
-      POSTING_CONFIG.SITE_HASHTAGS
+      POSTING_CONFIG.SITE_HASHTAGS,
+      posts
     );
 
     // Try to get image from top post
@@ -150,11 +151,12 @@ export async function GET(request: NextRequest) {
       try {
         let imageUrl: string | undefined;
 
-        // Priority 1: Use scraped image from top post
-        if (topPost.originalMediaUrls && topPost.originalMediaUrls.length > 0) {
-          imageUrl = topPost.originalMediaUrls[0];
-          imageSource = "scraped";
-          console.log(`[Digest] Using scraped image from top post: ${imageUrl}`);
+        // Priority 1: Use cardImageUrl (AI-generated or good-ratio original)
+        if (topPost.cardImageUrl) {
+          imageUrl = topPost.cardImageUrl;
+          const isOriginal = topPost.originalMediaUrls?.includes(topPost.cardImageUrl);
+          imageSource = isOriginal ? "scraped" : "ai-generated";
+          console.log(`[Digest] Using card image from top post: ${imageUrl} (${imageSource})`);
         }
         // Priority 2: Generate AI image
         else {

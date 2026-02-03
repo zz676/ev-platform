@@ -78,6 +78,7 @@ model Post {
   originalTitle     String?
   originalContent   String?
   originalMediaUrls String[]
+  cardImageUrl      String?          // AI-generated or good-ratio image for cards (null = use placeholder)
   translatedTitle   String?
   translatedContent String?
   translatedSummary String?

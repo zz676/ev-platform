@@ -129,25 +129,32 @@ export async function POST(request: NextRequest) {
         } else {
           // Create new post
           const postId = generateId();
-          let mediaUrls = postData.originalMediaUrls;
+          const originalMediaUrls = postData.originalMediaUrls;
+          let cardImageUrl: string | null = null;
           let needsImageGeneration = false;
 
-          // Check if we need AI image generation
-          if (!mediaUrls || mediaUrls.length === 0) {
+          // Check if we need AI image generation for card display
+          if (!originalMediaUrls || originalMediaUrls.length === 0) {
             needsImageGeneration = true;
           } else {
             // Check if scraped image has acceptable aspect ratio (minimum 1.3:1)
-            const firstImageUrl = mediaUrls[0];
+            const firstImageUrl = originalMediaUrls[0];
             const isAcceptable = await checkImageRatio(firstImageUrl, 1.3);
             if (isAcceptable === false) {
               console.log(
-                `Scraped image has bad aspect ratio for post ${postId}, will need AI generation`
+                `Scraped image has bad aspect ratio for post ${postId}, will use placeholder in cards`
               );
               needsImageGeneration = true;
+              // cardImageUrl stays null - placeholder will be used in cards
+              // originalMediaUrls preserved for article detail page
             } else if (isAcceptable === null) {
               console.log(
-                `Could not check image dimensions for post ${postId}, keeping original`
+                `Could not check image dimensions for post ${postId}, using original for cards`
               );
+              cardImageUrl = firstImageUrl; // Use original if we can't check
+            } else {
+              // Good ratio - use original image for cards too
+              cardImageUrl = firstImageUrl;
             }
           }
 
@@ -182,22 +189,15 @@ export async function POST(request: NextRequest) {
                 { access: "public" }
               );
 
-              mediaUrls = [blobUrl];
+              cardImageUrl = blobUrl; // Use AI image for cards
               console.log(`AI image generated and stored for post ${postId}`);
             } catch (imageError) {
               console.error(
                 `Failed to generate AI image for post ${postId}:`,
                 imageError
               );
-              // Continue without image - don't fail the entire post creation
+              // cardImageUrl stays null - placeholder will be used
             }
-          } else if (needsImageGeneration) {
-            // For posts needing manual review, clear bad images so placeholder shows
-            // Image will be generated on approval
-            mediaUrls = [];
-            console.log(
-              `Post ${postId} needs image generation on approval (manual review)`
-            );
           }
 
           await prisma.post.create({
@@ -210,7 +210,8 @@ export async function POST(request: NextRequest) {
               sourceDate: postData.sourceDate,
               originalTitle: postData.originalTitle,
               originalContent: postData.originalContent,
-              originalMediaUrls: mediaUrls,
+              originalMediaUrls: originalMediaUrls, // Always keep original images
+              cardImageUrl: cardImageUrl, // AI-generated or good-ratio image for cards
               translatedTitle: postData.translatedTitle,
               translatedContent: postData.translatedContent || "",
               translatedSummary: postData.translatedSummary || "",

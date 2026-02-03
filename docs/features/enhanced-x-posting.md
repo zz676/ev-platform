@@ -183,6 +183,10 @@ export const POSTING_CONFIG = {
 model Post {
   // ... existing fields ...
 
+  // Card image (for homepage cards, X tweets)
+  // AI-generated or good-ratio original, null = use placeholder
+  cardImageUrl      String?
+
   // Digest tracking
   includedInDigest  Boolean   @default(false)
   digestTweetId     String?
@@ -191,6 +195,20 @@ model Post {
   @@index([status, includedInDigest, approvedAt])
 }
 ```
+
+### Image Strategy
+
+| Field | Purpose | Used In |
+|-------|---------|---------|
+| `originalMediaUrls` | Original scraped images (any ratio) | Article detail page |
+| `cardImageUrl` | AI-generated or good-ratio original | Homepage cards, X tweets |
+
+**Logic:**
+- On post creation, check `originalMediaUrls[0]` aspect ratio (min 1.3:1)
+- If good ratio → `cardImageUrl = originalMediaUrls[0]`
+- If bad ratio or no image → `cardImageUrl = null` (placeholder in cards)
+- For auto-approved posts, generate AI image if needed → `cardImageUrl = AI image`
+- Article detail page always uses `originalMediaUrls` (shows real images)
 
 ### New Models
 
