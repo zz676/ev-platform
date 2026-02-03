@@ -127,7 +127,7 @@ export default async function Home({
         ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
       },
       orderBy: { relevanceScore: "desc" },
-      take: 22,
+      take: 30,
       select: postSelect,
     });
 
@@ -140,7 +140,7 @@ export default async function Home({
           ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
         },
         orderBy: { relevanceScore: "desc" },
-        take: 22,
+        take: 30,
         select: postSelect,
       });
     }
@@ -167,11 +167,11 @@ export default async function Home({
   // Split posts for layout:
   // Featured: Smart selection (center)
   // Posts 0-1: Left column cards
-  // Posts 2-9: Top Headlines (8 items)
-  // Posts 10+: More News section
+  // Posts 2-7: Top Headlines (6 items)
+  // Posts 8+: More News section
   const leftColumnPosts = poolPosts.slice(0, 2);
-  const topHeadlines = poolPosts.slice(2, 10);
-  const moreNews = poolPosts.slice(10);
+  const topHeadlines = poolPosts.slice(2, 8);
+  const moreNews = poolPosts.slice(8);
 
   // Helper to get localized title
   const getTitle = (post: Post) =>
@@ -213,7 +213,7 @@ export default async function Home({
           {/* Featured Section - USAToday Style 3-Column Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[250px_1fr_280px] gap-4">
             {/* Left Column - 2 News Cards (stacked) */}
-            <div className="flex flex-col justify-between gap-4 order-2 md:order-1 lg:order-1 h-[500px]">
+            <div className="flex flex-col justify-between gap-4 order-2 md:order-1 lg:order-1 h-[425px]">
               {leftColumnPosts.map((post) => (
                 <SideNewsCard
                   key={post.id}

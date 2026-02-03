@@ -48,7 +48,7 @@ export function NewsCard({
   return (
     <article className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
       {/* Image */}
-      <div className="relative h-40 bg-gradient-to-br from-gray-100 to-gray-200">
+      <div className="relative h-[100px] bg-gradient-to-br from-gray-100 to-gray-200">
         <Image
           src={imageUrl || PLACEHOLDER_IMAGE}
           alt={title}
@@ -64,7 +64,7 @@ export function NewsCard({
       </div>
 
       {/* Content */}
-      <div className="pt-3 px-4 pb-4">
+      <div className="pt-2 px-3 pb-2">
         {/* Title */}
         <h3 className="text-[0.9rem] font-semibold text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors">
           <Link href={`/${locale}/post/${id}`}>{title}</Link>

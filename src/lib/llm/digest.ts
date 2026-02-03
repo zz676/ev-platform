@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { Post } from "@prisma/client";
 import { DIGEST_PROMPT } from "@/lib/config/prompts";
+import { POSTING_CONFIG } from "@/lib/config/posting";
 
 // AI Provider configuration for digest generation
 const providers = [
@@ -119,13 +120,34 @@ export async function generateDigestContent(posts: Post[]): Promise<string> {
 }
 
 /**
+ * Extract brand hashtags from posts based on content
+ */
+export function extractBrandHashtags(posts: Post[]): string[] {
+  const found = new Set<string>();
+  const text = posts
+    .map((p) => `${p.translatedTitle} ${p.translatedSummary}`)
+    .join(" ");
+
+  for (const [brand, hashtag] of Object.entries(POSTING_CONFIG.BRAND_HASHTAGS)) {
+    if (text.includes(brand)) {
+      found.add(hashtag);
+    }
+  }
+
+  return Array.from(found).slice(0, 3); // Max 3 brand hashtags
+}
+
+/**
  * Format final digest tweet with site link and hashtags
  */
 export function formatDigestTweet(
   content: string,
   siteUrl: string,
-  hashtags: string[]
+  baseHashtags: string[],
+  posts: Post[]
 ): string {
-  const hashtagStr = hashtags.join(" ");
-  return `${content}\n\n🔗 ${siteUrl}\n${hashtagStr}`;
+  const brandHashtags = extractBrandHashtags(posts);
+  const allHashtags = [...baseHashtags, ...brandHashtags];
+  const hashtagStr = allHashtags.join(" ");
+  return `${content}\n\n🍋 ${siteUrl}\n${hashtagStr}`;
 }
