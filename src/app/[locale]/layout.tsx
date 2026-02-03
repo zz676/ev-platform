@@ -12,7 +12,6 @@ import { Footer } from "@/components/layout/Footer";
 import { UserPanel } from "@/components/layout/UserPanel";
 import { LoginModal } from "@/components/auth/LoginModal";
 import { BackToTop } from "@/components/layout/BackToTop";
-import { StockTicker } from "@/components/ui/StockTicker";
 import "../globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -52,7 +51,6 @@ export default async function RootLayout({
               <UserPanelProvider>
                 <div className="min-h-screen bg-gray-50 flex flex-col">
                   <Header />
-                  <StockTicker />
                   <main className="pb-8 flex-grow">
                     {children}
                   </main>

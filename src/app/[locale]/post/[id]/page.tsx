@@ -48,13 +48,14 @@ export default async function ArticlePage({ params }: PageProps) {
     notFound();
   }
 
-  // Fetch related articles (same category or source)
+  // Fetch related articles (same category, sorted by relevance)
   let relatedPosts: {
     id: string;
     originalTitle: string | null;
     translatedTitle: string | null;
     categories: string[];
     sourceDate: Date;
+    sourceUrl: string;
   }[] = [];
 
   try {
@@ -62,21 +63,31 @@ export default async function ArticlePage({ params }: PageProps) {
       where: {
         id: { not: post.id },
         status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
-        OR: [
-          { categories: { hasSome: post.categories } },
-          { source: post.source },
-        ],
+        categories: { hasSome: post.categories },
       },
-      orderBy: { createdAt: "desc" },
-      take: 5,
+      orderBy: [
+        { relevanceScore: "desc" },
+        { sourceDate: "desc" },
+      ],
+      take: 10,
       select: {
         id: true,
         originalTitle: true,
         translatedTitle: true,
         categories: true,
         sourceDate: true,
+        sourceUrl: true,
       },
     });
+
+    // Deduplicate by title (same article from different sources)
+    const seenTitles = new Set<string>();
+    relatedPosts = relatedPosts.filter((rp) => {
+      const title = (rp.translatedTitle || rp.originalTitle || "").toLowerCase().trim();
+      if (seenTitles.has(title)) return false;
+      seenTitles.add(title);
+      return true;
+    }).slice(0, 5);
   } catch {
     // Database error for related posts - continue without them
     console.error("Failed to fetch related posts");
