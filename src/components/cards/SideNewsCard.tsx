@@ -63,16 +63,7 @@ export function SideNewsCard({
         </h3>
 
         {/* Summary */}
-        <p className="text-xs text-gray-500 line-clamp-3 mb-3">{summary}</p>
-
-        {/* Category + Time */}
-        <div className="flex items-center gap-2 text-xs">
-          <span className="px-2 py-0.5 bg-ev-green-50 text-ev-green-700 rounded font-medium uppercase tracking-wide">
-            {category}
-          </span>
-          <span className="text-gray-400">·</span>
-          <span className="text-gray-400">{formatRelativeTime(timestamp)}</span>
-        </div>
+        <p className="text-xs text-gray-500 line-clamp-3">{summary}</p>
       </div>
     </Link>
   );
