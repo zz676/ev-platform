@@ -7,7 +7,6 @@ import {
   Sparkles,
   Calendar,
   Clock,
-  Twitter,
   Link2,
   Check,
 } from "lucide-react";
@@ -112,23 +111,30 @@ export function ArticleContent({
           {/* Article card */}
           <article className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {/* Metadata bar - simplified with only reading time right-aligned */}
-            <div className="flex items-center justify-end gap-2 px-6 py-3 bg-gray-50 border-b border-gray-200 text-sm">
+            <div className="flex items-center justify-end gap-2 px-6 py-[0.5625rem] bg-gray-50 border-b border-gray-200 text-sm">
               {isImportant && (
                 <div className="flex items-center gap-1.5 text-amber-500 mr-auto">
                   <Sparkles className="h-4 w-4" />
                 </div>
               )}
-              <div className="flex items-center gap-1.5 text-gray-500">
+              <div className="flex items-center gap-1.5 text-ev-green-600">
                 <Clock className="h-4 w-4" />
                 <span>{readingTime} min read</span>
               </div>
             </div>
 
             {/* Header */}
-            <div className="px-6 py-6 border-b border-gray-100">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            <div className="px-6 pt-[1.275rem] pb-[1.05rem] border-b border-gray-100">
+              <h1 className="text-[1.275rem] md:text-[1.594rem] font-bold text-gray-700 text-center">
                 {title || "Untitled"}
               </h1>
+              <div className="flex items-center justify-center gap-1.5 text-sm text-gray-500 mt-2">
+                <Calendar className="h-4 w-4" />
+                <span className="italic">{formatDate(sourceDate)}</span>
+              </div>
+              <div className="flex justify-end mt-2">
+                <CategoryBadge category={category} />
+              </div>
             </div>
 
             {/* Content */}
@@ -141,7 +147,7 @@ export function ArticleContent({
                     </p>
                     {/* Insert first image after first paragraph */}
                     {idx === 0 && imageUrls.length > 0 && (
-                      <div className="relative aspect-video w-full overflow-hidden rounded-lg my-6">
+                      <div className="relative aspect-video w-full max-w-2xl mx-auto overflow-hidden rounded-lg my-6">
                         <Image
                           src={imageUrls[0]}
                           alt={title || "Article image"}
@@ -159,7 +165,7 @@ export function ArticleContent({
             {/* Additional Images (if more than one) */}
             {imageUrls.length > 1 && (
               <div className="px-6 pb-6">
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto">
                   {imageUrls.slice(1).map((url, idx) => (
                     <div
                       key={idx}
@@ -178,49 +184,37 @@ export function ArticleContent({
               </div>
             )}
 
-            {/* Published date + Category badge */}
-            <div className="flex items-center justify-between px-6 pb-4">
-              <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                <Calendar className="h-4 w-4" />
-                <span>{translations.published}:</span>
-                <span className="text-gray-700">{formatDate(sourceDate)}</span>
-              </div>
-              <CategoryBadge category={category} />
-            </div>
-
             {/* Footer actions */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-2 bg-gray-50 border-t border-gray-200">
               <a
                 href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-ev-green-700 bg-ev-green-50 rounded-lg hover:bg-ev-green-100 transition-colors"
+                className="text-ev-green-600 hover:text-ev-green-700 transition-colors"
+                title={translations.readOriginal}
               >
-                {translations.readOriginal}
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="h-5 w-5" />
               </a>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={shareToX}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                  title="Share on X"
-                >
-                  <Twitter className="h-4 w-4" />
-                  <span className="hidden sm:inline">Share</span>
-                </button>
+              <div className="flex items-center gap-4">
                 <button
                   onClick={copyLink}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="text-ev-green-600 hover:text-ev-green-700 transition-colors"
                   title="Copy link"
                 >
                   {linkCopied ? (
-                    <Check className="h-4 w-4 text-green-500" />
+                    <Check className="h-[1.375rem] w-[1.375rem] text-ev-green-600" />
                   ) : (
-                    <Link2 className="h-4 w-4" />
+                    <Link2 className="h-[1.375rem] w-[1.375rem]" />
                   )}
-                  <span className="hidden sm:inline">
-                    {linkCopied ? "Copied!" : "Copy Link"}
-                  </span>
+                </button>
+                <button
+                  onClick={shareToX}
+                  className="text-ev-green-600 hover:text-ev-green-700 transition-colors"
+                  title="Share on X"
+                >
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
                 </button>
               </div>
             </div>

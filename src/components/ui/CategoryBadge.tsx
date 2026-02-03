@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 type CategoryType =
   | "BREAKING"
@@ -29,6 +30,15 @@ const categoryStyles: Record<CategoryType, string> = {
   default: "bg-gray-100 text-gray-700 border-gray-200",
 };
 
+// Brand logos mapping
+const brandLogos: Record<string, string> = {
+  NIO: "/images/brands/nio.svg",
+  XPENG: "/images/brands/xpeng.svg",
+  "LI AUTO": "/images/brands/li-auto.svg",
+  BYD: "/images/brands/byd.svg",
+  TESLA: "/images/brands/tesla.svg",
+};
+
 interface CategoryBadgeProps {
   category: string;
   className?: string;
@@ -37,6 +47,22 @@ interface CategoryBadgeProps {
 export function CategoryBadge({ category, className }: CategoryBadgeProps) {
   const normalizedCategory = category.toUpperCase() as CategoryType;
   const styles = categoryStyles[normalizedCategory] || categoryStyles.default;
+  const logoPath = brandLogos[normalizedCategory];
+
+  // If it's a brand with a logo, show the logo
+  if (logoPath) {
+    return (
+      <div className={cn("inline-flex items-center", className)}>
+        <Image
+          src={logoPath}
+          alt={category}
+          width={60}
+          height={24}
+          className="h-6 w-auto object-contain"
+        />
+      </div>
+    );
+  }
 
   return (
     <span
