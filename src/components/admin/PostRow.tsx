@@ -25,6 +25,7 @@ interface Post {
   publishedToX?: boolean;
   xPostId?: string | null;
   XPublication?: XPublication | null;
+  publishedToDiscord?: boolean;
 }
 
 interface PostRowProps {
@@ -32,9 +33,12 @@ interface PostRowProps {
   activeStatus?: PostStatus;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
-  onPostToX?: (id: string) => void;
+  onOpenPreview: (postId: string, platform: "x" | "discord") => void;
+  showPostToX?: boolean;
+  showPostToDiscord?: boolean;
   isUpdating: boolean;
   isPostingToX?: boolean;
+  isPostingToDiscord?: boolean;
   maxXAttempts?: number;
 }
 
@@ -62,17 +66,24 @@ function getScoreColor(score: number): string {
   return "bg-gray-100 text-gray-700";
 }
 
-export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, isUpdating, isPostingToX, maxXAttempts = 2 }: PostRowProps) {
+export function PostRow({ post, activeStatus, onApprove, onReject, onOpenPreview, showPostToX, showPostToDiscord, isUpdating, isPostingToX, isPostingToDiscord, maxXAttempts = 2 }: PostRowProps) {
   const title = post.translatedTitle || post.originalTitle || "Untitled";
   const xPub = post.XPublication;
   const isXFailed = xPub?.status === "FAILED";
   const isXPublished = xPub?.status === "PUBLISHED" || post.publishedToX;
+  const isDiscordPublished = post.publishedToDiscord;
 
   // Can post to X if: approved status AND (not published OR failed with retry allowed)
   const canPostToX =
     (post.status === "APPROVED" || post.status === "PUBLISHED") &&
     !isXPublished &&
-    onPostToX;
+    showPostToX;
+
+  // Can post to Discord if: approved/published AND not already posted
+  const canPostToDiscord =
+    (post.status === "APPROVED" || post.status === "PUBLISHED") &&
+    !isDiscordPublished &&
+    showPostToDiscord;
 
   // Show approve/reject when filtering pending OR when showing all and post is pending
   const showApproveReject = activeStatus === "PENDING" || (!activeStatus && post.status === "PENDING");
@@ -121,17 +132,33 @@ export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, is
             Published
           </span>
         ) : isXFailed ? (
-          <span
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded cursor-help"
-            title={xPub?.lastError || "Publishing failed"}
-          >
-            <AlertCircle className="h-3 w-3" />
-            Failed ({xPub?.attempts || 0}/{maxXAttempts})
-          </span>
+          <div className="relative group inline-block">
+            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded cursor-help">
+              <AlertCircle className="h-3 w-3" />
+              Failed ({xPub?.attempts || 0}/{maxXAttempts})
+            </span>
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50 max-w-xs break-words">
+              {xPub?.lastError || "Publishing failed"}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+            </div>
+          </div>
         ) : xPub?.status === "PENDING" || xPub?.status === "PUBLISHING" ? (
           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 rounded">
             <Loader2 className="h-3 w-3 animate-spin" />
             Pending
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-500 rounded">
+            -
+          </span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-center">
+        {/* Discord Status indicator */}
+        {isDiscordPublished ? (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
+            <Check className="h-3 w-3" />
+            Published
           </span>
         ) : (
           <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-500 rounded">
@@ -162,23 +189,31 @@ export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, is
             </>
           )}
           {canPostToX && (
-            <button
-              onClick={() => onPostToX(post.id)}
-              disabled={isPostingToX}
-              className={cn(
-                "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors disabled:opacity-50",
-                isXFailed
-                  ? "bg-orange-500 hover:bg-orange-600"
-                  : "bg-blue-500 hover:bg-blue-600"
+            <div className="relative group inline-block">
+              <button
+                onClick={() => onOpenPreview(post.id, "x")}
+                disabled={isPostingToX}
+                className={cn(
+                  "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors disabled:opacity-50",
+                  isXFailed
+                    ? "bg-orange-500 hover:bg-orange-600"
+                    : "bg-blue-500 hover:bg-blue-600"
+                )}
+              >
+                {isPostingToX ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Share2 className="h-3.5 w-3.5" />
+                )}
+                {isPostingToX ? "Posting..." : isXFailed ? "Retry X" : "Post to X"}
+              </button>
+              {isXFailed && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50 max-w-xs break-words">
+                  {xPub?.lastError || "Previous attempt failed"}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                </div>
               )}
-            >
-              {isPostingToX ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Share2 className="h-3.5 w-3.5" />
-              )}
-              {isPostingToX ? "Posting..." : isXFailed ? "Retry" : "Post to X"}
-            </button>
+            </div>
           )}
           {isXPublished && (xPub?.tweetUrl || post.xPostId) && (
             <a
@@ -191,6 +226,20 @@ export function PostRow({ post, activeStatus, onApprove, onReject, onPostToX, is
               View
               <ExternalLink className="h-3 w-3" />
             </a>
+          )}
+          {canPostToDiscord && (
+            <button
+              onClick={() => onOpenPreview(post.id, "discord")}
+              disabled={isPostingToDiscord}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {isPostingToDiscord ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Share2 className="h-3.5 w-3.5" />
+              )}
+              {isPostingToDiscord ? "Posting..." : "Post to Discord"}
+            </button>
           )}
         </div>
       </td>

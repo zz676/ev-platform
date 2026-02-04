@@ -12,6 +12,12 @@ import {
   MAX_ATTEMPTS,
 } from "@/lib/x-publication";
 
+// Request body type for custom content
+interface PostToXRequest {
+  text?: string;
+  imageUrl?: string;
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -24,6 +30,17 @@ export async function POST(
 
   try {
     const { id } = await params;
+
+    // Parse optional custom content from request body
+    let customContent: PostToXRequest = {};
+    try {
+      const body = await request.text();
+      if (body) {
+        customContent = JSON.parse(body);
+      }
+    } catch {
+      // No body or invalid JSON - use auto-generated content
+    }
 
     const post = await prisma.post.findUnique({
       where: { id },
@@ -52,7 +69,7 @@ export async function POST(
       );
     }
 
-    if (!post.translatedSummary) {
+    if (!post.translatedSummary && !customContent.text) {
       return NextResponse.json(
         { error: "Post is missing translated summary" },
         { status: 400 }
@@ -64,9 +81,10 @@ export async function POST(
     console.log(`Manual publish attempt ${attempts} for post ${id} (previous attempts: ${xPublication?.attempts || 0})`);
 
     try {
-      const tweetText = formatTweetContent({
+      // Use custom text if provided, otherwise auto-generate
+      const tweetText = customContent.text || formatTweetContent({
         translatedTitle: post.translatedTitle,
-        translatedSummary: post.translatedSummary,
+        translatedSummary: post.translatedSummary!,
         categories: post.categories,
         source: post.source,
         sourceUrl: post.sourceUrl,
@@ -80,13 +98,17 @@ export async function POST(
       try {
         let imageUrl: string | undefined;
 
-        if (post.originalMediaUrls && post.originalMediaUrls.length > 0) {
+        // Use custom image if provided
+        if (customContent.imageUrl) {
+          imageUrl = customContent.imageUrl;
+          imageSource = ImageSource.SCRAPED; // Treat custom as scraped for tracking
+        } else if (post.originalMediaUrls && post.originalMediaUrls.length > 0) {
           imageUrl = post.originalMediaUrls[0];
           imageSource = ImageSource.SCRAPED;
         } else {
           imageUrl = await generatePostImage(
             post.translatedTitle || post.originalTitle || "EV News",
-            post.translatedSummary
+            post.translatedSummary!
           );
           if (imageUrl) {
             imageSource = ImageSource.AI_GENERATED;

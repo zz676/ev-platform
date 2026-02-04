@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PostRow } from "./PostRow";
+import { PostPreviewModal } from "./PostPreviewModal";
 import { RefreshCw, CheckCircle2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import type { PostStatus } from "./AdminStats";
 
@@ -26,6 +27,7 @@ interface Post {
   publishedToX?: boolean;
   xPostId?: string | null;
   XPublication?: XPublication | null;
+  publishedToDiscord?: boolean;
 }
 
 export type SortColumn = "sourceDate" | "createdAt" | "relevanceScore" | "source";
@@ -36,7 +38,8 @@ interface PostsTableProps {
   activeStatus?: PostStatus;
   onApprove: (id: string) => Promise<void>;
   onReject: (id: string) => Promise<void>;
-  onPostToX?: (id: string) => Promise<void>;
+  onPostToX?: (id: string) => void;
+  onPostToDiscord?: (id: string) => void;
   onApproveAll: () => Promise<void>;
   onRefresh: () => void;
   isLoading: boolean;
@@ -108,6 +111,7 @@ export function PostsTable({
   onApprove,
   onReject,
   onPostToX,
+  onPostToDiscord,
   onApproveAll,
   onRefresh,
   isLoading,
@@ -121,7 +125,12 @@ export function PostsTable({
 }: PostsTableProps) {
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [postingToXIds, setPostingToXIds] = useState<Set<string>>(new Set());
+  const [postingToDiscordIds, setPostingToDiscordIds] = useState<Set<string>>(new Set());
   const [isApprovingAll, setIsApprovingAll] = useState(false);
+  const [previewModal, setPreviewModal] = useState<{
+    postId: string;
+    platform: "x" | "discord";
+  } | null>(null);
 
   const handleApprove = async (id: string) => {
     setUpdatingIds((prev) => new Set(prev).add(id));
@@ -158,22 +167,36 @@ export function PostsTable({
     }
   };
 
-  const handlePostToX = async (id: string) => {
-    if (!onPostToX) return;
-    setPostingToXIds((prev) => new Set(prev).add(id));
-    try {
-      await onPostToX(id);
-    } finally {
-      setPostingToXIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+  const handleOpenPreview = (postId: string, platform: "x" | "discord") => {
+    setPreviewModal({ postId, platform });
+  };
+
+  const handlePreviewSuccess = (platform: "x" | "discord") => {
+    if (!previewModal) return;
+    const { postId } = previewModal;
+
+    // Call the original handlers to update state
+    if (platform === "x" && onPostToX) {
+      // Update local state to show published
+      onPostToX(postId);
+    } else if (platform === "discord" && onPostToDiscord) {
+      onPostToDiscord(postId);
     }
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <>
+      {/* Preview Modal */}
+      {previewModal && (
+        <PostPreviewModal
+          postId={previewModal.postId}
+          platform={previewModal.platform}
+          onClose={() => setPreviewModal(null)}
+          onSuccess={handlePreviewSuccess}
+        />
+      )}
+
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       {/* Table Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
         <h2 className="font-semibold text-gray-900">{getStatusTitle(activeStatus)}</h2>
@@ -259,6 +282,9 @@ export function PostsTable({
                   X Status
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Discord Status
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -271,9 +297,12 @@ export function PostsTable({
                   activeStatus={activeStatus}
                   onApprove={handleApprove}
                   onReject={handleReject}
-                  onPostToX={onPostToX ? handlePostToX : undefined}
+                  onOpenPreview={handleOpenPreview}
+                  showPostToX={!!onPostToX}
+                  showPostToDiscord={!!onPostToDiscord}
                   isUpdating={updatingIds.has(post.id)}
                   isPostingToX={postingToXIds.has(post.id)}
+                  isPostingToDiscord={postingToDiscordIds.has(post.id)}
                   maxXAttempts={maxXAttempts}
                 />
               ))}
@@ -308,6 +337,7 @@ export function PostsTable({
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
