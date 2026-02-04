@@ -96,7 +96,7 @@ export function UserPanel() {
 
             return (
               <Link
-                key={item.href}
+                key={item.label}
                 href={itemPath}
                 onClick={close}
                 className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
