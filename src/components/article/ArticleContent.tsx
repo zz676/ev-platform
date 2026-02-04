@@ -154,7 +154,7 @@ export function ArticleContent({
 
             {/* Header */}
             <div className="px-3 pt-[0.64rem] pb-[0.53rem] border-b border-gray-100">
-              <h1 className="text-[1.275rem] md:text-[1.594rem] font-bold text-gray-700 text-center">
+              <h1 className="text-[1.275rem] md:text-[1.594rem] font-bold text-gray-600 text-center">
                 {title || "Untitled"}
               </h1>
               <div className="flex items-center justify-center gap-1.5 text-sm text-gray-500 mt-2">
@@ -168,7 +168,7 @@ export function ArticleContent({
               <div className="prose prose-gray max-w-none">
                 {content.split("\n").map((paragraph, idx) => (
                   <React.Fragment key={idx}>
-                    <p className="mb-4 text-gray-700 leading-relaxed">
+                    <p className="mb-4 text-gray-600 leading-relaxed">
                       {paragraph}
                     </p>
                     {/* Insert first image after first paragraph */}

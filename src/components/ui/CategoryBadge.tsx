@@ -57,10 +57,10 @@ export function CategoryBadge({ category, className, variant = "default" }: Cate
         <Image
           src={logoPath}
           alt={category}
-          width={60}
-          height={24}
+          width={42}
+          height={17}
           className={cn(
-            "h-6 w-auto object-contain",
+            "h-[1.05rem] w-auto object-contain",
             variant === "green" && "brightness-0 saturate-100 invert-[.4] sepia-[.9] saturate-[5] hue-rotate-[85deg]"
           )}
         />
