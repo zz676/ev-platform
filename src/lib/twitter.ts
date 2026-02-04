@@ -1,7 +1,9 @@
 import crypto from "crypto";
 
-// X API v2 endpoints (official docs: https://docs.x.com)
-const MEDIA_UPLOAD_URL = "https://api.x.com/2/media/upload";
+// X API endpoints
+// Media upload uses v1.1 (v2 requires binary format, v1.1 supports base64)
+const MEDIA_UPLOAD_URL = "https://upload.twitter.com/1.1/media/upload.json";
+// Tweets use v2 API
 const TWEETS_URL = "https://api.x.com/2/tweets";
 
 // Credentials from environment
@@ -89,12 +91,16 @@ export interface TweetResponse {
   data: Tweet;
 }
 
+// v1.1 media upload response format
 export interface MediaUploadResponse {
-  data: {
-    id: string;
-    media_key: string;
-    expires_after_secs?: number;
-    size?: number;
+  media_id: number;
+  media_id_string: string;
+  size?: number;
+  expires_after_secs?: number;
+  image?: {
+    image_type: string;
+    w: number;
+    h: number;
   };
 }
 
@@ -109,7 +115,7 @@ export async function downloadImageAsBase64(imageUrl: string): Promise<string> {
   return Buffer.from(arrayBuffer).toString("base64");
 }
 
-// Upload media to X (v2 API)
+// Upload media to X (v1.1 API - supports base64 via form-urlencoded)
 export async function uploadMedia(imageUrl: string): Promise<string> {
   const creds = getCredentials();
   if (!creds.apiKey || !creds.apiSecret || !creds.accessToken || !creds.accessTokenSecret) {
@@ -118,18 +124,17 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
 
   const base64Data = await downloadImageAsBase64(imageUrl);
 
-  const payload = {
-    media: base64Data,
-    media_category: "tweet_image",
-  };
+  // v1.1 uses form-urlencoded with media_data parameter
+  const formBody = new URLSearchParams();
+  formBody.append("media_data", base64Data);
 
   const response = await fetch(MEDIA_UPLOAD_URL, {
     method: "POST",
     headers: {
       Authorization: generateOAuthHeader("POST", MEDIA_UPLOAD_URL),
-      "Content-Type": "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: JSON.stringify(payload),
+    body: formBody.toString(),
   });
 
   if (!response.ok) {
@@ -138,7 +143,15 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
   }
 
   const result: MediaUploadResponse = await response.json();
-  return result.data.id;
+  console.log("Media upload response:", JSON.stringify(result));
+
+  // v1.1 returns media_id_string (use string version for v2 tweets API)
+  const mediaId = result.media_id_string;
+  if (!mediaId) {
+    throw new Error(`X Media Upload failed: No media_id_string in response. Got: ${JSON.stringify(result)}`);
+  }
+
+  return mediaId;
 }
 
 // Post a tweet (v2 API)

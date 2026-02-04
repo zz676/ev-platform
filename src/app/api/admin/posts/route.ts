@@ -188,6 +188,7 @@ export async function GET(request: Request) {
           createdAt: true,
           publishedToX: true,
           xPostId: true,
+          publishedToDiscord: true,
           XPublication: {
             select: {
               status: true,

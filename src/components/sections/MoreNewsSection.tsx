@@ -71,7 +71,12 @@ export function MoreNewsSection({
             relevanceScore: post.relevanceScore,
           })
         );
-        setPosts((prev) => [...prev, ...newPosts]);
+        // Deduplicate: filter out posts already in the list
+        setPosts((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const uniqueNewPosts = newPosts.filter((p) => !existingIds.has(p.id));
+          return [...prev, ...uniqueNewPosts];
+        });
         setSkip((prev) => prev + newPosts.length);
         setHasMore(data.pagination?.hasMore ?? false);
       } else {

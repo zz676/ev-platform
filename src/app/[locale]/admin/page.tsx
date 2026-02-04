@@ -27,6 +27,7 @@ interface Post {
   publishedToX?: boolean;
   xPostId?: string | null;
   XPublication?: XPublication | null;
+  publishedToDiscord?: boolean;
 }
 
 interface Stats {
@@ -205,65 +206,48 @@ export default function AdminPage() {
     }
   };
 
-  const handlePostToX = async (id: string) => {
-    try {
-      const response = await fetch(`/api/admin/posts/${id}/post-to-x`, {
-        method: "POST",
-      });
-      const data = await response.json();
+  // Called after successful post from modal - just update local state
+  const handlePostToXSuccess = (id: string) => {
+    // Update the post in the list to reflect it's been posted
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              publishedToX: true,
+              XPublication: {
+                status: "PUBLISHED" as const,
+                attempts: (p.XPublication?.attempts || 0) + 1,
+                lastError: null,
+                tweetId: null, // We don't have the tweetId from the modal callback
+                tweetUrl: null,
+              },
+            }
+          : p
+      )
+    );
+    setStats((prev) => ({
+      ...prev,
+      published: prev.published + 1,
+      xFailed: Math.max(0, (prev.xFailed || 0) - 1),
+    }));
+    console.log(`Posted to X successfully`);
+  };
 
-      if (!response.ok) {
-        // Update the post's XPublication to show the failure
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === id
-              ? {
-                  ...p,
-                  XPublication: {
-                    status: "FAILED" as const,
-                    attempts: data.attempts || (p.XPublication?.attempts || 0) + 1,
-                    lastError: data.error || "Unknown error",
-                    tweetId: null,
-                    tweetUrl: null,
-                  },
-                }
-              : p
-          )
-        );
-        console.error(`Failed to post to X: ${data.error}`);
-        return;
-      }
-
-      // Update the post in the list to reflect it's been posted
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                publishedToX: true,
-                xPostId: data.tweetId,
-                XPublication: {
-                  status: "PUBLISHED" as const,
-                  attempts: data.attempts || 1,
-                  lastError: null,
-                  tweetId: data.tweetId,
-                  tweetUrl: data.tweetUrl,
-                },
-              }
-            : p
-        )
-      );
-      setStats((prev) => ({
-        ...prev,
-        published: prev.published + 1,
-        xFailed: Math.max(0, (prev.xFailed || 0) - 1), // Decrement failed count if it was a retry
-      }));
-
-      // Log success - no popup
-      console.log(`Posted to X: ${data.tweetUrl}`);
-    } catch (error) {
-      console.error("Error posting to X:", error);
-    }
+  // Called after successful post from modal - just update local state
+  const handlePostToDiscordSuccess = (id: string) => {
+    // Update the post in the list to reflect it's been posted to Discord
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              publishedToDiscord: true,
+            }
+          : p
+      )
+    );
+    console.log(`Posted to Discord successfully`);
   };
 
   const handleCreateSuccess = () => {
@@ -398,7 +382,8 @@ export default function AdminPage() {
         activeStatus={activeStatus}
         onApprove={handleApprove}
         onReject={handleReject}
-        onPostToX={handlePostToX}
+        onPostToX={handlePostToXSuccess}
+        onPostToDiscord={handlePostToDiscordSuccess}
         onApproveAll={handleApproveAll}
         onRefresh={() => fetchPosts(activeStatus, xStatusFilter, searchQuery, currentPage, sortBy, sortOrder)}
         isLoading={isLoading}
