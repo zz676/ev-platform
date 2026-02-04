@@ -53,8 +53,8 @@ export function UserPanel() {
       {/* Dropdown Panel */}
       <div className="fixed top-16 right-4 z-50 w-[270px] bg-white rounded-xl shadow-2xl overflow-hidden">
         {/* User Profile Section */}
-        <div className="p-2">
-          <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+        <div className="px-2 py-1">
+          <div className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-ev-green-100 flex-shrink-0">
               {user.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -82,7 +82,7 @@ export function UserPanel() {
         <div className="border-t border-gray-200" />
 
         {/* Navigation Items */}
-        <div className="p-1.5">
+        <div className="px-1.5 py-1">
           {navItems.map((item) => {
             const itemPath = `/${locale}${item.href === "/" ? "" : item.href}`;
             const Icon = item.icon;
@@ -92,7 +92,7 @@ export function UserPanel() {
                 key={item.href}
                 href={itemPath}
                 onClick={close}
-                className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                   <Icon className="h-4 w-4 text-gray-700" />
@@ -110,11 +110,11 @@ export function UserPanel() {
         {isAdmin && (
           <>
             <div className="border-t border-gray-200" />
-            <div className="p-1.5">
+            <div className="px-1.5 py-1">
               <Link
                 href={`/${locale}/admin`}
                 onClick={close}
-                className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                   <Shield className="h-4 w-4 text-gray-700" />
@@ -127,7 +127,7 @@ export function UserPanel() {
               <Link
                 href={`/${locale}/admin/monitoring`}
                 onClick={close}
-                className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                   <Activity className="h-4 w-4 text-gray-700" />
@@ -143,11 +143,11 @@ export function UserPanel() {
 
         {/* Settings & Logout */}
         <div className="border-t border-gray-200" />
-        <div className="p-1.5">
+        <div className="px-1.5 py-1">
           <Link
             href={`/${locale}/settings`}
             onClick={close}
-            className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
               <Settings className="h-4 w-4 text-gray-700" />
@@ -159,7 +159,7 @@ export function UserPanel() {
           </Link>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="w-full flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
               <LogOut className="h-4 w-4 text-gray-700" />
