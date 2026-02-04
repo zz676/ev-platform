@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { AdminStats, PostStatus } from "@/components/admin/AdminStats";
 import { PostsTable, SortColumn, SortOrder } from "@/components/admin/PostsTable";
+import { DigestsTable } from "@/components/admin/DigestsTable";
 import { CreatePostForm } from "@/components/admin/CreatePostForm";
-import { Shield, Plus, AlertCircle, Search, X } from "lucide-react";
+import { Shield, Plus, AlertCircle, Search, X, ChevronDown, ChevronRight } from "lucide-react";
 
 interface XPublication {
   status: "PENDING" | "PUBLISHING" | "PUBLISHED" | "FAILED" | "SKIPPED";
@@ -38,6 +39,18 @@ interface Stats {
   xFailed?: number;
 }
 
+interface Digest {
+  id: string;
+  scheduledFor: string;
+  content: string;
+  postIds: string[];
+  topPostId: string;
+  status: string;
+  postedAt: string | null;
+  tweetId: string | null;
+  createdAt: string;
+}
+
 type XStatusFilter = "all" | "failed" | "published" | "not_posted";
 
 export default function AdminPage() {
@@ -60,6 +73,13 @@ export default function AdminPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [sortBy, setSortBy] = useState<SortColumn>("relevanceScore");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+
+  // Digests state
+  const [digests, setDigests] = useState<Digest[]>([]);
+  const [digestsLoading, setDigestsLoading] = useState(false);
+  const [digestsExpanded, setDigestsExpanded] = useState(true);
+  const [digestsPage, setDigestsPage] = useState(1);
+  const [digestsTotalPages, setDigestsTotalPages] = useState(1);
 
   const fetchPosts = useCallback(async (
     status?: PostStatus,
@@ -98,9 +118,35 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchDigests = useCallback(async (page: number = 1) => {
+    setDigestsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", page.toString());
+      params.append("limit", "10");
+
+      const response = await fetch(`/api/admin/digests?${params.toString()}`);
+      if (!response.ok) throw new Error("Failed to fetch digests");
+      const data = await response.json();
+      setDigests(data.digests);
+      if (data.pagination) {
+        setDigestsPage(data.pagination.page);
+        setDigestsTotalPages(data.pagination.totalPages);
+      }
+    } catch (error) {
+      console.error("Error fetching digests:", error);
+    } finally {
+      setDigestsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchPosts(activeStatus, xStatusFilter, searchQuery, currentPage, sortBy, sortOrder);
   }, [activeStatus, xStatusFilter, searchQuery, currentPage, sortBy, sortOrder, fetchPosts]);
+
+  useEffect(() => {
+    fetchDigests(digestsPage);
+  }, [digestsPage, fetchDigests]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,6 +301,42 @@ export default function AdminPage() {
     fetchPosts();
   };
 
+  const handleDeleteDigest = async (id: string) => {
+    try {
+      const response = await fetch("/api/admin/digests", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!response.ok) throw new Error("Failed to delete digest");
+
+      // Remove from list
+      setDigests((prev) => prev.filter((d) => d.id !== id));
+    } catch (error) {
+      console.error("Error deleting digest:", error);
+      throw error;
+    }
+  };
+
+  const handleEditDigest = async (id: string, content: string) => {
+    try {
+      const response = await fetch("/api/admin/digests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, content }),
+      });
+      if (!response.ok) throw new Error("Failed to update digest");
+
+      // Update in list
+      setDigests((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, content } : d))
+      );
+    } catch (error) {
+      console.error("Error updating digest:", error);
+      throw error;
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 lg:px-6">
       {/* Create Post Modal */}
@@ -395,6 +477,34 @@ export default function AdminPage() {
         sortOrder={sortOrder}
         onSortChange={handleSortChange}
       />
+
+      {/* Daily Digests Section */}
+      <div className="mt-8">
+        <button
+          onClick={() => setDigestsExpanded(!digestsExpanded)}
+          className="flex items-center gap-2 mb-4 text-lg font-semibold text-gray-900 hover:text-gray-700 transition-colors"
+        >
+          {digestsExpanded ? (
+            <ChevronDown className="h-5 w-5" />
+          ) : (
+            <ChevronRight className="h-5 w-5" />
+          )}
+          Daily Digests
+        </button>
+
+        {digestsExpanded && (
+          <DigestsTable
+            digests={digests}
+            onDelete={handleDeleteDigest}
+            onEdit={handleEditDigest}
+            onRefresh={() => fetchDigests(digestsPage)}
+            isLoading={digestsLoading}
+            currentPage={digestsPage}
+            totalPages={digestsTotalPages}
+            onPageChange={setDigestsPage}
+          />
+        )}
+      </div>
 
     </div>
   );

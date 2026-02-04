@@ -378,6 +378,45 @@ Uses Resend email service (existing setup).
 
 ---
 
+## Admin Panel Management
+
+The admin panel (`/admin`) includes a **Daily Digests** section for viewing and managing digest content.
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **View Digests** | List all digests with scheduled time, status, content preview, and post count |
+| **Status Badges** | Color-coded: PENDING (yellow), POSTED (green), FAILED (red) |
+| **Edit Content** | Modify digest content before posting via modal editor |
+| **Delete Digest** | Remove any digest (will regenerate on next cron run) |
+| **View Tweet** | Direct link to posted tweet on X (for POSTED digests) |
+| **Pagination** | Navigate through digest history |
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `/src/app/api/admin/digests/route.ts` | API: GET (list), PATCH (edit), DELETE |
+| `/src/components/admin/DigestsTable.tsx` | Table component with edit modal |
+| `/src/app/[locale]/admin/page.tsx` | Admin page integration |
+
+### API Endpoints
+
+**GET `/api/admin/digests`**
+- Query params: `status` (PENDING/POSTED/FAILED), `page`, `limit`
+- Returns: `{ digests, stats, pagination }`
+
+**PATCH `/api/admin/digests`**
+- Body: `{ id, content }`
+- Updates digest content
+
+**DELETE `/api/admin/digests`**
+- Body: `{ id }`
+- Removes digest entry
+
+---
+
 ## Verification Checklist
 
 - [ ] Run `npx prisma migrate dev --name add_digest_tables`
