@@ -82,12 +82,31 @@ jobs:
     if: failure()
 
     steps:
-      - name: Send failure notification
+      - name: Send Discord notification
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           if [ -n "$DISCORD_WEBHOOK_URL" ]; then
             curl -H "Content-Type: application/json" \
-              -d '{"content": "CnEVData scraper failed! Check GitHub Actions for details."}' \
+              -d '{"content": "⚠️ **CnEVData scraper failed!**\n\nRun: ${{ github.run_id }}\nBranch: ${{ github.ref_name }}\n\n[View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"}' \
               "$DISCORD_WEBHOOK_URL"
           fi
+
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "⚠️ CnEVData Scraper Failed - Run #${{ github.run_id }}"
+          to: ${{ secrets.NOTIFY_EMAIL }}
+          from: EV Platform Alerts
+          body: |
+            CnEVData scraper workflow failed.
+
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Run ID: ${{ github.run_id }}
+
+            View details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
