@@ -17,11 +17,23 @@ WEIBO_USER_IDS = {
     "6001272153": "理想汽车",
     "1746221281": "比亚迪汽车",
     "7871239944": "小米汽车",
+    "3615027564": "特斯拉",
+    "7682079498": "乐道汽车",      # NIO sub-brand
+    "7617191625": "ZEEKR极氪",
+    "7607741344": "AITO汽车",     # Huawei
     # Founders/Executives
-    "1679013335": "李斌",      # NIO CEO
-    "2455476364": "何小鹏",    # XPeng Chairman
-    "1243861097": "李想",      # Li Auto CEO
-    "1749127163": "雷军",      # Xiaomi CEO
+    "1679013335": "李斌",         # NIO CEO
+    "2455476364": "何小鹏",       # XPeng Chairman
+    "1243861097": "李想",         # Li Auto CEO
+    "1749127163": "雷军",         # Xiaomi CEO
+    "1686546714": "余承东",       # Huawei
+    # KOLs/Media
+    "1704562844": "电动车公社",
+    "5618678623": "42号车库",
+    "1401527553": "孙少军09",     # 车fans创始人
+    "5765457657": "新出行",
+    "6434039302": "懂车帝",
+    "5882395327": "新车部落",
 }
 
 
@@ -185,6 +197,10 @@ class WeiboSource(BaseSource):
         Returns:
             Article object or None if parsing fails
         """
+        # Skip reposts - only scrape original content
+        if mblog.get("retweeted_status"):
+            return None
+
         try:
             weibo_id = mblog.get("id", "")
             bid = mblog.get("bid", weibo_id)  # Base62 encoded ID for URL
