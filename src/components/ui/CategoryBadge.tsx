@@ -60,8 +60,8 @@ export function CategoryBadge({ category, className, variant = "default" }: Cate
           width={42}
           height={17}
           className={cn(
-            "h-[1.05rem] w-auto object-contain",
-            variant === "green" && "brightness-0 saturate-100 invert-[.4] sepia-[.9] saturate-[5] hue-rotate-[85deg]"
+            "h-[1.51rem] w-auto object-contain",
+            variant === "green" && "brightness-0 sepia-[1] saturate-[100]"
           )}
         />
       </div>
