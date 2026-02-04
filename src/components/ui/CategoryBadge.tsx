@@ -42,9 +42,10 @@ const brandLogos: Record<string, string> = {
 interface CategoryBadgeProps {
   category: string;
   className?: string;
+  variant?: "default" | "green";
 }
 
-export function CategoryBadge({ category, className }: CategoryBadgeProps) {
+export function CategoryBadge({ category, className, variant = "default" }: CategoryBadgeProps) {
   const normalizedCategory = category.toUpperCase() as CategoryType;
   const styles = categoryStyles[normalizedCategory] || categoryStyles.default;
   const logoPath = brandLogos[normalizedCategory];
@@ -58,7 +59,10 @@ export function CategoryBadge({ category, className }: CategoryBadgeProps) {
           alt={category}
           width={60}
           height={24}
-          className="h-6 w-auto object-contain"
+          className={cn(
+            "h-6 w-auto object-contain",
+            variant === "green" && "brightness-0 saturate-100 invert-[.4] sepia-[.9] saturate-[5] hue-rotate-[85deg]"
+          )}
         />
       </div>
     );

@@ -132,7 +132,7 @@ export function ArticleContent({
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto px-3 py-[0.6rem]">
       <div className="flex flex-col lg:flex-row gap-[1.275rem]">
         {/* Main Content */}
         <div className="flex-1 min-w-0">
@@ -140,7 +140,7 @@ export function ArticleContent({
           <article className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {/* Metadata bar */}
             <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 border-b border-gray-200 text-sm">
-              <CategoryBadge category={category} />
+              <CategoryBadge category={category} variant="green" />
               {isImportant && (
                 <div className="flex items-center gap-1.5 text-amber-500">
                   <Sparkles className="h-4 w-4" />
@@ -148,7 +148,7 @@ export function ArticleContent({
               )}
               <div className="flex items-center gap-1.5 text-ev-green-600 ml-auto">
                 <Clock className="h-4 w-4" />
-                <span>{readingTime} min read</span>
+                <span className="italic">{readingTime} min read</span>
               </div>
             </div>
 
@@ -164,7 +164,7 @@ export function ArticleContent({
             </div>
 
             {/* Content */}
-            <div className="px-6 py-6">
+            <div className="px-2 py-[0.6rem]">
               <div className="prose prose-gray max-w-none">
                 {content.split("\n").map((paragraph, idx) => (
                   <React.Fragment key={idx}>
