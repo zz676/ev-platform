@@ -138,14 +138,15 @@ export function ArticleContent({
         <div className="flex-1 min-w-0">
           {/* Article card */}
           <article className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            {/* Metadata bar - simplified with only reading time right-aligned */}
-            <div className="flex items-center justify-end gap-2 px-6 py-[0.5625rem] bg-gray-50 border-b border-gray-200 text-sm">
+            {/* Metadata bar */}
+            <div className="flex items-center gap-2 px-6 py-[0.5625rem] bg-gray-50 border-b border-gray-200 text-sm">
+              <CategoryBadge category={category} />
               {isImportant && (
-                <div className="flex items-center gap-1.5 text-amber-500 mr-auto">
+                <div className="flex items-center gap-1.5 text-amber-500">
                   <Sparkles className="h-4 w-4" />
                 </div>
               )}
-              <div className="flex items-center gap-1.5 text-ev-green-600">
+              <div className="flex items-center gap-1.5 text-ev-green-600 ml-auto">
                 <Clock className="h-4 w-4" />
                 <span>{readingTime} min read</span>
               </div>
@@ -159,9 +160,6 @@ export function ArticleContent({
               <div className="flex items-center justify-center gap-1.5 text-sm text-gray-500 mt-2">
                 <Calendar className="h-4 w-4" />
                 <span className="italic">{formatDate(sourceDate)}</span>
-              </div>
-              <div className="flex justify-end mt-2">
-                <CategoryBadge category={category} />
               </div>
             </div>
 
