@@ -344,31 +344,49 @@ Response:
 
 ## Error Handling
 
-### Fallback Chain
+### Retry Logic with Exponential Backoff
+
+Together AI calls use automatic retry with exponential backoff to handle transient errors (e.g., HTTP 500):
 
 ```
 Together AI (FLUX.1)
   │
-  ├── success ──▶ Return image URL
+  ├── Attempt 1 ──▶ success ──▶ Return image URL
+  │       │
+  │       └── failure ──▶ wait 1s
+  │                         │
+  ├── Attempt 2 ────────────┴──▶ success ──▶ Return image URL
+  │       │
+  │       └── failure ──▶ wait 2s
+  │                         │
+  ├── Attempt 3 ────────────┴──▶ success ──▶ Return image URL
+  │       │
+  │       └── failure ──▶ Fall back to DALL-E
   │
-  └── failure ──▶ DALL-E 3
-                    │
-                    ├── success ──▶ Return image URL
-                    │
-                    └── failure ──▶ Return null (proceed without image)
+  └── DALL-E 3
+        │
+        ├── success ──▶ Return image URL
+        │
+        └── failure ──▶ Return null (proceed without image)
 ```
+
+**Retry Configuration** (in `src/lib/ai.ts`):
+- Max retries: 3 attempts
+- Backoff delays: 1s, 2s, 4s (exponential)
+- Only Together AI has retry logic (DALL-E is already the fallback)
 
 ### Error Scenarios
 
 | Scenario | Handling |
 |----------|----------|
-| Together AI unavailable | Fall back to DALL-E |
+| Together AI transient error (500) | Retry up to 3 times with backoff |
+| Together AI persistent failure | Fall back to DALL-E after all retries |
 | Both providers fail | Post created without image |
 | Image download fails | Log error, continue with text |
 | Aspect ratio invalid | Treat as needing regeneration |
 | Blob upload fails | Use temporary AI URL |
 
-All failures are logged to `AIUsage` table with error messages for debugging.
+All failures are logged to `AIUsage` table with error messages for debugging. When all Together AI retries fail, the error message is prefixed with "All retries failed:" for clarity.
 
 ## Configuration
 
