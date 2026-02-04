@@ -135,7 +135,7 @@ export function ArticleContent({
     <div className="max-w-7xl mx-auto px-3 py-[0.6rem]">
       <div className="flex flex-col lg:flex-row gap-[1.275rem]">
         {/* Main Content */}
-        <div className="flex-1 min-w-0 px-2">
+        <div className="flex-1 min-w-0">
           {/* Article card */}
           <article className="bg-white rounded-xl border border-gray-200 overflow-hidden px-2">
             {/* Metadata bar */}
