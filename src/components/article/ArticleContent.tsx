@@ -137,7 +137,7 @@ export function ArticleContent({
         {/* Main Content */}
         <div className="flex-1 min-w-0 px-2">
           {/* Article card */}
-          <article className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <article className="bg-white rounded-xl border border-gray-200 overflow-hidden px-2">
             {/* Metadata bar */}
             <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 border-b border-gray-200 text-sm">
               <CategoryBadge category={category} variant="green" />

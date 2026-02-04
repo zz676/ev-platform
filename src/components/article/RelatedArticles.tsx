@@ -29,13 +29,13 @@ function formatRelativeTime(date: Date): string {
 export function RelatedArticles({
   articles,
   locale,
-  title = "Related Articles",
+  title = "Related News",
 }: RelatedArticlesProps) {
   if (articles.length === 0) return null;
 
   return (
     <div className="bg-white rounded-xl border border-lime-300 py-4 px-[0.72rem]">
-      <h3 className="font-semibold text-gray-900 mb-4">{title}</h3>
+      <h3 className="font-semibold text-gray-600 mb-4">{title}</h3>
       <div className="divide-y divide-lime-200">
         {articles.map((article, index) => (
           <Link
@@ -43,7 +43,7 @@ export function RelatedArticles({
             href={`/${locale}/post/${article.id}`}
             className={`block group ${index > 0 ? 'pt-[0.85rem]' : ''} ${index < articles.length - 1 ? 'pb-[0.85rem]' : ''}`}
           >
-            <p className="text-sm text-gray-700 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-snug">
+            <p className="text-sm text-gray-600 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-snug">
               {article.title}
             </p>
             <p className="text-xs text-gray-500 italic text-left mt-1">
