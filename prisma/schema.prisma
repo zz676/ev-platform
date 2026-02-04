@@ -407,3 +407,245 @@ enum XPublishStatus {
   FAILED
   SKIPPED
 }
+
+// ==========================================
+// EV Metrics Enums
+// ==========================================
+
+enum MetricType {
+  // Sales related
+  DELIVERY          // Customer deliveries
+  SALES             // Retail sales
+  WHOLESALE         // Wholesale sales
+  PRODUCTION        // Production volume
+
+  // Battery related
+  BATTERY_INSTALL   // Battery installations (GWh)
+
+  // Financial
+  REVENUE           // Revenue
+
+  // Market data
+  MARKET_SHARE      // Market share percentage
+  RANKING           // Ranking position
+
+  // Industry indicators
+  IMPORTS           // Import volume
+  EXPORTS           // Export volume
+  REGISTRATIONS     // License plate registrations
+  DEALER_INVENTORY  // Dealer inventory coefficient
+}
+
+enum PeriodType {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum VehicleType {
+  BEV    // Battery Electric Vehicle
+  EREV   // Extended Range Electric Vehicle
+  PHEV   // Plug-in Hybrid Electric Vehicle
+  HEV    // Hybrid Electric Vehicle
+}
+
+enum ScrapeStatus {
+  SUCCESS           // Successfully extracted data
+  SKIPPED_DUPLICATE // Skipped as duplicate
+  SKIPPED_NO_DATA   // No extractable data
+  SKIPPED_PAYWALL   // Requires subscription
+  FAILED            // Extraction failed
+  PENDING           // Pending processing
+}
+
+// ==========================================
+// EV Metrics Tables
+// ==========================================
+
+model EVMetric {
+  id          String      @id @default(cuid())
+
+  // Dimension fields
+  brand       Brand                    // Brand (INDUSTRY for industry-level data)
+  metric      MetricType               // Metric type
+  periodType  PeriodType               // Period type
+  year        Int                      // Year
+  period      Int                      // Period: 1-12 for monthly, 1-4 for quarterly, 1 for yearly
+
+  // Optional dimensions (for granular data)
+  vehicleModel String?                 // Vehicle model: "Model 3", "Model Y", "Han EV"
+  region      String?                  // Region: "Shanghai", "Beijing", "Guangdong"
+  category    String?                  // Category: "NEV", "BEV", "PHEV", "Passenger", "Commercial"
+  dataSource  String?                  // Data source: "OFFICIAL", "CPCA", "CAAM", "ESTIMATE"
+
+  // Value fields
+  value       Float                    // Primary value
+  unit        String?                  // Unit: vehicles, GWh, USD million, ratio
+  yoyChange   Float?                   // Year-over-year change %
+  momChange   Float?                   // Month-over-month change % (or QoQ)
+  marketShare Float?                   // Market share %
+  ranking     Int?                     // Ranking
+
+  // Source tracking
+  sourceUrl   String?
+  sourceTitle String?
+  confidence  Float       @default(1.0) // Data confidence (OCR may be < 1)
+
+  // Timestamps
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  sources     EVMetricSource[]
+
+  // Unique constraint
+  @@unique([brand, metric, periodType, year, period, vehicleModel, region, category, dataSource])
+
+  // Indexes
+  @@index([brand])
+  @@index([metric])
+  @@index([periodType, year, period])
+  @@index([year, period])
+  @@index([region])
+  @@index([vehicleModel])
+  @@index([brand, metric, year], map: "idx_brand_metric_year")
+}
+
+model EVMetricSource {
+  id          String    @id @default(cuid())
+  metricId    String
+  metric      EVMetric  @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  sourceType  String    // TITLE_PARSE, SUMMARY_PARSE, IMAGE_OCR, MANUAL
+  rawText     String?   // Raw text
+  imageUrl    String?   // Image URL (if OCR)
+  parseLog    Json?     // Parse log
+
+  createdAt   DateTime  @default(now())
+
+  @@index([metricId])
+}
+
+// ==========================================
+// Scrape Tracking Table (deduplication)
+// ==========================================
+
+model ScrapedArticle {
+  id            String        @id @default(cuid())
+
+  // Article identifier (for deduplication)
+  sourceUrl     String        @unique    // Article URL, unique constraint
+  urlHash       String        @unique    // MD5 hash of URL, backup dedup
+
+  // Article metadata
+  title         String
+  summary       String?
+  publishedAt   DateTime?
+  previewImage  String?                  // Preview image URL
+
+  // Processing status
+  status        ScrapeStatus  @default(PENDING)
+  articleType   String?                  // BRAND_METRIC, VEHICLE_SPEC, etc.
+  needsOcr      Boolean       @default(false)
+  ocrCompleted  Boolean       @default(false)
+
+  // Extraction results
+  extractedData Json?                    // Extracted raw data
+  metricsCount  Int           @default(0) // Records written to EVMetric
+  specsCount    Int           @default(0) // Records written to VehicleSpec
+
+  // Error tracking
+  errorMessage  String?
+  retryCount    Int           @default(0)
+
+  // Timestamps
+  scrapedAt     DateTime      @default(now())
+  processedAt   DateTime?
+  updatedAt     DateTime      @updatedAt
+
+  // Indexes
+  @@index([status])
+  @@index([scrapedAt])
+  @@index([articleType])
+}
+
+// ==========================================
+// Vehicle Specs Table
+// ==========================================
+
+model VehicleSpec {
+  id              String      @id @default(cuid())
+
+  // Vehicle identification
+  brand           Brand                    // Brand
+  model           String                   // Model name: "Li L9", "NIO EC7", "Model Y"
+  variant         String                   // Variant: "Air", "Pro", "Max", "Long Range"
+
+  // Basic info
+  launchDate      String?                  // Launch date "202302"
+  vehicleType     VehicleType?             // BEV, EREV, PHEV
+  segment         String?                  // "SUV", "Sedan", "MPV"
+
+  // Price (RMB)
+  startingPrice   Float?                   // Starting price
+  currentPrice    Float?                   // Current price (may have changed)
+
+  // Dimensions (mm)
+  lengthMm        Int?
+  widthMm         Int?
+  heightMm        Int?
+  wheelbaseMm     Int?
+
+  // Performance
+  acceleration    Float?                   // 0-100km/h seconds
+  topSpeed        Int?                     // Top speed km/h
+  motorPowerKw    Int?                     // Motor power kW
+  motorTorqueNm   Int?                     // Motor torque Nm
+
+  // Battery & Range
+  batteryCapacity Float?                   // Battery capacity kWh
+  rangeCltc       Int?                     // CLTC range km
+  rangeWltp       Int?                     // WLTP range km
+  rangeEpa        Int?                     // EPA range km
+
+  // EREV/PHEV specific
+  fuelTankVolume  Float?                   // Fuel tank volume L
+  engineDisplacement Float?                // Engine displacement L
+
+  // Charging
+  maxChargingPower Int?                    // Max charging power kW
+  chargingTime10To80 Int?                  // 10-80% charging time minutes
+
+  // Source tracking
+  sourceUrl       String?
+  confidence      Float       @default(1.0)
+  sources         VehicleSpecSource[]
+
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Unique constraint
+  @@unique([brand, model, variant])
+
+  // Indexes
+  @@index([brand])
+  @@index([model])
+  @@index([vehicleType])
+  @@index([brand, segment])
+}
+
+model VehicleSpecSource {
+  id          String      @id @default(cuid())
+  specId      String
+  spec        VehicleSpec @relation(fields: [specId], references: [id], onDelete: Cascade)
+
+  sourceType  String      // IMAGE_OCR, MANUAL
+  rawText     String?
+  imageUrl    String?
+  parseLog    Json?
+
+  createdAt   DateTime    @default(now())
+
+  @@index([specId])
+}

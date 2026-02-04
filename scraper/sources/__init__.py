@@ -6,6 +6,7 @@ from .xpeng import XPengSource
 from .li_auto import LiAutoSource
 from .byd import BYDSource
 from .weibo import WeiboSource
+from .cnevdata import CnEVDataSource, CnEVDataArticle
 
 __all__ = [
     "BaseSource",
@@ -15,4 +16,6 @@ __all__ = [
     "LiAutoSource",
     "BYDSource",
     "WeiboSource",
+    "CnEVDataSource",
+    "CnEVDataArticle",
 ]
