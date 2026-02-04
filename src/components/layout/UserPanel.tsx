@@ -11,6 +11,7 @@ import {
   Shield,
   Activity,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/components/context/AuthContext";
 import { useUserPanel } from "@/components/context/UserPanelContext";
@@ -51,21 +52,27 @@ export function UserPanel() {
       />
 
       {/* Dropdown Panel */}
-      <div className="fixed top-16 right-4 z-50 w-[270px] bg-white rounded-xl shadow-2xl overflow-hidden">
+      <div className="fixed top-16 right-4 z-50 w-[270px] bg-white rounded-xl shadow-[0_0_0_1px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.12),0_0_20px_rgba(0,0,0,0.06)] overflow-hidden">
         {/* User Profile Section */}
         <div className="px-2 py-1">
           <div className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
-            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-ev-green-100 flex-shrink-0">
-              {user.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  className="w-10 h-10 rounded-full"
-                />
-              ) : (
-                <User className="h-5 w-5 text-ev-green-700" />
-              )}
+            <div className="relative flex-shrink-0">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-ev-green-100">
+                {user.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    className="w-10 h-10 rounded-full"
+                  />
+                ) : (
+                  <User className="h-5 w-5 text-ev-green-700" />
+                )}
+              </div>
+              {/* Dropdown arrow indicator */}
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full shadow-sm border border-gray-200 flex items-center justify-center">
+                <ChevronDown className="h-3 w-3 text-gray-600" />
+              </div>
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm text-gray-900 truncate">{user.name}</p>
