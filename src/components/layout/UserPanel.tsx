@@ -6,8 +6,6 @@ import {
   X,
   User,
   Newspaper,
-  TrendingUp,
-  Radio,
   Bookmark,
   Settings,
   LogOut,
@@ -26,8 +24,6 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: <Newspaper className="h-5 w-5" />, label: "My Feed", href: "/" },
-  { icon: <TrendingUp className="h-5 w-5" />, label: "Markets", href: "/markets" },
-  { icon: <Radio className="h-5 w-5" />, label: "Command Center", href: "/command" },
   { icon: <Bookmark className="h-5 w-5" />, label: "Saved Articles", href: "/saved" },
 ];
 
