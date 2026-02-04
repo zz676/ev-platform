@@ -65,3 +65,46 @@ SOURCES = {
 MIN_RELEVANCE_SCORE = 40  # Minimum score to keep content
 AI_MODEL_PRIMARY = "deepseek-chat"
 AI_MODEL_FALLBACK = "gpt-4o-mini"
+
+# CnEVData Scraper Settings
+CNEVDATA_CONFIG = {
+    "name": "CnEVData",
+    "base_url": "https://cnevdata.com",
+    "enabled": True,
+
+    # User Agent rotation pool
+    "user_agents": [
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    ],
+
+    # Request interval (randomized for anti-detection)
+    "min_delay": 3,      # Minimum delay seconds between requests
+    "max_delay": 8,      # Maximum delay seconds between requests
+
+    # Request headers
+    "headers": {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    },
+
+    # Rate limiting
+    "weekly_limit": 100,  # Max articles per week
+}
+
+# Backfill Configuration
+BACKFILL_CONFIG = {
+    "total_pages": 120,
+    "batch_size": 5,            # Pages per batch
+    "batch_delay": 1800,        # 30 minutes between batches
+    "page_delay": (8, 20),      # 8-20 seconds random between pages
+    "article_delay": (3, 8),    # 3-8 seconds between articles
+    "max_retries": 3,
+    "resume_from_last": True,   # Support checkpoint resume
+}
