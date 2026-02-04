@@ -30,7 +30,7 @@ A fully automated platform that aggregates Chinese EV industry content from offi
 | Python Scraper | 🔄 In Progress | Framework being built |
 | X Auto-publish | ✅ Done | Cron endpoint with image support |
 | X Image Support | ✅ Done | Scraped images + AI fallback (DALL-E 3) |
-| Deployment | ⏳ Pending | Vercel + Railway |
+| Deployment | ⏳ Pending | Vercel + GitHub Actions |
 
 ---
 
@@ -101,14 +101,16 @@ A fully automated platform that aggregates Chinese EV industry content from offi
 
 ### Tier 3: Weibo Accounts (Social Content - Differentiation)
 
+**Note**: The Weibo scraper filters out reposts (`retweeted_status`) to only collect original content authored by each account.
+
 **Official Brand Accounts**:
-@蔚来, @乐道汽车, @小鹏汽车, @理想汽车, @比亚迪汽车, @小米汽车, @ZEEKR极氪, @AITO汽车, @极越汽车
+@蔚来, @乐道汽车, @小鹏汽车, @理想汽车, @比亚迪汽车, @小米汽车, @特斯拉, @ZEEKR极氪, @AITO汽车
 
 **Founders/Executives** (More engaging content):
 @李想 (Li Auto CEO), @何小鹏 (XPeng CEO), @李斌 (NIO CEO), @雷军 (Xiaomi), @余承东 (Huawei)
 
 **KOL/Media**:
-@电动车公社, @42号车库, @车fans创始人-孙少军, @电车通, @新出行, @懂车帝, @新车部落
+@电动车公社, @42号车库, @孙少军09 (车fans创始人), @新出行, @懂车帝, @新车部落
 
 **Hashtags to Monitor**:
 #比亚迪# #蔚来# #小鹏# #理想# #小米汽车# #极氪# #问界# #电动车# #新能源车#
@@ -230,7 +232,7 @@ A fully automated platform that aggregates Chinese EV industry content from offi
 | Component | Technology | Rationale |
 |-----------|------------|-----------|
 | **Website** | Vercel | Optimized for Next.js, free tier |
-| **Scraper** | Railway | Easy Python deployment, $5/mo |
+| **Scraper Pipelines** | GitHub Actions | Free for public repos, scheduled workflows |
 | **Cron Jobs** | Vercel Cron | Free, simple configuration |
 
 ---
@@ -528,11 +530,11 @@ NIO's growth vs infrastructure challenge continues... 🧵
 |---------|------|----------------|
 | Vercel | Free/Pro | $0-20 |
 | Supabase | Free | $0 |
-| Railway (Scraper) | Starter | $5 |
+| GitHub Actions | Free (public repo) | $0 |
 | DeepSeek API | Usage | $5-15 |
 | OpenAI (DALL-E 3) | Usage | $2-5 |
 | X API | Basic | $100 |
-| **Total** | | **$112-145/mo** |
+| **Total** | | **$107-140/mo** |
 
 **Note**: DALL-E 3 costs ~$0.04/image for AI-generated post images when no scraped image is available.
 
@@ -696,7 +698,7 @@ This helps identify sources that need selector updates without breaking the scra
 
 ### Phase 5: Deploy & Launch
 17. Deploy Next.js to Vercel
-18. Deploy scraper to Railway
+18. Configure scraper pipelines in GitHub Actions
 19. Configure domain and SSL
 20. Set up monitoring (Vercel Analytics)
 
@@ -710,7 +712,7 @@ This helps identify sources that need selector updates without breaking the scra
 | Primary AI | DeepSeek V3 | Best Chinese, lowest cost |
 | Fallback AI | GPT-4o-mini | Stable, reliable |
 | Database | Supabase | Generous free tier |
-| Deployment | Vercel + Railway | Easy, low cost |
+| Deployment | Vercel + GitHub Actions | Easy, free for public repos |
 | Differentiation | Social content + X-native | Compete vs CnEVPost |
 
 ---
