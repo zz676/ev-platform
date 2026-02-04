@@ -153,7 +153,7 @@ export function ArticleContent({
             </div>
 
             {/* Header */}
-            <div className="px-6 pt-[1.275rem] pb-[1.05rem] border-b border-gray-100">
+            <div className="px-3 pt-[0.64rem] pb-[0.53rem] border-b border-gray-100">
               <h1 className="text-[1.275rem] md:text-[1.594rem] font-bold text-gray-700 text-center">
                 {title || "Untitled"}
               </h1>
@@ -164,7 +164,7 @@ export function ArticleContent({
             </div>
 
             {/* Content */}
-            <div className="px-2 py-[0.6rem]">
+            <div className="px-[0.9rem] py-[0.6rem]">
               <div className="prose prose-gray max-w-none">
                 {content.split("\n").map((paragraph, idx) => (
                   <React.Fragment key={idx}>
