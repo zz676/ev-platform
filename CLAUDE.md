@@ -91,4 +91,4 @@ Current structure:
 ## Project Info
 - **Repo**: https://github.com/zz676/ev-platform
 - **Token file**: `~/.github-token-ev-platform`
-- **Deployment**: Vercel (website) + Railway (scraper)
+- **Deployment**: Vercel (website) + GitHub Actions (scraper pipelines)
