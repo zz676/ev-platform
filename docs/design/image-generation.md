@@ -18,13 +18,23 @@ The platform automatically generates high-quality images for EV news articles us
 │  └──────────┘  │            │  (FLUX.1) │              │ Storage │  │
 │                │            │           │              └─────────┘  │
 │  ┌──────────┐  │  ┌──────┐  └─────┬─────┘                    │      │
-│  │  Admin   │──┼─▶│Decide│        │                          │      │
+│  │  Admin   │──┤  │Decide│        │                          │      │
 │  │ Approval │  │  │      │        │fail                      ▼      │
 │  └──────────┘  │  └──────┘        ▼                    ┌─────────┐  │
 │                │            ┌───────────┐              │  Post   │  │
 │  ┌──────────┐  │            │  DALL-E   │──success────▶│ Record  │  │
-│  │   Cron   │──┘            │ (fallback)│              └─────────┘  │
-│  │ Publish  │               └───────────┘                    │      │
+│  │Cron      │──┼─▶          │ (fallback)│              └─────────┘  │
+│  │Publish   │  │            └───────────┘                    │      │
+│  └──────────┘  │                  │                          │      │
+│                │                  │                          │      │
+│  ┌──────────┐  │                  │                          │      │
+│  │Cron      │──┤                  │                          │      │
+│  │Digest    │  │                  │                          │      │
+│  └──────────┘  │                  │                          │      │
+│                │                  │                          │      │
+│  ┌──────────┐  │                  │                          │      │
+│  │Manual    │──┘                  │                          │      │
+│  │Post to X │                     │                          │      │
 │  └──────────┘                     │                          │      │
 │                                   │                          ▼      │
 │                                   │                    ┌─────────┐  │
@@ -219,7 +229,7 @@ model AIUsage {
   success   Boolean
   errorMsg  String?  // Error details if failed
   postId    String?  // Associated post
-  source    String   // "webhook", "admin_approve", "cron_publish"
+  source    String   // "webhook", "admin_approve", "cron_publish", "cron_digest", "manual_post_to_x"
   createdAt DateTime @default(now())
 
   @@index([createdAt])
@@ -248,6 +258,16 @@ async function trackAIUsage(params: {
   await prisma.aIUsage.create({ data: params });
 }
 ```
+
+### Source Values Reference
+
+| Source | Trigger | Description |
+|--------|---------|-------------|
+| `webhook` | Scraper auto-approval | Post auto-approved via webhook (relevance >= 50) |
+| `admin_approve` | Admin manual approval | Admin approves a pending post in dashboard |
+| `cron_publish` | VIP publish cron job | Scheduled publishing of VIP posts to X |
+| `cron_digest` | Digest cron job | Scheduled digest generation for top post image |
+| `manual_post_to_x` | Admin manual post to X | Admin manually posts to X from dashboard |
 
 ### Cost Calculation
 
@@ -301,7 +321,10 @@ Response:
   },
   "bySource": [
     { "source": "webhook", "cost": 28.50, "count": 950 },
-    { "source": "admin_approve", "cost": 12.30, "count": 200 }
+    { "source": "admin_approve", "cost": 12.30, "count": 200 },
+    { "source": "cron_publish", "cost": 3.20, "count": 80 },
+    { "source": "cron_digest", "cost": 1.50, "count": 50 },
+    { "source": "manual_post_to_x", "cost": 0.45, "count": 15 }
   ],
   "dailyUsage": [
     { "date": "2024-01-15", "count": 45, "cost": 0.135 }
