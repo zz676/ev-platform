@@ -96,7 +96,7 @@ export default function AdminPage() {
       if (xStatus && xStatus !== "all") params.append("xStatus", xStatus);
       if (search) params.append("search", search);
       params.append("page", page.toString());
-      params.append("limit", "20");
+      params.append("limit", "10");
       params.append("sortBy", sort);
       params.append("sortOrder", order);
 
