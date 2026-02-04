@@ -2,6 +2,42 @@ import OpenAI from "openai";
 import { Post } from "@prisma/client";
 import { DIGEST_PROMPT, DIGEST_TITLE } from "@/lib/config/prompts";
 import { POSTING_CONFIG } from "@/lib/config/posting";
+import prisma from "@/lib/prisma";
+
+// Text completion pricing (per 1M tokens)
+const TEXT_COMPLETION_COST = {
+  "deepseek-chat": { input: 0.14, output: 0.28 },
+  "gpt-4o-mini": { input: 0.15, output: 0.60 },
+} as const;
+
+// Calculate cost for text completion
+function calculateTextCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number
+): number {
+  const pricing = TEXT_COMPLETION_COST[model as keyof typeof TEXT_COMPLETION_COST];
+  if (!pricing) return 0;
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+}
+
+// Track AI usage in database
+async function trackAIUsage(params: {
+  type: string;
+  model: string;
+  cost: number;
+  success: boolean;
+  errorMsg?: string;
+  source: string;
+  inputTokens?: number;
+  outputTokens?: number;
+}): Promise<void> {
+  try {
+    await prisma.aIUsage.create({ data: params });
+  } catch (error) {
+    console.error("Failed to track AI usage:", error);
+  }
+}
 
 // AI Provider configuration for digest generation
 const providers = [
@@ -45,6 +81,21 @@ async function callDeepSeek(prompt: string): Promise<string> {
     throw new Error("DeepSeek returned empty response");
   }
 
+  // Track token usage
+  const inputTokens = response.usage?.prompt_tokens || 0;
+  const outputTokens = response.usage?.completion_tokens || 0;
+  const cost = calculateTextCost(provider.model, inputTokens, outputTokens);
+
+  await trackAIUsage({
+    type: "text_completion",
+    model: provider.model,
+    cost,
+    success: true,
+    source: "digest_deepseek",
+    inputTokens,
+    outputTokens,
+  });
+
   return content.trim();
 }
 
@@ -73,6 +124,21 @@ async function callOpenAI(prompt: string, model: string): Promise<string> {
   if (!content) {
     throw new Error("OpenAI returned empty response");
   }
+
+  // Track token usage
+  const inputTokens = response.usage?.prompt_tokens || 0;
+  const outputTokens = response.usage?.completion_tokens || 0;
+  const cost = calculateTextCost(model, inputTokens, outputTokens);
+
+  await trackAIUsage({
+    type: "text_completion",
+    model,
+    cost,
+    success: true,
+    source: "digest_openai",
+    inputTokens,
+    outputTokens,
+  });
 
   return content.trim();
 }

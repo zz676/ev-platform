@@ -13,6 +13,27 @@ const IMAGE_GEN_COST = {
   "dall-e-3-1024x1024-standard": 0.04,
 } as const;
 
+// Text completion pricing (per 1M tokens, as of 2024)
+const TEXT_COMPLETION_COST = {
+  "deepseek-chat": { input: 0.14, output: 0.28 },
+  "gpt-4o-mini": { input: 0.15, output: 0.60 },
+} as const;
+
+// Calculate cost for text completion based on token usage
+function calculateTextCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number
+): number {
+  const pricing = TEXT_COMPLETION_COST[model as keyof typeof TEXT_COMPLETION_COST];
+  if (!pricing) {
+    console.warn(`Unknown model for pricing: ${model}`);
+    return 0;
+  }
+  // Cost = (input_tokens * input_price + output_tokens * output_price) / 1M
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+}
+
 // Track AI usage in database
 async function trackAIUsage(params: {
   type: string;
@@ -23,6 +44,8 @@ async function trackAIUsage(params: {
   errorMsg?: string;
   postId?: string;
   source: string;
+  inputTokens?: number;
+  outputTokens?: number;
 }): Promise<void> {
   try {
     await prisma.aIUsage.create({ data: params });
@@ -88,7 +111,7 @@ export async function getAIClient(): Promise<{ client: OpenAI; model: string }> 
 }
 
 // Process EV content with AI
-export async function processEVContent(content: string, source: string) {
+export async function processEVContent(content: string, source: string, postId?: string) {
   const { client, model } = await getAIClient();
 
   const response = await client.chat.completions.create({
@@ -125,12 +148,28 @@ Translation requirements:
     response_format: { type: "json_object" },
   });
 
+  // Track token usage
+  const inputTokens = response.usage?.prompt_tokens || 0;
+  const outputTokens = response.usage?.completion_tokens || 0;
+  const cost = calculateTextCost(model, inputTokens, outputTokens);
+
+  await trackAIUsage({
+    type: "text_completion",
+    model,
+    cost,
+    success: true,
+    postId,
+    source: "process_content",
+    inputTokens,
+    outputTokens,
+  });
+
   const result = response.choices[0].message.content;
   return result ? JSON.parse(result) : null;
 }
 
 // Translate content only
-export async function translateContent(content: string) {
+export async function translateContent(content: string, postId?: string) {
   const { client, model } = await getAIClient();
 
   const response = await client.chat.completions.create({
@@ -153,11 +192,27 @@ Requirements:
     ],
   });
 
+  // Track token usage
+  const inputTokens = response.usage?.prompt_tokens || 0;
+  const outputTokens = response.usage?.completion_tokens || 0;
+  const cost = calculateTextCost(model, inputTokens, outputTokens);
+
+  await trackAIUsage({
+    type: "text_completion",
+    model,
+    cost,
+    success: true,
+    postId,
+    source: "translate",
+    inputTokens,
+    outputTokens,
+  });
+
   return response.choices[0].message.content;
 }
 
 // Generate X post summary
-export async function generateXSummary(content: string) {
+export async function generateXSummary(content: string, postId?: string) {
   const { client, model } = await getAIClient();
 
   const response = await client.chat.completions.create({
@@ -178,6 +233,22 @@ Requirements:
         content,
       },
     ],
+  });
+
+  // Track token usage
+  const inputTokens = response.usage?.prompt_tokens || 0;
+  const outputTokens = response.usage?.completion_tokens || 0;
+  const cost = calculateTextCost(model, inputTokens, outputTokens);
+
+  await trackAIUsage({
+    type: "text_completion",
+    model,
+    cost,
+    success: true,
+    postId,
+    source: "x_summary",
+    inputTokens,
+    outputTokens,
   });
 
   return response.choices[0].message.content;
