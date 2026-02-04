@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, User, X } from "lucide-react";
+import { Search, User, X, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/components/context/AuthContext";
 import { useUserPanel } from "@/components/context/UserPanelContext";
@@ -181,7 +181,7 @@ export function Header() {
           {user ? (
             <button
               onClick={openPanel}
-              className="flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="relative flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
               aria-label="Open user menu"
             >
               {user.avatarUrl ? (
@@ -194,6 +194,10 @@ export function Header() {
               ) : (
                 <User className="h-5 w-5 text-gray-600" />
               )}
+              {/* Dropdown arrow indicator */}
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full shadow-sm border border-gray-200 flex items-center justify-center">
+                <ChevronDown className="h-3 w-3 text-gray-600" />
+              </div>
             </button>
           ) : (
             <button
