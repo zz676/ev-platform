@@ -153,7 +153,7 @@ export function ArticleContent({
             </div>
 
             {/* Header */}
-            <div className="px-3 pt-[0.64rem] pb-[0.53rem] border-b border-gray-100">
+            <div className="px-3 pt-[0.77rem] pb-[0.53rem] border-b border-gray-100">
               <h1 className="text-[1.275rem] md:text-[1.594rem] font-bold text-gray-600 text-center">
                 {title || "Untitled"}
               </h1>
