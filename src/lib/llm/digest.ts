@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { Post } from "@prisma/client";
-import { DIGEST_PROMPT } from "@/lib/config/prompts";
+import { DIGEST_PROMPT, DIGEST_TITLE } from "@/lib/config/prompts";
 import { POSTING_CONFIG } from "@/lib/config/posting";
 
 // AI Provider configuration for digest generation
@@ -36,7 +36,7 @@ async function callDeepSeek(prompt: string): Promise<string> {
   const response = await client.chat.completions.create({
     model: provider.model,
     messages: [{ role: "user", content: prompt }],
-    max_tokens: 300,
+    max_tokens: 500,
     temperature: 0.7,
   });
 
@@ -65,7 +65,7 @@ async function callOpenAI(prompt: string, model: string): Promise<string> {
   const response = await client.chat.completions.create({
     model,
     messages: [{ role: "user", content: prompt }],
-    max_tokens: 300,
+    max_tokens: 500,
     temperature: 0.7,
   });
 
@@ -86,14 +86,14 @@ export async function generateDigestContent(posts: Post[]): Promise<string> {
     throw new Error("No posts provided for digest generation");
   }
 
-  // Format posts for the prompt
+  // Format posts for the prompt - pass full summaries for better context
   const postSummaries = posts
     .map((p, i) => {
       const title = p.translatedTitle || p.originalTitle || "Untitled";
-      const summary = p.translatedSummary?.slice(0, 100) || "";
-      return `${i + 1}. ${title}: ${summary}${summary.length >= 100 ? "..." : ""}`;
+      const summary = p.translatedSummary || "";
+      return `${i + 1}. ${title}\n   ${summary}`;
     })
-    .join("\n");
+    .join("\n\n");
 
   const prompt = DIGEST_PROMPT.replace("{posts}", postSummaries);
 
@@ -150,4 +150,23 @@ export function formatDigestTweet(
   const allHashtags = [...baseHashtags, ...brandHashtags];
   const hashtagStr = allHashtags.join(" ");
   return `${content}\n\n🍋 ${siteUrl}\n${hashtagStr}`;
+}
+
+/**
+ * Generate a complete formatted digest tweet ready for storage and posting
+ * Includes: title + LLM bullets + site link + hashtags
+ */
+export async function generateFullDigestTweet(posts: Post[]): Promise<string> {
+  // Get LLM-generated bullets
+  const bullets = await generateDigestContent(posts);
+
+  // Build hashtags: base site hashtags + brand-specific ones
+  const brandHashtags = extractBrandHashtags(posts);
+  // Take first 4 base hashtags and up to 3 brand hashtags (max 6 total)
+  const baseHashtags = POSTING_CONFIG.SITE_HASHTAGS.slice(0, 4);
+  const allHashtags = [...baseHashtags, ...brandHashtags].slice(0, 6);
+  const hashtagStr = allHashtags.join(" ");
+
+  // Assemble full tweet: title + bullets + link + hashtags
+  return `${DIGEST_TITLE}\n${bullets}\n\n🍋 ${POSTING_CONFIG.SITE_URL}\n${hashtagStr}`;
 }

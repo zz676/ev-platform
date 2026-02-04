@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { PostStatus } from "@prisma/client";
 import { POSTING_CONFIG } from "@/lib/config/posting";
-import { generateDigestContent } from "@/lib/llm/digest";
+import { generateFullDigestTweet } from "@/lib/llm/digest";
 import { alertNoDigestContent } from "@/lib/email/admin-alerts";
 
 // Vercel Cron secret for authentication
@@ -108,11 +108,11 @@ export async function GET(request: NextRequest) {
       POSTING_CONFIG.DIGEST_POSTS_PER_TWEET
     );
 
-    // Generate digest content using LLM
+    // Generate full formatted digest tweet (title + bullets + link + hashtags)
     console.log(
-      `[Digest Aggregate] Generating content for ${postsForDigest.length} posts...`
+      `[Digest Aggregate] Generating full tweet for ${postsForDigest.length} posts...`
     );
-    const digestText = await generateDigestContent(postsForDigest);
+    const digestText = await generateFullDigestTweet(postsForDigest);
 
     // Find top relevance post for image
     const topPost = postsForDigest.reduce((top, post) =>
