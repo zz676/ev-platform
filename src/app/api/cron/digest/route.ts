@@ -4,7 +4,7 @@ import { PostStatus } from "@prisma/client";
 import { postTweet, uploadMedia } from "@/lib/twitter";
 import { generatePostImage } from "@/lib/ai";
 import { POSTING_CONFIG } from "@/lib/config/posting";
-import { formatDigestTweet, generateDigestContent } from "@/lib/llm/digest";
+import { generateFullDigestTweet } from "@/lib/llm/digest";
 import {
   alertNoDigestContent,
   alertDigestPostingFailed,
@@ -109,8 +109,8 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Generate content
-      const digestText = await generateDigestContent(eligiblePosts);
+      // Generate full formatted tweet (title + bullets + link + hashtags)
+      const digestText = await generateFullDigestTweet(eligiblePosts);
       const topPost = eligiblePosts.reduce((top, post) =>
         post.relevanceScore > top.relevanceScore ? post : top
       );
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch posts for the digest
+    // Fetch posts for the digest (needed for image selection)
     const posts = await prisma.post.findMany({
       where: { id: { in: digestContent.postIds } },
     });
@@ -135,13 +135,8 @@ export async function GET(request: NextRequest) {
     // Get top post for image
     const topPost = posts.find((p) => p.id === digestContent!.topPostId);
 
-    // Format final tweet with site link and hashtags (includes dynamic brand hashtags)
-    const tweetText = formatDigestTweet(
-      digestContent.content,
-      POSTING_CONFIG.SITE_URL,
-      POSTING_CONFIG.SITE_HASHTAGS,
-      posts
-    );
+    // Use stored content directly (already includes title + bullets + link + hashtags)
+    const tweetText = digestContent.content;
 
     // Try to get image from top post
     let mediaIds: string[] | undefined;
