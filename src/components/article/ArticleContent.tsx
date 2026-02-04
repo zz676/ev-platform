@@ -137,7 +137,7 @@ export function ArticleContent({
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Article card */}
-          <article className="bg-white rounded-xl border border-gray-200 overflow-hidden px-2">
+          <article className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {/* Metadata bar */}
             <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 border-b border-gray-200 text-sm">
               <CategoryBadge category={category} variant="green" />
@@ -164,7 +164,7 @@ export function ArticleContent({
             </div>
 
             {/* Content */}
-            <div className="px-[0.9rem] py-[0.6rem]">
+            <div className="px-[1.35rem] py-[0.6rem]">
               <div className="prose prose-gray max-w-none">
                 {content.split("\n").map((paragraph, idx) => (
                   <React.Fragment key={idx}>
