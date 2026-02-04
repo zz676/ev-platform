@@ -164,7 +164,7 @@ export function ArticleContent({
             </div>
 
             {/* Content */}
-            <div className="px-[1.35rem] py-[0.6rem]">
+            <div className="px-[1.35rem] pt-[0.6rem]">
               <div className="prose prose-gray max-w-none">
                 {content.split("\n").map((paragraph, idx) => (
                   <React.Fragment key={idx}>
