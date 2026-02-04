@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   ExternalLink,
   Sparkles,
@@ -275,6 +276,16 @@ export function ArticleContent({
               </div>
             </div>
           </article>
+
+          {/* Terms and Privacy links */}
+          <div className="flex justify-center gap-6 mt-4 text-sm text-gray-500">
+            <Link href={`/${locale}/terms`} className="hover:text-ev-green-600 transition-colors">
+              Terms
+            </Link>
+            <Link href={`/${locale}/privacy`} className="hover:text-ev-green-600 transition-colors">
+              Privacy
+            </Link>
+          </div>
         </div>
 
         {/* Right sidebar - Related Articles (now visible on mobile too) */}
