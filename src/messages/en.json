@@ -144,5 +144,81 @@
   "UnderConstruction": {
     "message": "Getting Juiced... Be sure to check back later!",
     "backToNews": "Back to News"
+  },
+  "Terms": {
+    "title": "Terms of Service",
+    "lastUpdated": "Last updated: February 2025",
+    "sections": {
+      "introduction": {
+        "title": "1. Acceptance of Terms",
+        "content": "By accessing and using EV Juice (\"the Service\"), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our Service. EV Juice provides news aggregation and analysis focused on the electric vehicle industry in China."
+      },
+      "useOfService": {
+        "title": "2. Use of Service",
+        "content": "You may use our Service for personal, non-commercial purposes. You agree not to: (a) reproduce, distribute, or republish content without permission; (b) use automated systems to access the Service in a manner that sends more requests than a human could reasonably produce; (c) interfere with or disrupt the Service or servers; (d) attempt to gain unauthorized access to any part of the Service."
+      },
+      "userContent": {
+        "title": "3. User Content",
+        "content": "If you submit content to our Service, you grant us a non-exclusive, worldwide, royalty-free license to use, reproduce, and display such content in connection with the Service. You are responsible for ensuring you have the rights to any content you submit and that it does not violate any laws or third-party rights."
+      },
+      "intellectualProperty": {
+        "title": "4. Intellectual Property",
+        "content": "The Service and its original content, features, and functionality are owned by EV Juice and are protected by international copyright, trademark, and other intellectual property laws. Our aggregated content includes materials from various sources, and we respect the intellectual property rights of others."
+      },
+      "disclaimers": {
+        "title": "5. Disclaimers",
+        "content": "The Service is provided \"as is\" without warranties of any kind. We do not guarantee the accuracy, completeness, or timeliness of any information on the Service. Content is aggregated from various sources and may contain errors or inaccuracies. The information provided is for general informational purposes only and should not be considered as financial or investment advice."
+      },
+      "limitationOfLiability": {
+        "title": "6. Limitation of Liability",
+        "content": "To the fullest extent permitted by law, EV Juice shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the Service. This includes but is not limited to damages for loss of profits, data, or other intangible losses."
+      },
+      "changesToTerms": {
+        "title": "7. Changes to Terms",
+        "content": "We reserve the right to modify these terms at any time. We will notify users of any material changes by posting the new Terms of Service on this page and updating the \"Last updated\" date. Your continued use of the Service after any changes constitutes acceptance of the new terms."
+      },
+      "contact": {
+        "title": "8. Contact Information",
+        "content": "If you have any questions about these Terms of Service, please contact us through our website or social media channels. We aim to respond to all inquiries within a reasonable timeframe."
+      }
+    }
+  },
+  "Privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: February 2025",
+    "sections": {
+      "informationCollect": {
+        "title": "1. Information We Collect",
+        "content": "We collect information you provide directly, such as your email address when subscribing to our newsletter. We also automatically collect certain information when you use our Service, including your IP address, browser type, device information, and pages visited. We use cookies and similar technologies to enhance your experience."
+      },
+      "howWeUse": {
+        "title": "2. How We Use Information",
+        "content": "We use the information we collect to: (a) provide and maintain our Service; (b) send you newsletters and updates if you've subscribed; (c) analyze usage patterns to improve our Service; (d) detect and prevent fraud or abuse; (e) comply with legal obligations. We do not sell your personal information to third parties."
+      },
+      "informationSharing": {
+        "title": "3. Information Sharing",
+        "content": "We may share your information with: (a) service providers who assist in operating our Service; (b) analytics partners to help us understand usage; (c) law enforcement when required by law. All third parties are required to protect your information and use it only for the purposes we specify."
+      },
+      "cookies": {
+        "title": "4. Cookies and Tracking",
+        "content": "We use cookies and similar tracking technologies to track activity on our Service and hold certain information. Cookies are files with small amounts of data that may include an anonymous unique identifier. You can instruct your browser to refuse all cookies or indicate when a cookie is being sent. However, some features of our Service may not function properly without cookies."
+      },
+      "dataSecurity": {
+        "title": "5. Data Security",
+        "content": "We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the Internet or electronic storage is 100% secure, and we cannot guarantee absolute security."
+      },
+      "yourRights": {
+        "title": "6. Your Rights",
+        "content": "You have the right to: (a) access the personal information we hold about you; (b) request correction of inaccurate information; (c) request deletion of your information; (d) opt out of marketing communications; (e) lodge a complaint with a data protection authority. To exercise these rights, please contact us using the information below."
+      },
+      "changesToPolicy": {
+        "title": "7. Changes to This Policy",
+        "content": "We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the \"Last updated\" date. You are advised to review this Privacy Policy periodically for any changes."
+      },
+      "contact": {
+        "title": "8. Contact Us",
+        "content": "If you have any questions about this Privacy Policy or our data practices, please contact us through our website or social media channels. We are committed to addressing your concerns and will respond to your inquiry as soon as possible."
+      }
+    }
   }
 }
