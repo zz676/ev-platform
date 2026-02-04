@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import prisma from "@/lib/prisma";
@@ -8,6 +9,53 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+}): Promise<Metadata> {
+  const { locale, id } = await params;
+  const post = await prisma.post.findUnique({
+    where: { id },
+    select: {
+      originalTitle: true,
+      translatedTitle: true,
+      originalContent: true,
+      translatedContent: true,
+      originalMediaUrls: true,
+    },
+  });
+
+  if (!post) {
+    return { title: "Article Not Found" };
+  }
+
+  const title = locale === "zh" ? post.originalTitle : post.translatedTitle;
+  const content = locale === "zh" ? post.originalContent : post.translatedContent;
+  const description = content?.slice(0, 160).replace(/\n/g, " ") + "...";
+  const imageUrl = post.originalMediaUrls?.[0] || "https://evjuice.co/og-default.png";
+
+  return {
+    title: title || "EV Juice Article",
+    description,
+    openGraph: {
+      title: title || "EV Juice Article",
+      description,
+      url: `https://evjuice.co/${locale}/post/${id}`,
+      type: "article",
+      images: [{ url: imageUrl, width: 1200, height: 630 }],
+      siteName: "EV Juice",
+      locale: locale === "zh" ? "zh_CN" : "en_US",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: title || "EV Juice Article",
+      description,
+      images: [imageUrl],
+    },
+  };
 }
 
 export default async function ArticlePage({ params }: PageProps) {
