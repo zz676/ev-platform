@@ -163,7 +163,8 @@ export async function GET(request: NextRequest) {
           console.log("[Digest] Generating AI image for digest...");
           imageUrl = await generatePostImage(
             topPost.translatedTitle || topPost.originalTitle || "EV Juice Digest",
-            topPost.translatedSummary || ""
+            topPost.translatedSummary || "",
+            { source: "cron_digest", postId: topPost.id }
           );
           imageSource = "ai-generated";
         }
