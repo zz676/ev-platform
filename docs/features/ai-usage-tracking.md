@@ -1,8 +1,18 @@
-# AI Usage Tracking (Image Generation Cost Monitoring)
+# AI Usage Tracking (Image Generation & Text Completion Cost Monitoring)
 
 ## Overview
 
-This feature tracks all AI image generation API calls with cost, success/failure status, and source attribution. It uses **Together AI (FLUX.1)** as the primary provider (96% cheaper) with **DALL-E 3** as fallback.
+This feature tracks all AI API calls—both image generation and text completions—with cost, success/failure status, token usage, and source attribution.
+
+### Image Generation
+Uses **Together AI (FLUX.1)** as the primary provider (96% cheaper) with **DALL-E 3** as fallback.
+
+### Text Completions
+Tracks token usage and costs for all text completion calls:
+- Content processing (`processEVContent`)
+- Translation (`translateContent`)
+- X/Twitter summary generation (`generateXSummary`)
+- Digest generation (`callDeepSeek`, `callOpenAI`)
 
 ## Problem Solved
 
@@ -47,16 +57,18 @@ If only `OPENAI_API_KEY` is set, DALL-E 3 will be used. If both are set, Togethe
 
 ```prisma
 model AIUsage {
-  id        String   @id @default(cuid())
-  type      String   // "image_generation", "text_completion", etc.
-  model     String   // "FLUX.1-schnell", "dall-e-3"
-  size      String?  // "1792x1024"
-  cost      Float    // estimated cost in USD
-  success   Boolean
-  errorMsg  String?
-  postId    String?  // optional link to post
-  source    String   // "webhook", "admin_approve", "migration_script"
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  type         String   // "image_generation", "text_completion"
+  model        String   // "FLUX.1-schnell", "dall-e-3", "deepseek-chat", "gpt-4o-mini"
+  size         String?  // "1792x1024" (for images)
+  cost         Float    // estimated cost in USD
+  success      Boolean
+  errorMsg     String?
+  postId       String?  // optional link to post
+  source       String   // "webhook", "admin_approve", "process_content", "translate", "x_summary", "digest_deepseek", "digest_openai"
+  inputTokens  Int?     // prompt tokens (for text completions)
+  outputTokens Int?     // completion tokens (for text completions)
+  createdAt    DateTime @default(now())
 
   Post Post? @relation(fields: [postId], references: [id])
 
@@ -71,6 +83,7 @@ model AIUsage {
 Defined in `src/lib/ai.ts`:
 
 ```typescript
+// Image generation pricing
 const IMAGE_GEN_COST = {
   // Together AI - FLUX.1 models
   "FLUX.1-schnell": 0.003,
@@ -81,18 +94,46 @@ const IMAGE_GEN_COST = {
   "dall-e-3-1792x1024-hd": 0.12,
   "dall-e-3-1024x1024-standard": 0.04,
 } as const;
+
+// Text completion pricing (per 1M tokens)
+const TEXT_COMPLETION_COST = {
+  "deepseek-chat": { input: 0.14, output: 0.28 },
+  "gpt-4o-mini": { input: 0.15, output: 0.60 },
+} as const;
+```
+
+### Text Completion Cost Calculation
+
+```typescript
+function calculateTextCost(model: string, inputTokens: number, outputTokens: number): number {
+  const pricing = TEXT_COMPLETION_COST[model];
+  if (!pricing) return 0;
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+}
 ```
 
 ### Core Module: `src/lib/ai.ts`
 
-| Function | Purpose |
-|----------|---------|
-| `trackAIUsage(params)` | Internal function to persist usage record |
-| `generateWithTogetherAI(prompt, options)` | Generate with FLUX.1 |
-| `generateWithDALLE(prompt, options)` | Generate with DALL-E 3 |
-| `generatePostImage(title, summary, options?)` | Main function - tries Together AI first, falls back to DALL-E |
+| Function | Purpose | Source Value |
+|----------|---------|--------------|
+| `trackAIUsage(params)` | Internal function to persist usage record | — |
+| `generateWithTogetherAI(prompt, options)` | Generate with FLUX.1 | varies |
+| `generateWithDALLE(prompt, options)` | Generate with DALL-E 3 | varies |
+| `generatePostImage(title, summary, options?)` | Main image function - tries Together AI first, falls back to DALL-E | varies |
+| `processEVContent(content, source, postId?)` | Process and translate EV news content | `"process_content"` |
+| `translateContent(content, postId?)` | Translate Chinese to English | `"translate"` |
+| `generateXSummary(content, postId?)` | Generate X/Twitter summary | `"x_summary"` |
+
+### Digest Module: `src/lib/llm/digest.ts`
+
+| Function | Purpose | Source Value |
+|----------|---------|--------------|
+| `callDeepSeek(prompt)` | Call DeepSeek for digest generation | `"digest_deepseek"` |
+| `callOpenAI(prompt, model)` | Call OpenAI (fallback) for digest | `"digest_openai"` |
 
 ### Tracking Behavior
+
+#### Image Generation
 
 | Scenario | Model | cost | success |
 |----------|-------|------|---------|
@@ -101,6 +142,16 @@ const IMAGE_GEN_COST = {
 | Together AI fails (tracked) | FLUX.1-schnell | $0.00 | false |
 | DALL-E fails | dall-e-3 | $0.00 | false |
 | No API keys | none | $0.00 | false |
+
+#### Text Completions
+
+| Scenario | Model | Typical Tokens | Typical Cost |
+|----------|-------|----------------|--------------|
+| Process content | deepseek-chat | ~2000 | ~$0.0004 |
+| Translation | deepseek-chat | ~1000 | ~$0.0002 |
+| X summary | deepseek-chat | ~500 | ~$0.0001 |
+| Digest (DeepSeek) | deepseek-chat | ~1500 | ~$0.0003 |
+| Digest (OpenAI fallback) | gpt-4o-mini | ~1500 | ~$0.0005 |
 
 ## API Endpoints
 
@@ -191,12 +242,14 @@ Return image URL                   Success         Failure
 
 | File | Change |
 |------|--------|
-| `prisma/schema.prisma` | Added `AIUsage` model, added relation to `Post` |
-| `src/lib/ai.ts` | Added Together AI support, DALL-E fallback, tracking |
+| `prisma/schema.prisma` | Added `AIUsage` model with `inputTokens`/`outputTokens` fields |
+| `src/lib/ai.ts` | Added text completion cost tracking, token tracking for `processEVContent`, `translateContent`, `generateXSummary` |
+| `src/lib/llm/digest.ts` | Added token tracking to `callDeepSeek` and `callOpenAI` |
 | `src/app/api/webhook/route.ts` | Pass `source: "webhook"` and `postId` |
 | `src/app/api/admin/posts/[id]/route.ts` | Pass `source: "admin_approve"` and `postId` |
 | `scripts/fix-image-ratios.ts` | Added Together AI with DALL-E fallback |
-| `src/app/api/admin/ai-usage/route.ts` | Admin endpoint for usage stats |
+| `src/app/api/admin/ai-usage/route.ts` | Admin endpoint for usage stats (includes token fields) |
+| `src/app/[locale]/admin/monitoring/page.tsx` | Display token counts in Recent Activity table |
 
 ## Database Queries
 

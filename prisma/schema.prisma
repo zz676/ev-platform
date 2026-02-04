@@ -8,6 +8,26 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model AIUsage {
+  id           String   @id @default(cuid())
+  type         String   // "image_generation", "text_completion", etc.
+  model        String   // "dall-e-3", "deepseek-chat", "gpt-4o-mini"
+  size         String?  // "1792x1024" (for images)
+  cost         Float    // estimated cost in USD
+  success      Boolean
+  errorMsg     String?
+  postId       String?  // optional link to post
+  source       String   // "webhook", "admin_approve", "process_content", "translate", etc.
+  inputTokens  Int?     // prompt tokens (for text completions)
+  outputTokens Int?     // completion tokens (for text completions)
+  createdAt    DateTime @default(now())
+  Post         Post?    @relation(fields: [postId], references: [id])
+
+  @@index([createdAt])
+  @@index([postId])
+  @@index([source])
+}
+
 model Account {
   id                String       @id
   userId            String
@@ -24,6 +44,21 @@ model Account {
 
   @@unique([provider, providerAccountId])
   @@index([userId])
+}
+
+model DigestContent {
+  id           String    @id @default(cuid())
+  scheduledFor DateTime
+  content      String
+  postIds      String[]
+  topPostId    String
+  status       String    @default("PENDING")
+  postedAt     DateTime?
+  tweetId      String?
+  createdAt    DateTime  @default(now())
+
+  @@index([scheduledFor])
+  @@index([status])
 }
 
 model EmailEvent {
@@ -69,47 +104,47 @@ model MagicLink {
 }
 
 model Post {
-  id                String           @id
-  sourceId          String           @unique
-  source            Source           @default(OFFICIAL)
-  sourceUrl         String
-  sourceAuthor      String
-  sourceDate        DateTime
-  originalTitle     String?
-  originalContent   String?
-  originalMediaUrls String[]
-  cardImageUrl      String?          // AI-generated or good-ratio image for cards (null = use placeholder)
-  translatedTitle   String?
-  translatedContent String?
-  translatedSummary String?
-  categories        String[]
-  relevanceScore    Int              @default(0)
-  status            PostStatus       @default(PENDING)
-  publishedToX      Boolean          @default(false)
-  xPostId           String?
-  xPublishedAt      DateTime?
-  publishedToDiscord   Boolean       @default(false)
-  discordPublishedAt   DateTime?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime
-  archivedAt        DateTime?
-  brand             Brand            @default(INDUSTRY)
-  topics            Topic[]
-  includedInDigest  Boolean          @default(false)
-  digestTweetId     String?
-  approvedAt        DateTime?
-  PostContent       PostContent?
-  PostTranslation   PostTranslation?
-  SavedPost         SavedPost[]
-  XPublication      XPublication?
-  AIUsage           AIUsage[]
+  id                 String           @id
+  sourceId           String           @unique
+  source             Source           @default(OFFICIAL)
+  sourceUrl          String
+  sourceAuthor       String
+  sourceDate         DateTime
+  originalTitle      String?
+  originalContent    String?
+  originalMediaUrls  String[]
+  translatedTitle    String?
+  translatedContent  String?
+  translatedSummary  String?
+  categories         String[]
+  relevanceScore     Int              @default(0)
+  status             PostStatus       @default(PENDING)
+  publishedToX       Boolean          @default(false)
+  xPostId            String?
+  xPublishedAt       DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime
+  archivedAt         DateTime?
+  brand              Brand            @default(INDUSTRY)
+  topics             Topic[]
+  approvedAt         DateTime?
+  digestTweetId      String?
+  includedInDigest   Boolean          @default(false)
+  cardImageUrl       String?
+  publishedToDiscord Boolean?         @default(false)
+  discordPublishedAt DateTime?
+  AIUsage            AIUsage[]
+  PostContent        PostContent?
+  PostTranslation    PostTranslation?
+  SavedPost          SavedPost[]
+  XPublication       XPublication?
 
   @@index([brand])
   @@index([source])
   @@index([status, archivedAt, createdAt(sort: Desc)], map: "idx_post_active_status_date")
   @@index([createdAt, id], map: "idx_post_cursor")
-  @@index([status, relevanceScore(sort: Desc), createdAt], map: "idx_post_publish_queue")
   @@index([status, includedInDigest, approvedAt], map: "idx_post_digest_eligible")
+  @@index([status, relevanceScore(sort: Desc), createdAt], map: "idx_post_publish_queue")
 }
 
 model PostArchive {
@@ -169,6 +204,16 @@ model PostTranslation {
   Post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
 
+model PostingLog {
+  id        String   @id @default(cuid())
+  postType  String
+  tweetId   String
+  postIds   String[]
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model SavedPost {
   id      String   @id
   userId  String
@@ -216,9 +261,9 @@ model User {
   passwordHash      String?
   emailVerified     Boolean             @default(false)
   emailVerifyToken  String?
-  role              UserRole            @default(USER)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime
+  role              UserRole            @default(USER)
   Account           Account[]
   EmailNotification EmailNotification[]
   SavedPost         SavedPost[]
@@ -269,11 +314,6 @@ model XPublication {
 enum AuthProvider {
   GOOGLE
   GITHUB
-}
-
-enum UserRole {
-  USER
-  ADMIN
 }
 
 enum Brand {
@@ -355,54 +395,15 @@ enum Topic {
   OTHER
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 enum XPublishStatus {
   PENDING
   PUBLISHING
   PUBLISHED
   FAILED
   SKIPPED
-}
-
-model PostingLog {
-  id        String   @id @default(cuid())
-  postType  String   // "VIP" | "DIGEST" | "MANUAL"
-  tweetId   String
-  postIds   String[]
-  createdAt DateTime @default(now())
-
-  @@index([createdAt])
-}
-
-model DigestContent {
-  id           String   @id @default(cuid())
-  scheduledFor DateTime // 13:00 or 22:00 UTC
-  content      String   // LLM-generated tweet text
-  postIds      String[] // Posts included in this digest
-  topPostId    String   // For image selection
-  status       String   @default("PENDING") // PENDING | POSTED | FAILED
-  postedAt     DateTime?
-  tweetId      String?
-  createdAt    DateTime @default(now())
-
-  @@index([scheduledFor])
-  @@index([status])
-}
-
-model AIUsage {
-  id        String   @id @default(cuid())
-  type      String   // "image_generation", "text_completion", etc.
-  model     String   // "dall-e-3"
-  size      String?  // "1792x1024"
-  cost      Float    // estimated cost in USD
-  success   Boolean
-  errorMsg  String?
-  postId    String?  // optional link to post
-  source    String   // "webhook", "admin_approve", "migration_script"
-  createdAt DateTime @default(now())
-
-  Post Post? @relation(fields: [postId], references: [id])
-
-  @@index([createdAt])
-  @@index([source])
-  @@index([postId])
 }

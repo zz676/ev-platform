@@ -65,6 +65,8 @@ export async function GET() {
         postId: true,
         source: true,
         createdAt: true,
+        inputTokens: true,
+        outputTokens: true,
       },
     });
 

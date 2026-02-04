@@ -34,6 +34,8 @@ interface RecentUsage {
   postId: string | null;
   source: string;
   createdAt: string;
+  inputTokens: number | null;
+  outputTokens: number | null;
 }
 
 interface AIUsageData {
@@ -237,6 +239,9 @@ export default function MonitoringPage() {
                       Source
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tokens
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Cost
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -262,6 +267,15 @@ export default function MonitoringPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
                           {usage.source}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {usage.inputTokens != null && usage.outputTokens != null ? (
+                            <span title={`Input: ${usage.inputTokens}, Output: ${usage.outputTokens}`}>
+                              {(usage.inputTokens + usage.outputTokens).toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           ${usage.cost.toFixed(4)}
                         </td>
@@ -286,7 +300,7 @@ export default function MonitoringPage() {
                   ) : (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-6 py-8 text-center text-gray-500"
                       >
                         No recent activity
