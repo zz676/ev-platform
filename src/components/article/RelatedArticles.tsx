@@ -34,7 +34,7 @@ export function RelatedArticles({
   if (articles.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 py-4 px-[0.85rem]">
+    <div className="bg-white rounded-xl border border-lime-300 py-4 px-[0.72rem]">
       <h3 className="font-semibold text-gray-900 mb-4">{title}</h3>
       <div className="divide-y divide-lime-200">
         {articles.map((article, index) => (

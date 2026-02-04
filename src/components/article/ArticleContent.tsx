@@ -128,9 +128,9 @@ export function ArticleContent({
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Article card */}
-          <article className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <article className="bg-white rounded-xl border border-lime-300 overflow-hidden">
             {/* Metadata bar - simplified with only reading time right-aligned */}
-            <div className="flex items-center justify-end gap-2 px-6 py-[0.5625rem] bg-gray-50 border-b border-gray-200 text-sm">
+            <div className="flex items-center justify-end gap-2 px-6 py-[0.36rem] bg-gray-50 border-b border-lime-300 text-sm">
               {isImportant && (
                 <div className="flex items-center gap-1.5 text-amber-500 mr-auto">
                   <Sparkles className="h-4 w-4" />
@@ -138,26 +138,26 @@ export function ArticleContent({
               )}
               <div className="flex items-center gap-1.5 text-ev-green-600">
                 <Clock className="h-4 w-4" />
-                <span>{readingTime} min read</span>
+                <span className="italic">{readingTime} min read</span>
               </div>
             </div>
 
             {/* Header */}
-            <div className="px-6 pt-[1.275rem] pb-[1.05rem] border-b border-gray-100">
+            <div className="px-6 pt-[0.32rem] border-b border-gray-100">
+              <div className="flex justify-start">
+                <CategoryBadge category={category} />
+              </div>
               <h1 className="text-[1.275rem] md:text-[1.594rem] font-bold text-gray-700 text-center">
                 {title || "Untitled"}
               </h1>
-              <div className="flex items-center justify-center gap-1.5 text-sm text-gray-500 mt-2">
+              <div className="flex items-center justify-center gap-1.5 text-sm text-gray-500 mt-1">
                 <Calendar className="h-4 w-4" />
                 <span className="italic">{formatDate(sourceDate)}</span>
-              </div>
-              <div className="flex justify-end mt-2">
-                <CategoryBadge category={category} />
               </div>
             </div>
 
             {/* Content */}
-            <div className="px-6 py-6">
+            <div className="px-[1.2rem] pt-3">
               <div className="prose prose-gray max-w-none">
                 {content.split("\n").map((paragraph, idx) => (
                   <React.Fragment key={idx}>
