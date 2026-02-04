@@ -23,8 +23,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { icon: Newspaper, label: "My Feed", href: "/" },
-  { icon: Bookmark, label: "Saved Articles", href: "/saved" },
+  { icon: Newspaper, label: "My Feed", href: "/tech" },
+  { icon: Bookmark, label: "Saved Articles", href: "/tech" },
 ];
 
 export function UserPanel() {
@@ -152,7 +152,7 @@ export function UserPanel() {
         <div className="border-t border-gray-200" />
         <div className="px-1.5 py-1">
           <Link
-            href={`/${locale}/settings`}
+            href={`/${locale}/tech`}
             onClick={close}
             className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
           >
@@ -168,10 +168,10 @@ export function UserPanel() {
             onClick={handleLogout}
             className="w-full flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-              <LogOut className="h-4 w-4 text-gray-700" />
+            <div className="w-8 h-8 bg-ev-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <LogOut className="h-4 w-4 text-ev-green-600" />
             </div>
-            <span className="flex-1 text-sm font-medium text-gray-900 text-left">
+            <span className="flex-1 text-sm font-medium text-ev-green-600 text-left">
               Log out
             </span>
           </button>
