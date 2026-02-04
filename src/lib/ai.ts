@@ -32,6 +32,31 @@ async function trackAIUsage(params: {
   }
 }
 
+// Retry helper with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 1000
+): Promise<T> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (attempt < maxRetries) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+        console.warn(`Together AI attempt ${attempt} failed, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 // AI Provider configuration
 const providers = [
   {
@@ -285,21 +310,26 @@ Style requirements:
 - High quality, suitable for social media`;
 
   // Try Together AI (FLUX.1) first - 96% cheaper
+  // Uses retry with exponential backoff (1s, 2s, 4s) for transient errors like HTTP 500
   if (process.env.TOGETHER_API_KEY) {
     try {
-      return await generateWithTogetherAI(imagePrompt, { source, postId });
+      return await retryWithBackoff(
+        () => generateWithTogetherAI(imagePrompt, { source, postId }),
+        3,    // maxRetries
+        1000  // baseDelayMs
+      );
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      console.warn(`Together AI failed, falling back to DALL-E: ${errorMsg}`);
+      console.warn(`Together AI failed after all retries, falling back to DALL-E: ${errorMsg}`);
 
-      // Track the failure
+      // Track the failure (after all retries exhausted)
       await trackAIUsage({
         type: "image_generation",
         model: "FLUX.1-schnell",
         size: "1792x1024",
         cost: 0,
         success: false,
-        errorMsg,
+        errorMsg: `All retries failed: ${errorMsg}`,
         postId,
         source,
       });
