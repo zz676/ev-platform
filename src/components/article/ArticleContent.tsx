@@ -153,8 +153,8 @@ export function ArticleContent({
             </div>
 
             {/* Header */}
-            <div className="px-3 pt-[0.77rem] pb-[0.53rem] border-b border-gray-100">
-              <h1 className="text-[1.275rem] md:text-[1.594rem] font-bold text-gray-600 text-center">
+            <div className="px-3 pt-[0.554rem] pb-[0.318rem] border-b border-gray-100">
+              <h1 className="text-[1.161rem] md:text-[1.453rem] font-bold text-gray-600 text-center max-w-[70%] mx-auto">
                 {title || "Untitled"}
               </h1>
               <div className="flex items-center justify-center gap-1.5 text-sm text-gray-500 mt-2">
