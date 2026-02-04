@@ -182,7 +182,8 @@ export async function GET(request: NextRequest) {
               console.log(`No card image for post ${post.id}, generating AI image...`);
               imageUrl = await generatePostImage(
                 post.translatedTitle || post.originalTitle || "EV News",
-                post.translatedSummary || ""
+                post.translatedSummary || "",
+                { source: "cron_publish", postId: post.id }
               );
               imageSource = ImageSource.AI_GENERATED;
             }

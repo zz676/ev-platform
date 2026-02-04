@@ -108,7 +108,8 @@ export async function POST(
         } else {
           imageUrl = await generatePostImage(
             post.translatedTitle || post.originalTitle || "EV News",
-            post.translatedSummary!
+            post.translatedSummary!,
+            { source: "manual_post_to_x", postId: post.id }
           );
           if (imageUrl) {
             imageSource = ImageSource.AI_GENERATED;
