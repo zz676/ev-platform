@@ -139,7 +139,7 @@ export function ArticleContent({
           {/* Article card */}
           <article className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {/* Metadata bar */}
-            <div className="flex items-center gap-2 px-6 py-[0.5625rem] bg-gray-50 border-b border-gray-200 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 border-b border-gray-200 text-sm">
               <CategoryBadge category={category} />
               {isImportant && (
                 <div className="flex items-center gap-1.5 text-amber-500">
