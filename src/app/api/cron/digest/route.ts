@@ -141,38 +141,58 @@ export async function GET(request: NextRequest) {
     // Try to get image from top post
     let mediaIds: string[] | undefined;
     let imageSource = "none";
+    let imageUrl: string | undefined;
+    let imageError: string | undefined;
 
     if (POSTING_CONFIG.DIGEST_INCLUDE_IMAGE && topPost) {
-      try {
-        let imageUrl: string | undefined;
+      console.log(`[Digest] Image processing enabled for top post: ${topPost.id}`);
+      console.log(`[Digest] Top post cardImageUrl: ${topPost.cardImageUrl || "none"}`);
+      console.log(`[Digest] Top post originalMediaUrls: ${JSON.stringify(topPost.originalMediaUrls || [])}`);
 
+      try {
         // Priority 1: Use cardImageUrl (AI-generated or good-ratio original)
         if (topPost.cardImageUrl) {
           imageUrl = topPost.cardImageUrl;
           const isOriginal = topPost.originalMediaUrls?.includes(topPost.cardImageUrl);
           imageSource = isOriginal ? "scraped" : "ai-generated";
-          console.log(`[Digest] Using card image from top post: ${imageUrl} (${imageSource})`);
+          console.log(`[Digest] Using existing cardImageUrl: ${imageUrl}`);
+          console.log(`[Digest] Image source determined as: ${imageSource}`);
         }
         // Priority 2: Generate AI image
         else {
-          console.log("[Digest] Generating AI image for digest...");
+          console.log("[Digest] No cardImageUrl, generating AI image...");
           imageUrl = await generatePostImage(
             topPost.translatedTitle || topPost.originalTitle || "EV Juice Digest",
             topPost.translatedSummary || "",
             { source: "cron_digest", postId: topPost.id }
           );
           imageSource = "ai-generated";
+          console.log(`[Digest] AI image generated: ${imageUrl}`);
         }
 
         // Upload image to X
         if (imageUrl) {
+          console.log(`[Digest] Attempting to upload image to X: ${imageUrl}`);
           const mediaId = await uploadMedia(imageUrl);
           mediaIds = [mediaId];
-          console.log(`[Digest] Image uploaded, media_id: ${mediaId}`);
+          console.log(`[Digest] Image upload successful, media_id: ${mediaId}`);
+        } else {
+          console.log("[Digest] No imageUrl available after processing");
+          imageSource = "none";
         }
-      } catch (imageError) {
-        console.error("[Digest] Failed to process image:", imageError);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error(`[Digest] Image processing failed: ${errorMsg}`);
+        console.error("[Digest] Full error:", err);
         imageSource = "failed";
+        imageError = errorMsg;
+      }
+    } else {
+      if (!POSTING_CONFIG.DIGEST_INCLUDE_IMAGE) {
+        console.log("[Digest] Image processing disabled in config");
+      }
+      if (!topPost) {
+        console.log("[Digest] No top post available for image");
       }
     }
 
@@ -231,6 +251,8 @@ export async function GET(request: NextRequest) {
       postCount: digestContent.postIds.length,
       hasImage: !!mediaIds,
       imageSource,
+      imageUrl: imageUrl || null,
+      imageError: imageError || null,
     });
   } catch (error) {
     console.error("[Digest] Error:", error);

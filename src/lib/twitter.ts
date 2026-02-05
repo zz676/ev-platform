@@ -106,51 +106,88 @@ export interface MediaUploadResponse {
 
 // Download image from URL and return as base64
 export async function downloadImageAsBase64(imageUrl: string): Promise<string> {
+  console.log(`[Twitter] Downloading image from: ${imageUrl}`);
+
   const response = await fetch(imageUrl);
   if (!response.ok) {
-    throw new Error(`Failed to download image: ${response.status}`);
+    const errorMsg = `Failed to download image: HTTP ${response.status} ${response.statusText}`;
+    console.error(`[Twitter] ${errorMsg}`);
+    throw new Error(errorMsg);
   }
 
+  const contentType = response.headers.get("content-type");
+  const contentLength = response.headers.get("content-length");
+  console.log(`[Twitter] Image response: content-type=${contentType}, content-length=${contentLength}`);
+
   const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer).toString("base64");
+  const base64 = Buffer.from(arrayBuffer).toString("base64");
+  console.log(`[Twitter] Image downloaded: ${arrayBuffer.byteLength} bytes, base64 length: ${base64.length}`);
+
+  return base64;
 }
 
 // Upload media to X (v1.1 API - supports base64 via form-urlencoded)
 export async function uploadMedia(imageUrl: string): Promise<string> {
+  console.log(`[Twitter] uploadMedia called with URL: ${imageUrl}`);
+
   const creds = getCredentials();
   if (!creds.apiKey || !creds.apiSecret || !creds.accessToken || !creds.accessTokenSecret) {
-    throw new Error("X API credentials not configured");
+    const errorMsg = "X API credentials not configured";
+    console.error(`[Twitter] ${errorMsg}`);
+    throw new Error(errorMsg);
   }
 
-  const base64Data = await downloadImageAsBase64(imageUrl);
+  // Step 1: Download image
+  console.log("[Twitter] Step 1: Downloading image...");
+  let base64Data: string;
+  try {
+    base64Data = await downloadImageAsBase64(imageUrl);
+  } catch (downloadError) {
+    const errorMsg = downloadError instanceof Error ? downloadError.message : String(downloadError);
+    console.error(`[Twitter] Image download failed: ${errorMsg}`);
+    throw new Error(`Image download failed: ${errorMsg}`);
+  }
 
-  // v1.1 uses form-urlencoded with media_data parameter
+  // Step 2: Upload to X API
+  console.log("[Twitter] Step 2: Uploading to X API...");
   const formBody = new URLSearchParams();
   formBody.append("media_data", base64Data);
 
-  const response = await fetch(MEDIA_UPLOAD_URL, {
-    method: "POST",
-    headers: {
-      Authorization: generateOAuthHeader("POST", MEDIA_UPLOAD_URL),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: formBody.toString(),
-  });
+  let response: Response;
+  try {
+    response = await fetch(MEDIA_UPLOAD_URL, {
+      method: "POST",
+      headers: {
+        Authorization: generateOAuthHeader("POST", MEDIA_UPLOAD_URL),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formBody.toString(),
+    });
+  } catch (fetchError) {
+    const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
+    console.error(`[Twitter] X API fetch failed: ${errorMsg}`);
+    throw new Error(`X API fetch failed: ${errorMsg}`);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`X Media Upload error: ${response.status} - ${errorText}`);
+    const errorMsg = `X Media Upload error: HTTP ${response.status} - ${errorText}`;
+    console.error(`[Twitter] ${errorMsg}`);
+    throw new Error(errorMsg);
   }
 
   const result: MediaUploadResponse = await response.json();
-  console.log("Media upload response:", JSON.stringify(result));
+  console.log("[Twitter] Media upload response:", JSON.stringify(result));
 
   // v1.1 returns media_id_string (use string version for v2 tweets API)
   const mediaId = result.media_id_string;
   if (!mediaId) {
-    throw new Error(`X Media Upload failed: No media_id_string in response. Got: ${JSON.stringify(result)}`);
+    const errorMsg = `X Media Upload failed: No media_id_string in response. Got: ${JSON.stringify(result)}`;
+    console.error(`[Twitter] ${errorMsg}`);
+    throw new Error(errorMsg);
   }
 
+  console.log(`[Twitter] Media upload successful, media_id: ${mediaId}`);
   return mediaId;
 }
 
