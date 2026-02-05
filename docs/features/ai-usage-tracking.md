@@ -1,8 +1,8 @@
-# AI Usage Tracking (Image Generation & Text Completion Cost Monitoring)
+# AI Usage Tracking (Image Generation, Text Completion & OCR Cost Monitoring)
 
 ## Overview
 
-This feature tracks all AI API calls—both image generation and text completions—with cost, success/failure status, token usage, and source attribution.
+This feature tracks all AI API calls—image generation, text completions, and OCR—with cost, success/failure status, token usage, and source attribution.
 
 ### Image Generation
 Uses **Together AI (FLUX.1)** as the primary provider (96% cheaper) with **DALL-E 3** as fallback.
@@ -13,6 +13,12 @@ Tracks token usage and costs for all text completion calls:
 - Translation (`translateContent`)
 - X/Twitter summary generation (`generateXSummary`)
 - Digest generation (`callDeepSeek`, `callOpenAI`)
+
+### OCR (Vision)
+Tracks **GPT-4o Vision** calls from the scraper pipeline for extracting data from images:
+- Rankings table extraction
+- Metrics table extraction
+- Vehicle specs extraction
 
 ## Problem Solved
 
@@ -102,6 +108,16 @@ const TEXT_COMPLETION_COST = {
 } as const;
 ```
 
+### OCR Pricing (scraper/extractors/image_ocr.py)
+
+```python
+# GPT-4o Vision pricing (per 1M tokens)
+GPT4O_PRICING = {
+    "input": 2.50,   # $2.50 per 1M input tokens (includes image tokens)
+    "output": 10.00,  # $10.00 per 1M output tokens
+}
+```
+
 ### Text Completion Cost Calculation
 
 ```typescript
@@ -131,6 +147,15 @@ function calculateTextCost(model: string, inputTokens: number, outputTokens: num
 | `callDeepSeek(prompt)` | Call DeepSeek for digest generation | `"digest_deepseek"` |
 | `callOpenAI(prompt, model)` | Call OpenAI (fallback) for digest | `"digest_openai"` |
 
+### Scraper Module: `scraper/extractors/image_ocr.py`
+
+| Function | Purpose | Source Value |
+|----------|---------|--------------|
+| `ImageOCR.extract_from_url()` | Async OCR extraction | `"ocr_backfill"` |
+| `ImageOCR.extract_from_url_sync()` | Sync OCR extraction | `"ocr_backfill"` |
+
+OCR usage is tracked via `EVPlatformAPI.track_ocr_usage()` in `scraper/api_client.py`, which POSTs to `/api/admin/ai-usage`.
+
 ### Tracking Behavior
 
 #### Image Generation
@@ -153,7 +178,50 @@ function calculateTextCost(model: string, inputTokens: number, outputTokens: num
 | Digest (DeepSeek) | deepseek-chat | ~1500 | ~$0.0003 |
 | Digest (OpenAI fallback) | gpt-4o-mini | ~1500 | ~$0.0005 |
 
+#### OCR (Vision)
+
+| Scenario | Model | Typical Tokens | Typical Cost |
+|----------|-------|----------------|--------------|
+| Rankings table OCR | gpt-4o | ~5000 input, ~500 output | ~$0.017 |
+| Metrics table OCR | gpt-4o | ~5000 input, ~300 output | ~$0.016 |
+| Vehicle specs OCR | gpt-4o | ~4000 input, ~200 output | ~$0.012 |
+
+Note: Input tokens for OCR include image tokens which vary based on image size and detail level.
+
 ## API Endpoints
+
+### POST `/api/admin/ai-usage`
+
+Track AI usage from external services (e.g., scraper OCR). No authentication required.
+
+**Request Body:**
+
+```json
+{
+  "type": "ocr",
+  "model": "gpt-4o",
+  "cost": 0.017,
+  "success": true,
+  "source": "ocr_backfill",
+  "inputTokens": 5000,
+  "outputTokens": 500,
+  "errorMsg": null
+}
+```
+
+**Required fields:** `type`, `model`, `cost`, `success`, `source`
+
+**Optional fields:** `size`, `errorMsg`, `postId`, `inputTokens`, `outputTokens`
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "id": "clx456...",
+  "message": "AI usage tracked successfully"
+}
+```
 
 ### GET `/api/admin/ai-usage`
 
@@ -248,8 +316,11 @@ Return image URL                   Success         Failure
 | `src/app/api/webhook/route.ts` | Pass `source: "webhook"` and `postId` |
 | `src/app/api/admin/posts/[id]/route.ts` | Pass `source: "admin_approve"` and `postId` |
 | `scripts/fix-image-ratios.ts` | Added Together AI with DALL-E fallback |
-| `src/app/api/admin/ai-usage/route.ts` | Admin endpoint for usage stats (includes token fields) |
+| `src/app/api/admin/ai-usage/route.ts` | Admin endpoint for usage stats + POST handler for external tracking |
 | `src/app/[locale]/admin/monitoring/page.tsx` | Display token counts in Recent Activity table |
+| `scraper/extractors/image_ocr.py` | Added token/cost tracking to OCRResult, GPT-4o pricing constants |
+| `scraper/api_client.py` | Added `track_ocr_usage()` method for submitting OCR usage |
+| `scraper/backfill_cnevdata.py` | Integrated OCR usage tracking in `process_ocr_batch()` |
 
 ## Database Queries
 
@@ -315,6 +386,15 @@ LIMIT 20;
 | 1024x1024 | $0.040 | $0.080 |
 | 1024x1792 | $0.080 | $0.120 |
 | 1792x1024 | $0.080 | $0.120 |
+
+### OpenAI (GPT-4o Vision - OCR)
+
+| Token Type | Cost per 1M |
+|------------|-------------|
+| Input (text + image) | $2.50 |
+| Output | $10.00 |
+
+Note: Image tokens depend on resolution and detail level. A typical high-detail image uses ~5,000-10,000 input tokens.
 
 ## Getting Together AI API Key
 
