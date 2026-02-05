@@ -5,6 +5,7 @@ import { AdminStats, PostStatus } from "@/components/admin/AdminStats";
 import { PostsTable, SortColumn, SortOrder } from "@/components/admin/PostsTable";
 import { DigestsTable } from "@/components/admin/DigestsTable";
 import { CreatePostForm } from "@/components/admin/CreatePostForm";
+import { MetricPostsSection } from "@/components/admin/MetricPostsSection";
 import { Shield, Plus, AlertCircle, Search, X, ChevronDown, ChevronRight } from "lucide-react";
 
 interface XPublication {
@@ -504,6 +505,11 @@ export default function AdminPage() {
             onPageChange={setDigestsPage}
           />
         )}
+      </div>
+
+      {/* Metric Posts Section */}
+      <div className="mt-8">
+        <MetricPostsSection />
       </div>
 
     </div>

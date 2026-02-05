@@ -51,6 +51,8 @@
     "commandCenter": "指挥中心",
     "savedArticles": "收藏文章",
     "adminPanel": "管理面板",
+    "dataExplorer": "数据探索",
+    "monitoring": "监控",
     "settings": "设置",
     "logout": "退出登录"
   },

@@ -10,6 +10,7 @@ import {
   LogOut,
   Shield,
   Activity,
+  BarChart3,
   ChevronRight,
   ChevronDown,
 } from "lucide-react";
@@ -128,6 +129,19 @@ export function UserPanel() {
                 </div>
                 <span className="flex-1 text-sm font-medium text-gray-900">
                   Admin Panel
+                </span>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              </Link>
+              <Link
+                href={`/${locale}/admin/data-explorer`}
+                onClick={close}
+                className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                  <BarChart3 className="h-4 w-4 text-gray-700" />
+                </div>
+                <span className="flex-1 text-sm font-medium text-gray-900">
+                  Data Explorer
                 </span>
                 <ChevronRight className="h-4 w-4 text-gray-400" />
               </Link>

@@ -51,6 +51,8 @@
     "commandCenter": "Command Center",
     "savedArticles": "Saved Articles",
     "adminPanel": "Admin Panel",
+    "dataExplorer": "Data Explorer",
+    "monitoring": "Monitoring",
     "settings": "Settings",
     "logout": "Logout"
   },
