@@ -1,6 +1,6 @@
 # CnEVData Scraper & EV Sales Data Pipeline
 
-> **Last Updated**: February 4, 2025
+> **Last Updated**: February 5, 2025
 > **Status**: Implemented
 
 ## Overview
@@ -460,7 +460,27 @@ assert result.month == 1
 # Should determine OCR need
 assert parser.needs_ocr("Xpeng deliveries in Jan: 20,011") == False
 assert parser.needs_ocr("Full CPCA rankings: Top-selling models") == True
+
+# Model extraction should NOT match numbers from comma-formatted values
+result = parser.parse("Tesla China wholesale sales in Jan: 69,129")
+assert result.vehicle_model is None  # "129" is NOT a model
+
+# Model extraction should match standalone Zeekr-style models
+result = parser.parse("Zeekr 001 deliveries in Jan: 15,000")
+assert result.vehicle_model == "001"
 ```
+
+### Title Parser Model Pattern
+
+The title parser uses regex patterns to extract vehicle models. The Zeekr-style pattern uses negative lookbehind to avoid matching numbers from comma-formatted values:
+
+```python
+r'(?<![,\d])([0-9]{3}[Xx]?)\b'  # Zeekr models like 001, 007, 009
+```
+
+This ensures:
+- `Zeekr 001 sales` -> matches `001`
+- `Tesla China wholesale: 69,129` -> does NOT match `129` (preceded by comma)
 
 ### Integration Test
 
