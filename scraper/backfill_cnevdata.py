@@ -399,8 +399,16 @@ def backfill_pages(
                         stats.metrics_extracted += len(metrics)
                         print(f"    Extracted {len(metrics)} metrics from title")
 
-                        # Submit to API
-                        submit_metrics_to_api(metrics, dry_run, stats)
+                        # Filter out industry-level metrics (they go to dedicated tables now)
+                        brand_metrics = [m for m in metrics if m.get("brand") != "INDUSTRY"]
+                        industry_metrics = [m for m in metrics if m.get("brand") == "INDUSTRY"]
+
+                        if industry_metrics:
+                            print(f"    Skipping {len(industry_metrics)} industry metrics (using dedicated tables)")
+
+                        # Submit only brand-level metrics to EVMetric API
+                        if brand_metrics:
+                            submit_metrics_to_api(brand_metrics, dry_run, stats)
 
                     # Also try to extract industry data (dual-write)
                     industry_extracted = process_industry_data(
