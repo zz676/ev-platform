@@ -220,6 +220,84 @@ class EVPlatformAPI:
         except Exception:
             return False
 
+    def track_ocr_usage(
+        self,
+        input_tokens: int,
+        output_tokens: int,
+        cost: float,
+        success: bool,
+        error_msg: Optional[str] = None,
+        source: str = "ocr_backfill",
+    ) -> APIResponse:
+        """Submit OCR usage data to the AI usage tracking API.
+
+        Args:
+            input_tokens: Number of input tokens (includes image tokens)
+            output_tokens: Number of output tokens
+            cost: Calculated cost in dollars
+            success: Whether the OCR call was successful
+            error_msg: Error message if failed
+            source: Source identifier (default: "ocr_backfill")
+
+        Returns:
+            APIResponse with result
+        """
+        try:
+            endpoint = f"{self.base_url}/api/admin/ai-usage"
+
+            data = {
+                "type": "ocr",
+                "model": "gpt-4o",
+                "cost": cost,
+                "success": success,
+                "inputTokens": input_tokens,
+                "outputTokens": output_tokens,
+                "source": source,
+            }
+
+            if error_msg:
+                data["errorMsg"] = error_msg
+
+            logger.debug(f"Tracking OCR usage: {data}")
+
+            response = self.session.post(
+                endpoint,
+                json=data,
+                timeout=self.timeout,
+            )
+
+            if response.ok:
+                result = response.json()
+                logger.debug(f"OCR usage tracked: {result}")
+                return APIResponse(
+                    success=True,
+                    status_code=response.status_code,
+                    data=result,
+                )
+            else:
+                error_text = response.text[:500]
+                logger.warning(f"Failed to track OCR usage: {response.status_code} - {error_text}")
+                return APIResponse(
+                    success=False,
+                    status_code=response.status_code,
+                    error=error_text,
+                )
+
+        except requests.exceptions.Timeout:
+            logger.warning("Timeout tracking OCR usage")
+            return APIResponse(
+                success=False,
+                status_code=0,
+                error="Request timeout",
+            )
+        except Exception as e:
+            logger.warning(f"Error tracking OCR usage: {e}")
+            return APIResponse(
+                success=False,
+                status_code=0,
+                error=str(e),
+            )
+
     @classmethod
     def is_industry_table(cls, table_name: str) -> bool:
         """Check if a table is one of the new industry tables.

@@ -1,6 +1,66 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiAdmin } from "@/lib/auth/api-auth";
+
+// POST: Track AI usage (for external services like scraper OCR)
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    // Validate required fields
+    const { type, model, cost, success, source } = body;
+
+    if (!type || !model || cost === undefined || success === undefined || !source) {
+      return NextResponse.json(
+        { error: "Missing required fields: type, model, cost, success, source" },
+        { status: 400 }
+      );
+    }
+
+    // Validate types
+    if (typeof cost !== "number" || cost < 0) {
+      return NextResponse.json(
+        { error: "cost must be a non-negative number" },
+        { status: 400 }
+      );
+    }
+
+    if (typeof success !== "boolean") {
+      return NextResponse.json(
+        { error: "success must be a boolean" },
+        { status: 400 }
+      );
+    }
+
+    // Create the usage record
+    const record = await prisma.aIUsage.create({
+      data: {
+        type,
+        model,
+        cost,
+        success,
+        source,
+        size: body.size || null,
+        errorMsg: body.errorMsg || null,
+        postId: body.postId || null,
+        inputTokens: body.inputTokens || null,
+        outputTokens: body.outputTokens || null,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      id: record.id,
+      message: "AI usage tracked successfully",
+    });
+  } catch (error) {
+    console.error("Error tracking AI usage:", error);
+    return NextResponse.json(
+      { error: "Failed to track AI usage" },
+      { status: 500 }
+    );
+  }
+}
 
 // GET: Get AI usage statistics
 export async function GET() {
