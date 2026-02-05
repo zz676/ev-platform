@@ -105,11 +105,8 @@ class CnEVDataSource:
         Returns:
             List of CnEVDataArticle objects
         """
-        # CnEVData uses substack-style pagination
-        if page == 1:
-            url = f"{self.base_url}/archive"
-        else:
-            url = f"{self.base_url}/archive?page={page}"
+        # CnEVData uses WordPress-style pagination
+        url = f"{self.base_url}/page/{page}/"
 
         print(f"  Fetching page {page}: {url}")
 
