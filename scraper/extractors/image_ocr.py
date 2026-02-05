@@ -19,6 +19,29 @@ class OCRResult:
     raw_response: str
     error: Optional[str] = None
     confidence: float = 0.9  # OCR data has lower confidence
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost: float = 0.0
+
+
+# GPT-4o Vision pricing (per 1M tokens, as of 2024)
+GPT4O_PRICING = {
+    "input": 2.50,   # $2.50 per 1M input tokens
+    "output": 10.00,  # $10.00 per 1M output tokens
+}
+
+
+def calculate_ocr_cost(input_tokens: int, output_tokens: int) -> float:
+    """Calculate cost for GPT-4o Vision OCR call.
+
+    Args:
+        input_tokens: Number of input tokens (includes image tokens)
+        output_tokens: Number of output tokens
+
+    Returns:
+        Cost in dollars
+    """
+    return (input_tokens * GPT4O_PRICING["input"] + output_tokens * GPT4O_PRICING["output"]) / 1_000_000
 
 
 class ImageOCR:
@@ -138,6 +161,11 @@ Mark percentage changes as negative if they indicate decline.
 
             content = response.choices[0].message.content
 
+            # Extract token usage
+            input_tokens = response.usage.prompt_tokens if response.usage else 0
+            output_tokens = response.usage.completion_tokens if response.usage else 0
+            cost = calculate_ocr_cost(input_tokens, output_tokens)
+
             # Parse JSON response
             try:
                 parsed = json.loads(content)
@@ -160,7 +188,10 @@ Mark percentage changes as negative if they indicate decline.
                     success=True,
                     data=data,
                     raw_response=content,
-                    confidence=0.9
+                    confidence=0.9,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    cost=cost
                 )
 
             except json.JSONDecodeError as e:
@@ -168,7 +199,10 @@ Mark percentage changes as negative if they indicate decline.
                     success=False,
                     data=[],
                     raw_response=content,
-                    error=f"JSON parse error: {str(e)}"
+                    error=f"JSON parse error: {str(e)}",
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    cost=cost
                 )
 
         except Exception as e:
@@ -216,6 +250,11 @@ Mark percentage changes as negative if they indicate decline.
 
             content = response.choices[0].message.content
 
+            # Extract token usage
+            input_tokens = response.usage.prompt_tokens if response.usage else 0
+            output_tokens = response.usage.completion_tokens if response.usage else 0
+            cost = calculate_ocr_cost(input_tokens, output_tokens)
+
             try:
                 parsed = json.loads(content)
                 if isinstance(parsed, dict):
@@ -234,7 +273,10 @@ Mark percentage changes as negative if they indicate decline.
                     success=True,
                     data=data,
                     raw_response=content,
-                    confidence=0.9
+                    confidence=0.9,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    cost=cost
                 )
 
             except json.JSONDecodeError as e:
@@ -242,7 +284,10 @@ Mark percentage changes as negative if they indicate decline.
                     success=False,
                     data=[],
                     raw_response=content,
-                    error=f"JSON parse error: {str(e)}"
+                    error=f"JSON parse error: {str(e)}",
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    cost=cost
                 )
 
         except Exception as e:

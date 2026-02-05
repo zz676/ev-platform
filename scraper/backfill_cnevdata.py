@@ -280,13 +280,20 @@ def process_industry_data(
         return False
 
 
-def process_ocr_batch(ocr, articles: list, stats: BackfillStats, dry_run: bool = False) -> dict:
+def process_ocr_batch(
+    ocr,
+    articles: list,
+    stats: BackfillStats,
+    api_client: EVPlatformAPI,
+    dry_run: bool = False
+) -> dict:
     """Process multiple OCR calls in parallel.
 
     Args:
         ocr: ImageOCR instance
         articles: List of CnEVDataArticle objects needing OCR
         stats: BackfillStats tracker
+        api_client: EVPlatformAPI client for tracking usage
         dry_run: If True, don't submit results to API
 
     Returns:
@@ -316,6 +323,19 @@ def process_ocr_batch(ocr, articles: list, stats: BackfillStats, dry_run: bool =
             article = futures[future]
             try:
                 result = future.result()
+
+                # Track OCR usage (even if no data extracted)
+                if not dry_run and (result.input_tokens > 0 or result.output_tokens > 0):
+                    api_client.track_ocr_usage(
+                        input_tokens=result.input_tokens,
+                        output_tokens=result.output_tokens,
+                        cost=result.cost,
+                        success=result.success,
+                        error_msg=result.error,
+                        source="ocr_backfill",
+                    )
+                    print(f"    OCR usage tracked: {result.input_tokens}+{result.output_tokens} tokens, ${result.cost:.4f}")
+
                 if result.success and result.data:
                     stats.ocr_processed += 1
                     results[article.url] = result.data
@@ -439,7 +459,7 @@ def backfill_pages(
 
                 # Process OCR batch after each page if queue has items
                 if ocr_queue:
-                    process_ocr_batch(ocr, ocr_queue, stats, dry_run)
+                    process_ocr_batch(ocr, ocr_queue, stats, api_client, dry_run)
                     ocr_queue = []
 
             except Exception as e:
