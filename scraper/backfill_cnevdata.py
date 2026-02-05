@@ -158,7 +158,17 @@ def submit_metrics_to_api(metrics: list[dict], dry_run: bool = False, stats: Bac
             else:
                 fail_count += 1
                 brand = metric.get('brand', 'unknown')
-                print(f"    Failed: {response.status_code} - {brand}")
+                # Parse and log the error response
+                try:
+                    error_body = response.json()
+                    error_msg = error_body.get('error', response.text[:100])
+                except Exception:
+                    error_msg = response.text[:100] if response.text else "No response body"
+                print(f"    Failed: {response.status_code} - {brand}: {error_msg}")
+
+                # Log first failed payload for debugging
+                if fail_count == 1:
+                    print(f"    First failed payload: {json.dumps(metric, indent=2, default=str)}")
         except Exception as e:
             fail_count += 1
             print(f"    Error: {str(e)[:50]}")
