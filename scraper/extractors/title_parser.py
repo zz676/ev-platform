@@ -44,8 +44,10 @@ class TitleParser:
         "china": "INDUSTRY",
         "nev": "INDUSTRY",
         "ev": "INDUSTRY",
+        # Secondary tracked brands
+        "geely": "GEELY",
+        "leapmotor": "LEAPMOTOR",
         # Other brands (map to OTHER_BRAND)
-        "geely": "OTHER_BRAND",
         "changan": "OTHER_BRAND",
         "saic": "OTHER_BRAND",
         "gac": "OTHER_BRAND",
@@ -53,7 +55,6 @@ class TitleParser:
         "faw": "OTHER_BRAND",
         "great wall": "OTHER_BRAND",
         "chery": "OTHER_BRAND",
-        "leapmotor": "OTHER_BRAND",
         "neta": "OTHER_BRAND",
         "hozon": "OTHER_BRAND",
         "avatr": "OTHER_BRAND",
