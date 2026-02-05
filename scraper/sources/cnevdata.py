@@ -120,13 +120,12 @@ class CnEVDataSource:
             soup = BeautifulSoup(response.content, "lxml")
             articles = []
 
-            # Find article entries (Substack archive format)
-            # Articles are typically in divs with class containing "post-preview"
-            article_elements = soup.select('div[class*="post-preview"], article, div.post')
+            # Find article entries - cnevdata uses list-item blocks
+            article_elements = soup.select('div.list-item.block')
 
-            # Fallback: try common link patterns
+            # Fallback: try date-based URL patterns (WordPress style)
             if not article_elements:
-                article_elements = soup.select('a[href*="/p/"]')
+                article_elements = soup.select('a[href*="/20"]')
 
             for elem in article_elements:
                 article = self._parse_article_element(elem)
@@ -162,7 +161,8 @@ class CnEVDataSource:
                 return None
 
             href = link.get('href', '')
-            if '/p/' not in href:
+            # WordPress-style date URLs: /YYYY/MM/DD/slug/
+            if not re.search(r'/\d{4}/\d{2}/\d{2}/', href):
                 return None
 
             # Build full URL
