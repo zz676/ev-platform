@@ -312,8 +312,43 @@ await postTweet(content, { mediaIds: [mediaId] });
 | `src/lib/config/prompts.ts` | Add BRAND_TREND_PROMPT, ALL_BRANDS_PROMPT, QUERY_GENERATOR_PROMPT |
 | `src/lib/config/posting.ts` | Add metric post config (optional) |
 | `src/app/[locale]/admin/page.tsx` | Add MetricPostsSection component |
-| `src/components/UserPanel.tsx` | Add "Data Explorer" menu item |
+| `src/components/UserPanel.tsx` | Add "Data Explorer" menu item (see mockup below) |
 | `vercel.json` | Add cron job schedule |
+
+### UserPanel Menu Update
+
+Add "Data Explorer" between "Admin Panel" and "Monitoring":
+
+```
+┌─────────────────────────────┐
+│  👤 Zhisheng Zhou           │
+│     ◇ Admin                 │
+├─────────────────────────────┤
+│  📋 My Feed              >  │
+│  🔖 Saved Articles       >  │
+├─────────────────────────────┤
+│  ⚙️  Admin Panel          >  │
+│  📊 Data Explorer        >  │  ← NEW (chart icon)
+│  📈 Monitoring           >  │
+├─────────────────────────────┤
+│  ⚙️  Settings             >  │
+│  → Log out                  │
+└─────────────────────────────┘
+```
+
+**Menu item config:**
+```typescript
+// In UserPanel.tsx, add after Admin Panel:
+{
+  icon: BarChart3,  // from lucide-react
+  label: t("dataExplorer"),  // "Data Explorer" / "数据探索"
+  href: `/${locale}/admin/data-explorer`,
+  adminOnly: true,
+}
+```
+
+**i18n keys to add:**
+- `UserPanel.dataExplorer`: "Data Explorer" (en) / "数据探索" (zh)
 
 ---
 
