@@ -120,8 +120,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: any = {};
   try {
-    const body = await request.json();
+    body = await request.json();
 
     // Validate required fields
     const { brand, metric, periodType, year, period, value } = body;
@@ -186,10 +188,22 @@ export async function POST(request: NextRequest) {
       metric: result,
     });
   } catch (error) {
-    console.error("Error creating EV metric:", error);
-    return NextResponse.json(
-      { error: "Failed to create EV metric" },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const prismaCode = (error as { code?: string })?.code;
+    const prismaMeta = (error as { meta?: unknown })?.meta;
+
+    console.error("Error creating EV metric:", {
+      message: errorMessage,
+      code: prismaCode,
+      meta: prismaMeta,
+      payload: body
+    });
+
+    return NextResponse.json({
+      error: "Failed to create EV metric",
+      details: errorMessage,
+      code: prismaCode,
+      meta: prismaMeta
+    }, { status: 500 });
   }
 }
