@@ -384,7 +384,7 @@ class TitleParser:
             r'(P[57]|G[369]|X9)',  # XPeng models
             r'(L[6789]|Mega)',  # Li Auto models
             r'(SU7|SU[0-9]+)',  # Xiaomi models
-            r'(?<![,\d])([0-9]{3}[Xx]?)\b',  # Zeekr models like 001, 007, 009
+            r'(?<![,\d])([0-9]{3}[Xx]?)(?![,\d])',  # Zeekr models like 001, 007, 009
         ]
 
         for pattern in model_patterns:
