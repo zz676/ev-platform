@@ -58,6 +58,8 @@ class BackfillStats:
         self.articles_found = 0
         self.articles_processed = 0
         self.metrics_extracted = 0
+        self.metrics_submitted = 0
+        self.metrics_failed = 0
         self.ocr_needed = 0
         self.ocr_processed = 0
         self.errors = []
@@ -69,6 +71,8 @@ class BackfillStats:
             "articles_found": self.articles_found,
             "articles_processed": self.articles_processed,
             "metrics_extracted": self.metrics_extracted,
+            "metrics_submitted": self.metrics_submitted,
+            "metrics_failed": self.metrics_failed,
             "ocr_needed": self.ocr_needed,
             "ocr_processed": self.ocr_processed,
             "errors": self.errors[:10],  # Keep last 10 errors
@@ -84,6 +88,8 @@ class BackfillStats:
         print(f"Articles found: {self.articles_found}")
         print(f"Articles processed: {self.articles_processed}")
         print(f"Metrics extracted: {self.metrics_extracted}")
+        print(f"Metrics submitted: {self.metrics_submitted}")
+        print(f"Metrics failed: {self.metrics_failed}")
         print(f"OCR needed: {self.ocr_needed}")
         print(f"OCR processed: {self.ocr_processed}")
         print(f"Errors: {len(self.errors)}")
@@ -119,31 +125,52 @@ def save_checkpoint(last_page: int, processed_urls: list[str]):
         print(f"Warning: Could not save checkpoint: {e}")
 
 
-def submit_metrics_to_api(metrics: list[dict], dry_run: bool = False) -> bool:
+def submit_metrics_to_api(metrics: list[dict], dry_run: bool = False, stats: BackfillStats = None) -> tuple[int, int]:
     """Submit extracted metrics to the API.
 
     Args:
         metrics: List of metric dictionaries
         dry_run: If True, don't actually submit
+        stats: Optional stats tracker to update
 
     Returns:
-        True if successful
+        Tuple of (success_count, fail_count)
     """
     if dry_run:
         print(f"  [DRY RUN] Would submit {len(metrics)} metrics")
-        return True
+        return (len(metrics), 0)
 
     api_url = os.getenv("API_URL", "http://localhost:3000") + "/api/ev-metrics"
+    print(f"  Submitting {len(metrics)} metrics to: {api_url}")
+
+    # Warn if using localhost (indicates missing API_URL secret)
+    if "localhost" in api_url:
+        print("  ⚠️  WARNING: Using localhost - API_URL secret may not be set!")
+
+    success_count = 0
+    fail_count = 0
 
     for metric in metrics:
         try:
             response = httpx.post(api_url, json=metric, timeout=30)
-            if not response.is_success:
-                print(f"  Warning: Failed to submit metric: {response.status_code}")
+            if response.is_success:
+                success_count += 1
+            else:
+                fail_count += 1
+                brand = metric.get('brand', 'unknown')
+                print(f"    Failed: {response.status_code} - {brand}")
         except Exception as e:
-            print(f"  Error submitting metric: {e}")
+            fail_count += 1
+            print(f"    Error: {str(e)[:50]}")
 
-    return True
+    print(f"  Submitted: {success_count} success, {fail_count} failed")
+
+    # Update stats if provided
+    if stats:
+        stats.metrics_submitted += success_count
+        stats.metrics_failed += fail_count
+
+    return (success_count, fail_count)
 
 
 def process_ocr_batch(ocr, articles: list, stats: BackfillStats, dry_run: bool = False) -> dict:
@@ -260,7 +287,7 @@ def backfill_pages(
                         print(f"    Extracted {len(metrics)} metrics from title")
 
                         # Submit to API
-                        submit_metrics_to_api(metrics, dry_run)
+                        submit_metrics_to_api(metrics, dry_run, stats)
 
                     elif article.needs_ocr and enable_ocr and ocr and article.preview_image:
                         # Queue for batch OCR processing
