@@ -1,7 +1,61 @@
-# LLM-Powered X Posts from Monthly EV Delivery Data
+# LLM-Powered X Posts from EV Industry Data
 
 ## Overview
-Generate engaging X (Twitter) posts from monthly delivery data stored in `EVMetric` table using LLM. Posts include **auto-generated chart images** for visual impact. Two post types with both manual (Admin UI) and automated (cron) triggers.
+Generate engaging X (Twitter) posts from comprehensive EV industry data using LLM. Posts include **auto-generated chart images** for visual impact. Features both pre-defined metric posts and a flexible Data Explorer for custom queries.
+
+---
+
+## Available Data Sources
+
+The platform aggregates data from multiple authoritative sources covering all aspects of China's EV industry:
+
+### 1. Brand-Level Delivery/Sales Data
+
+| Table | Description | Key Fields | Use Cases |
+|-------|-------------|------------|-----------|
+| **EVMetric** | Core delivery/sales metrics by brand | `brand`, `metric`, `periodType`, `year`, `period`, `value`, `yoyChange`, `momChange`, `marketShare`, `ranking` | Brand comparisons, monthly trends, YoY analysis |
+| **AutomakerRankings** | Monthly automaker sales rankings | `automaker`, `ranking`, `value`, `marketShare`, `yoyChange` | Leaderboards, competitive analysis |
+
+**Brands tracked:** BYD, NIO, XPeng, Li Auto, Zeekr, Xiaomi, Tesla China, Leapmotor, Geely, Other
+
+### 2. Industry-Level Market Data
+
+| Table | Description | Key Fields | Use Cases |
+|-------|-------------|------------|-----------|
+| **CaamNevSales** | CAAM official NEV sales (includes exports) | `year`, `month`, `value`, `yoyChange`, `momChange` | Total market size, official statistics |
+| **CpcaNevRetail** | CPCA NEV retail sales (consumer registrations) | `year`, `month`, `value`, `yoyChange`, `momChange` | Consumer demand, retail trends |
+| **CpcaNevProduction** | CPCA NEV production volume | `year`, `month`, `value`, `yoyChange`, `momChange` | Manufacturing output, supply analysis |
+| **NevSalesSummary** | Weekly/bi-weekly sales flash reports | `startDate`, `endDate`, `retailSales`, `wholesaleSales`, `retailYoy` | Early month tracking, weekly trends |
+
+### 3. Market Health Indicators
+
+| Table | Description | Key Fields | Interpretation |
+|-------|-------------|------------|----------------|
+| **ChinaPassengerInventory** | Dealer + factory inventory levels | `year`, `month`, `value` (million units) | High = oversupply, Low = strong demand |
+| **ChinaDealerInventoryFactor** | Dealer inventory coefficient (库存系数) | `year`, `month`, `value` (ratio) | >1.5 = oversupply pressure, <0.8 = shortage |
+| **ChinaViaIndex** | Vehicle Inventory Alert Index | `year`, `month`, `value` (%) | >50% = contraction/stress, <50% = healthy (inverse PMI) |
+
+### 4. Battery Industry Data
+
+| Table | Description | Key Fields | Use Cases |
+|-------|-------------|------------|-----------|
+| **ChinaBatteryInstallation** | Total battery installation & production | `year`, `month`, `installation`, `production` (GWh) | EV adoption proxy, supply chain health |
+| **BatteryMakerMonthly** | Battery maker performance | `maker`, `year`, `month`, `installation`, `yoyChange` | CATL vs BYD, competitive analysis |
+| **BatteryMakerRankings** | Battery maker market share rankings | `maker`, `ranking`, `value`, `marketShare`, `scope` (CHINA/GLOBAL) | Market dominance, global competition |
+
+**Battery makers tracked:** CATL, BYD, CALB, Gotion, EVE, Sunwoda, LG, SK, Panasonic, Samsung SDI
+
+### 5. Export & Production Data
+
+| Table | Description | Key Fields | Use Cases |
+|-------|-------------|------------|-----------|
+| **PlantExports** | Exports by manufacturing plant | `plant`, `brand`, `year`, `month`, `value`, `yoyChange` | Tesla Shanghai exports, regional analysis |
+
+### 6. Vehicle Specifications
+
+| Table | Description | Key Fields | Use Cases |
+|-------|-------------|------------|-----------|
+| **VehicleSpec** | Vehicle specs (price, range, performance) | `brand`, `model`, `variant`, `startingPrice`, `rangeCltc`, `acceleration`, `batteryCapacity` | Spec comparisons, price analysis |
 
 ---
 
@@ -456,6 +510,79 @@ function getMetricPostHashtags(brands: Brand[]): string[] {
 }
 ```
 
+### Example X Posts by Data Type
+
+**Industry Sales:**
+```
+📊 China NEV Sales: Jan 2025
+
+Total: 1.02M vehicles (+32% YoY)
+- Retail: 980K (+28%)
+- Wholesale: 1.05M (+35%)
+
+Strong start to Year of the Snake! 🐍
+
+🍋 evjuice.net
+#ChinaEV #EVNews
+```
+
+**Market Health (Inventory):**
+```
+📉 China Dealer Inventory: Jan 2025
+
+Coefficient: 1.45 (vs 1.62 Dec)
+Improving but still elevated
+
+Healthy range: 0.8-1.2
+Current status: ⚠️ Oversupply pressure
+
+🍋 evjuice.net
+#ChinaEV #EVNews
+```
+
+**Battery Industry:**
+```
+🔋 China Battery Installation: Jan 2025
+
+Total: 52.3 GWh (+41% YoY)
+
+Top 3 makers:
+1️⃣ CATL: 26.8 GWh (51.2%)
+2️⃣ BYD: 14.2 GWh (27.2%)
+3️⃣ CALB: 3.1 GWh (5.9%)
+
+🍋 evjuice.net
+#ChinaEV #EVBattery
+```
+
+**Exports:**
+```
+🚢 Tesla Shanghai Exports: Jan 2025
+
+Exported: 42,500 vehicles (+18% YoY)
+Domestic: 38,200 vehicles
+
+Shanghai Gigafactory = Tesla's global export hub 🌏
+
+🍋 evjuice.net
+#Tesla #ChinaEV
+```
+
+**Vehicle Specs Comparison:**
+```
+⚡ EV Range Kings (CLTC):
+
+1. NIO ET7: 1,000km
+2. Zeekr 001: 1,032km
+3. XPeng G9: 702km
+4. Li Auto MEGA: 710km
+
+All with 100kWh+ batteries 🔋
+
+🍋 evjuice.net
+#ChinaEV #EVRange
+```
+
 ---
 
 ## Admin UI Flow
@@ -830,75 +957,103 @@ A new admin page where users can ask questions in natural language, have LLM gen
 // Add to prompts.ts
 export const QUERY_GENERATOR_PROMPT = `
 You are a database query assistant for an EV news platform.
-Convert natural language questions into Prisma queries for the EVMetric table.
+Convert natural language questions into Prisma queries.
 
-DATABASE SCHEMA:
-- EVMetric table stores delivery/sales metrics for EV brands
-- Fields:
-  - brand: BYD | NIO | XPENG | LI_AUTO | ZEEKR | XIAOMI | TESLA_CHINA | OTHER_BRAND | INDUSTRY
-  - metric: DELIVERY | SALES | WHOLESALE | PRODUCTION | BATTERY_INSTALL
-  - periodType: MONTHLY | QUARTERLY | YEARLY
-  - year: number (e.g., 2024, 2025)
-  - period: number (1-12 for monthly, 1-4 for quarterly)
-  - value: number (delivery count)
-  - yoyChange: number | null (year-over-year % change)
-  - momChange: number | null (month-over-month % change)
-  - marketShare: number | null (%)
-  - ranking: number | null
+AVAILABLE TABLES:
+
+1. EVMetric - Brand delivery/sales data
+   Fields: brand (BYD|NIO|XPENG|LI_AUTO|ZEEKR|XIAOMI|TESLA_CHINA|LEAPMOTOR|GEELY|OTHER_BRAND|INDUSTRY),
+           metric (DELIVERY|SALES|WHOLESALE|PRODUCTION|BATTERY_INSTALL|MARKET_SHARE|RANKING),
+           periodType (MONTHLY|QUARTERLY|YEARLY), year, period, value, yoyChange, momChange, marketShare, ranking
+
+2. AutomakerRankings - Monthly automaker sales rankings
+   Fields: dataSource, year, month, ranking, automaker, value, yoyChange, momChange, marketShare
+
+3. CaamNevSales - CAAM official NEV sales (includes exports)
+   Fields: year, month, value, yoyChange, momChange, unit (vehicles)
+
+4. CpcaNevRetail - CPCA NEV retail sales (consumer registrations)
+   Fields: year, month, value, yoyChange, momChange, unit (vehicles)
+
+5. CpcaNevProduction - CPCA NEV production volume
+   Fields: year, month, value, yoyChange, momChange, unit (vehicles)
+
+6. ChinaPassengerInventory - Dealer + factory inventory levels
+   Fields: year, month, value, unit (million_units)
+
+7. ChinaDealerInventoryFactor - Dealer inventory coefficient (库存系数)
+   Fields: year, month, value (ratio: >1.5=oversupply, <0.8=shortage)
+
+8. ChinaViaIndex - Vehicle Inventory Alert Index
+   Fields: year, month, value (percent: >50%=contraction, <50%=healthy)
+
+9. ChinaBatteryInstallation - Total battery installation & production
+   Fields: year, month, installation, production, unit (GWh)
+
+10. BatteryMakerMonthly - Battery maker performance by company
+    Fields: maker (CATL|BYD|CALB|Gotion|EVE|Sunwoda|LG|SK|Panasonic), year, month, installation, production, yoyChange
+
+11. BatteryMakerRankings - Battery maker market share rankings
+    Fields: dataSource, scope (CHINA|GLOBAL), periodType, year, month, ranking, maker, value, marketShare
+
+12. PlantExports - Exports by manufacturing plant
+    Fields: plant (TESLA_SHANGHAI|BYD_SHENZHEN|etc), brand, year, month, value, yoyChange
+
+13. NevSalesSummary - Weekly/bi-weekly sales flash reports
+    Fields: dataSource, year, startDate, endDate, retailSales, retailYoy, wholesaleSales, wholesaleYoy
+
+14. VehicleSpec - Vehicle specifications
+    Fields: brand, model, variant, startingPrice, currentPrice, rangeCltc, acceleration, batteryCapacity, vehicleType (BEV|EREV|PHEV)
+
+QUERY ROUTING:
+- Brand deliveries/sales → EVMetric or AutomakerRankings
+- Industry total sales → CaamNevSales or CpcaNevRetail
+- Production data → CpcaNevProduction
+- Inventory/market health → ChinaPassengerInventory, ChinaDealerInventoryFactor, ChinaViaIndex
+- Battery data → ChinaBatteryInstallation or BatteryMakerMonthly or BatteryMakerRankings
+- Export data → PlantExports
+- Vehicle specs/prices → VehicleSpec
+- Weekly updates → NevSalesSummary
 
 RULES:
-1. Output valid Prisma findMany query syntax
-2. Always filter by metric: "DELIVERY" unless user asks for something else
-3. Always filter by periodType: "MONTHLY" unless user specifies quarterly/yearly
-4. Use current year (2025) if not specified
-5. Handle relative time ("last 6 months", "Q3", "past year")
-6. Support comparisons ("vs", "compare", "against")
-7. Support aggregations ("total", "average", "highest", "lowest")
+1. Output valid Prisma findMany query with table name
+2. Use current year (2025) if not specified
+3. Handle relative time ("last 6 months", "Q3", "past year")
+4. Support comparisons ("vs", "compare")
+5. Support aggregations ("total", "highest", "top N")
 
 EXAMPLES:
 
 User: "BYD deliveries in 2024"
-Query:
-{
-  where: {
-    brand: "BYD",
-    metric: "DELIVERY",
-    periodType: "MONTHLY",
-    year: 2024
-  },
-  orderBy: { period: 'asc' }
-}
+Table: EVMetric
+Query: { where: { brand: "BYD", metric: "DELIVERY", periodType: "MONTHLY", year: 2024 }, orderBy: { period: 'asc' } }
 
-User: "Compare NIO and XPeng last 6 months"
-Query:
-{
-  where: {
-    brand: { in: ["NIO", "XPENG"] },
-    metric: "DELIVERY",
-    periodType: "MONTHLY",
-    OR: [
-      { year: 2024, period: { gte: 7 } },
-      { year: 2025, period: { lte: 1 } }
-    ]
-  },
-  orderBy: [{ year: 'asc' }, { period: 'asc' }]
-}
+User: "Total NEV sales last 12 months"
+Table: CaamNevSales
+Query: { where: { OR: [{ year: 2024 }, { year: 2025, month: { lte: 1 } }] }, orderBy: [{ year: 'asc' }, { month: 'asc' }] }
 
-User: "Top 5 brands in January 2025"
-Query:
-{
-  where: {
-    metric: "DELIVERY",
-    periodType: "MONTHLY",
-    year: 2025,
-    period: 1,
-    brand: { not: "INDUSTRY" }
-  },
-  orderBy: { value: 'desc' },
-  take: 5
-}
+User: "CATL vs BYD battery installation 2024"
+Table: BatteryMakerMonthly
+Query: { where: { maker: { in: ["CATL", "BYD"] }, year: 2024 }, orderBy: [{ month: 'asc' }] }
 
-Output ONLY the Prisma query object, no explanation.
+User: "Top 10 battery makers global market share"
+Table: BatteryMakerRankings
+Query: { where: { scope: "GLOBAL", periodType: "MONTHLY" }, orderBy: { ranking: 'asc' }, take: 10 }
+
+User: "Tesla Shanghai exports 2024"
+Table: PlantExports
+Query: { where: { plant: "TESLA_SHANGHAI", year: 2024 }, orderBy: { month: 'asc' } }
+
+User: "Dealer inventory coefficient trend"
+Table: ChinaDealerInventoryFactor
+Query: { where: { year: { gte: 2024 } }, orderBy: [{ year: 'asc' }, { month: 'asc' }] }
+
+User: "Compare NIO and XPeng vehicle specs"
+Table: VehicleSpec
+Query: { where: { brand: { in: ["NIO", "XPENG"] } }, orderBy: { startingPrice: 'asc' } }
+
+Output format: { table: "TableName", query: { ... } }
+\`
 ```
 
 ### Data Explorer Post Generation Prompt (add to prompts.ts)
@@ -928,40 +1083,113 @@ Output ONLY the tweet text, no hashtags, no links.
 
 ### Suggested Questions (Quick Actions)
 
-Provide preset questions for common queries:
+Provide preset questions for common queries, organized by data category:
+
+**Brand Deliveries:**
 - "BYD monthly deliveries in 2024"
-- "Compare all brands for January 2025"
-- "NIO vs Li Auto last 12 months"
-- "Top 5 brands by YoY growth"
-- "Tesla China quarterly trend"
+- "Compare NIO, XPeng, Li Auto last 12 months"
+- "Top 5 brands by deliveries January 2025"
+- "Tesla China vs BYD quarterly trend"
+- "Xiaomi monthly deliveries since launch"
+
+**Industry Sales:**
+- "Total NEV sales trend 2024"
+- "NEV retail vs wholesale gap last 6 months"
+- "CAAM vs CPCA sales comparison 2024"
+- "NEV production vs sales 2024"
+
+**Market Health Indicators:**
+- "Dealer inventory coefficient trend 2024"
+- "VIA Index last 12 months"
+- "Passenger car inventory levels trend"
+
+**Battery Industry:**
+- "CATL vs BYD battery installations 2024"
+- "Top 10 battery makers global market share"
+- "China battery installation monthly trend"
+- "Battery production vs installation gap"
+
+**Exports:**
+- "Tesla Shanghai exports 2024"
+- "Top exporting plants by volume"
+- "BYD export trend by plant"
+
+**Vehicle Specs:**
+- "Compare NIO and Li Auto SUV specs"
+- "Cheapest EVs with 500km+ range"
+- "Fastest accelerating Chinese EVs"
+- "BEV vs EREV price comparison"
 
 ## Query Safety & Validation
 
 ```typescript
 // src/lib/query-executor.ts
 
-// Whitelist of allowed query patterns
-const ALLOWED_TABLES = ['eVMetric'];
+// Whitelist of allowed tables (read-only access)
+const ALLOWED_TABLES = [
+  // Brand-level data
+  'eVMetric',
+  'automakerRankings',
+
+  // Industry-level data
+  'caamNevSales',
+  'cpcaNevRetail',
+  'cpcaNevProduction',
+  'nevSalesSummary',
+
+  // Market health indicators
+  'chinaPassengerInventory',
+  'chinaDealerInventoryFactor',
+  'chinaViaIndex',
+
+  // Battery industry
+  'chinaBatteryInstallation',
+  'batteryMakerMonthly',
+  'batteryMakerRankings',
+
+  // Exports
+  'plantExports',
+
+  // Vehicle specs
+  'vehicleSpec',
+] as const;
+
 const MAX_RESULTS = 1000;
 
-async function executeQuery(queryConfig: PrismaQuery): Promise<QueryResult> {
-  // 1. Validate query structure
-  validateQueryStructure(queryConfig);
+type AllowedTable = typeof ALLOWED_TABLES[number];
 
-  // 2. Add safety limits
+interface QueryRequest {
+  table: AllowedTable;
+  query: PrismaQueryConfig;
+}
+
+async function executeQuery(request: QueryRequest): Promise<QueryResult> {
+  const { table, query } = request;
+
+  // 1. Validate table is allowed
+  if (!ALLOWED_TABLES.includes(table)) {
+    throw new Error(`Table "${table}" is not allowed`);
+  }
+
+  // 2. Validate query structure
+  validateQueryStructure(query);
+
+  // 3. Add safety limits
   const safeQuery = {
-    ...queryConfig,
-    take: Math.min(queryConfig.take || MAX_RESULTS, MAX_RESULTS)
+    ...query,
+    take: Math.min(query.take || MAX_RESULTS, MAX_RESULTS)
   };
 
-  // 3. Execute with timeout
+  // 4. Execute with timeout (table-specific)
+  const prismaTable = (prisma as any)[table];
   const result = await Promise.race([
-    prisma.eVMetric.findMany(safeQuery),
+    prismaTable.findMany(safeQuery),
     timeout(5000) // 5 second timeout
   ]);
 
-  // 4. Return with metadata
+  // 5. Return with metadata
   return {
+    table,
     data: result,
     rowCount: result.length,
     executionTime: Date.now() - startTime
@@ -970,8 +1198,10 @@ async function executeQuery(queryConfig: PrismaQuery): Promise<QueryResult> {
 
 function validateQueryStructure(query: unknown): void {
   // Check for dangerous operations
-  // Only allow: where, orderBy, take, skip, select
-  // Block: delete, update, create, raw SQL
+  // Only allow: where, orderBy, take, skip, select, include (limited)
+  // Block: delete, update, create, raw SQL, $queryRaw
+  const allowedKeys = ['where', 'orderBy', 'take', 'skip', 'select'];
+  // ... validation logic
 }
 ```
 
@@ -979,12 +1209,48 @@ function validateQueryStructure(query: unknown): void {
 
 Based on query results, suggest appropriate chart types:
 
+### Brand/Company Performance
 | Data Pattern | Suggested Chart | Example Query |
 |--------------|-----------------|---------------|
-| Single brand over time | Line chart | "BYD monthly 2024" |
-| Multiple brands over time | Grouped bar / Multi-line | "NIO vs XPeng" |
-| Single point in time, multiple brands | Horizontal bar (ranked) | "All brands Jan 2025" |
-| YoY comparison | Grouped bar (year pairs) | "2024 vs 2025" |
+| Single brand over time | Line chart | "BYD monthly deliveries 2024" |
+| Multiple brands over time | Grouped bar / Multi-line | "NIO vs XPeng deliveries" |
+| Single month, multiple brands | Horizontal bar (ranked) | "All brands Jan 2025" |
+| YoY comparison | Grouped bar (year pairs) | "2024 vs 2025 by brand" |
+
+### Industry Totals
+| Data Pattern | Suggested Chart | Example Query |
+|--------------|-----------------|---------------|
+| Monthly trend | Area chart | "NEV sales trend 2024" |
+| Production vs Sales | Dual-axis line | "Production vs retail 2024" |
+| Retail vs Wholesale | Stacked bar | "Retail vs wholesale gap" |
+
+### Market Health Indicators
+| Data Pattern | Suggested Chart | Example Query |
+|--------------|-----------------|---------------|
+| Inventory coefficient | Line with threshold | "Dealer inventory trend" (show 1.0 baseline) |
+| VIA Index | Line with 50% marker | "VIA Index trend" (show 50% threshold) |
+| Inventory levels | Area chart | "Passenger inventory trend" |
+
+### Battery Industry
+| Data Pattern | Suggested Chart | Example Query |
+|--------------|-----------------|---------------|
+| Maker comparison | Horizontal bar (ranked) | "Top 10 battery makers" |
+| Market share | Pie/donut chart | "Battery market share" |
+| Installation vs Production | Grouped bar | "Battery install vs production" |
+| Maker trend | Multi-line | "CATL vs BYD monthly" |
+
+### Exports
+| Data Pattern | Suggested Chart | Example Query |
+|--------------|-----------------|---------------|
+| Plant exports over time | Stacked area | "Tesla Shanghai exports" |
+| Multiple plants comparison | Grouped bar | "Exports by plant" |
+
+### Vehicle Specs
+| Data Pattern | Suggested Chart | Example Query |
+|--------------|-----------------|---------------|
+| Price comparison | Horizontal bar | "EV prices by brand" |
+| Range vs Price | Scatter plot | "Range vs price tradeoff" |
+| Spec comparison table | Data table (not chart) | "Compare NIO ES8 vs Li L9" |
 
 ## Discord Integration
 
@@ -1175,3 +1441,32 @@ DISCORD_CHANNEL_ID=...  # Optional, for specific channel
 15. Test suggested questions:
     - Click preset question → verify populates input
     - Run → verify expected results
+
+---
+
+## Implementation Status
+
+**Status: Design Complete - Implementation On Hold**
+
+The design document has been updated with comprehensive data source coverage. Implementation is paused pending completion of the database schema migration (Copy2/ev-platform).
+
+### Completed:
+- [x] Design document created
+- [x] Available data sources documented (14 tables)
+- [x] LLM prompts designed for all data types
+- [x] Chart type recommendations for each data category
+- [x] Query safety/validation approach defined
+- [x] Example X posts for all data types
+
+### Next Steps (after schema migration):
+1. Copy new schema to main ev-platform
+2. Run Prisma migration
+3. Implement Phase 1: Core data query functions
+4. Implement Phase 2: Chart generation
+5. Implement Phase 3: Admin UI
+6. Implement Phase 4: Data Explorer
+7. Implement Phase 5: Cron automation
+
+### Schema Changes Required:
+- Add `MetricPost` model for storing generated posts
+- All 14 data tables already defined in new schema
