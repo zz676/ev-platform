@@ -18,6 +18,10 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL", "http://localhost:3000/api/webhook")
 WEBHOOK_SECRET = os.getenv("SCRAPER_WEBHOOK_SECRET")
 CRON_SECRET = os.getenv("CRON_SECRET")  # For triggering X publish
 
+# API Base URL (for industry data tables)
+# Derives from WEBHOOK_URL by default, can be overridden
+API_BASE_URL = os.getenv("API_BASE_URL", WEBHOOK_URL.replace("/api/webhook", ""))
+
 # Scraper Settings
 SCRAPE_INTERVAL_HOURS = int(os.getenv("SCRAPE_INTERVAL_HOURS", "6"))
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
