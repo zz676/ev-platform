@@ -1,6 +1,6 @@
 # CnEVData Scraper & EV Sales Data Pipeline
 
-> **Last Updated**: February 2025
+> **Last Updated**: February 4, 2025
 > **Status**: Implemented
 
 ## Overview
@@ -221,12 +221,25 @@ CNEVDATA_CONFIG = {
 | Limit | Value | Rationale |
 |-------|-------|-----------|
 | Weekly article limit | 100 | Stay under detection threshold |
-| Batch delay | 30 minutes | Allow server to "forget" session |
+| Batch delay | 1 minute | Short pause between page batches |
+| Page delay | 3-8 seconds | Random delay between pages |
+| Article delay | 1-3 seconds | Random delay between articles |
 | Exponential backoff | 2x on 429/503 | Handle rate limiting gracefully |
 
 ---
 
 ## OCR Strategy
+
+### Parallel OCR Processing
+
+OCR calls are batched and processed in parallel for performance:
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| `ocr_concurrency` | 5 | Max parallel OCR calls |
+| Batch trigger | End of each page | Process queued articles together |
+
+This reduces scraping time from ~5.5 min to ~1-2 min for 3 pages (3x faster).
 
 ### When OCR is Needed
 
@@ -330,13 +343,25 @@ Create or update a vehicle spec.
 └── ~10% skip = ~120 articles
 ```
 
+### Backfill Configuration
+
+```python
+BACKFILL_CONFIG = {
+    "batch_size": 10,           # Pages per batch
+    "batch_delay": 60,          # 1 minute between batches
+    "page_delay": (3, 8),       # 3-8 seconds between pages
+    "article_delay": (1, 3),    # 1-3 seconds between articles
+    "ocr_concurrency": 5,       # Parallel OCR limit
+}
+```
+
 ### Phased Approach
 
 | Phase | Pages | Duration | Method |
 |-------|-------|----------|--------|
-| 1. Recent data | 1-5 | 1-2 days | Manual run |
-| 2. Mid-term | 6-25 | 3-5 days | 10 pages/day |
-| 3. Historical | 26-120 | 1-2 weeks | GitHub Actions |
+| 1. Recent data | 1-10 | Same day | Manual run (~3-4 min) |
+| 2. Mid-term | 11-50 | 1-2 days | 20 pages/batch |
+| 3. Historical | 51-120 | 3-5 days | GitHub Actions |
 
 ### Checkpoint Resume
 
