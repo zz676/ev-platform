@@ -411,6 +411,41 @@ enum XPublishStatus {
 }
 
 // ==========================================
+// Metric Posts for X (Data-Driven Posts)
+// ==========================================
+
+enum MetricPostType {
+  BRAND_TREND          // 12-month trend for single brand
+  ALL_BRANDS_COMPARISON // All brands for single month
+}
+
+enum MetricPostStatus {
+  PENDING
+  POSTED
+  FAILED
+}
+
+model MetricPost {
+  id            String           @id @default(cuid())
+  postType      MetricPostType   // Type of metric post
+  year          Int              // Target year for the post
+  period        Int?             // Month 1-12 (for ALL_BRANDS_COMPARISON)
+  brand         Brand?           // Only for BRAND_TREND
+  content       String           // Generated tweet content
+  chartImageUrl String?          // URL of the chart image (stored in Vercel Blob)
+  status        MetricPostStatus @default(PENDING)
+  tweetId       String?          // X tweet ID after posting
+  postedAt      DateTime?        // When posted to X
+  dataSnapshot  Json?            // Raw data at generation time
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([postType, year, period, brand])
+  @@index([year, period])
+  @@index([status])
+}
+
+// ==========================================
 // EV Metrics Enums
 // ==========================================
 

@@ -24,6 +24,8 @@ const nextConfig = {
       },
     ],
   },
+  // Externalize canvas for server-side chart rendering
+  serverExternalPackages: ['canvas', 'chartjs-node-canvas'],
 };
 
 export default withNextIntl(nextConfig);
