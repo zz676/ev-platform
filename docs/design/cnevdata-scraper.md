@@ -1,6 +1,6 @@
 # CnEVData Scraper & EV Sales Data Pipeline
 
-> **Last Updated**: February 5, 2025
+> **Last Updated**: February 4, 2026
 > **Status**: Implemented
 
 ## Overview
@@ -175,16 +175,116 @@ Stores vehicle specifications:
 
 ### Article Classification
 
+The classifier routes articles to specialized tables based on their content type:
+
+#### Brand/Model Level (EVMetric)
+
 | Type | Example Title | OCR? | Target Table |
 |------|---------------|------|--------------|
 | BRAND_METRIC | "Xpeng deliveries in Jan: 20,011" | No | EVMetric |
 | MODEL_BREAKDOWN | "Tesla Apr sales breakdown: 13,196 Model 3s" | No | EVMetric |
 | REGIONAL_DATA | "Shanghai Apr NEV license plates: 45,000" | No | EVMetric |
-| RANKINGS_TABLE | "Full CPCA rankings: Top-selling models" | Yes | EVMetric |
-| DATA_TABLE | "Data Table: China NEV sales Dec 2025" | Yes | EVMetric |
 | VEHICLE_SPEC | "NIO EC7: Main specs" | Yes | VehicleSpec |
-| INDUSTRY_INDICATOR | "China auto dealer inventory drops" | Yes | EVMetric |
-| BATTERY_METRIC | "CATL battery installations: 25.6 GWh" | No | EVMetric |
+
+#### Industry Data Tables (NEW - 12 Specialized Tables)
+
+| Type | Example Title | OCR? | Target Table |
+|------|---------------|------|--------------|
+| CHINA_PASSENGER_INVENTORY | "China passenger car inventory: 3.2M units" | No | ChinaPassengerInventory |
+| CHINA_BATTERY_INSTALLATION | "China EV battery installations: 45.2 GWh" | No | ChinaBatteryInstallation |
+| CAAM_NEV_SALES | "CAAM NEV sales: 1.2 million in Jan" | No | CaamNevSales |
+| CHINA_DEALER_INVENTORY_FACTOR | "Dealer inventory factor rises to 1.31" | No | ChinaDealerInventoryFactor |
+| CPCA_NEV_RETAIL | "CPCA: NEV retail sales reach 850,000" | No | CpcaNevRetail |
+| CPCA_NEV_PRODUCTION | "CPCA: NEV production hits 920,000" | No | CpcaNevProduction |
+| CHINA_VIA_INDEX | "VIA index rises to 59.4%" | No | ChinaViaIndex |
+| BATTERY_MAKER_MONTHLY | "CATL battery installations: 25.6 GWh" | No | BatteryMakerMonthly |
+| PLANT_EXPORTS | "Tesla Shanghai exports 35,000" | No | PlantExports |
+| NEV_SALES_SUMMARY | "NEV sales Jan 1-18 reach 420,000" | No | NevSalesSummary |
+| AUTOMAKER_RANKINGS | "CPCA top-selling automakers Jan 2025" | Yes | AutomakerRankings |
+| BATTERY_MAKER_RANKINGS | "Top battery makers China Jan 2025" | Yes | BatteryMakerRankings |
+
+---
+
+## Industry Data Pipeline Integration
+
+### Dual-Write Architecture
+
+The scraper uses a dual-write approach where articles are:
+1. Sent to the **Post table** via webhook (existing flow for news display)
+2. **AND** routed to specialized **industry data tables** (new structured data flow)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DUAL-WRITE PIPELINE                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────┐     ┌─────────────────────────────────────┐   │
+│  │   Scrape    │ ──▶ │  Process & Submit to Webhook        │   │
+│  │   Articles  │     │  (Posts table - news display)       │   │
+│  └──────┬──────┘     └─────────────────────────────────────┘   │
+│         │                                                        │
+│         │            ┌─────────────────────────────────────┐   │
+│         └──────────▶ │  Classify & Extract Industry Data   │   │
+│                      │  (12 specialized tables)            │   │
+│                      └──────────────────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### New Components
+
+| File | Purpose |
+|------|---------|
+| `extractors/industry_extractor.py` | Extract structured data for 12 table types |
+| `api_client.py` | HTTP client for submitting to industry table APIs |
+| `config.py` | Added `API_BASE_URL` configuration |
+| `main.py` | Added `process_industry_data()` function |
+
+### Industry Data Extraction
+
+The `IndustryDataExtractor` extracts table-specific fields:
+
+```python
+# Example: Battery installation data
+title = "China EV battery installations hit 45.2 GWh in Jan 2025"
+# Extracted:
+{
+    "year": 2025,
+    "month": 1,
+    "installation": 45.2,
+    "unit": "GWh",
+    "sourceUrl": "...",
+    "sourceTitle": "..."
+}
+```
+
+### API Endpoints for Industry Tables
+
+Each table has a POST endpoint for data submission:
+
+| Table | Endpoint | Key Fields |
+|-------|----------|------------|
+| ChinaBatteryInstallation | `/api/china-battery-installation` | year, month, installation |
+| CaamNevSales | `/api/caam-nev-sales` | year, month, value, yoyChange |
+| ChinaViaIndex | `/api/china-via-index` | year, month, value (%) |
+| BatteryMakerMonthly | `/api/battery-maker-monthly` | maker, year, month, installation |
+| PlantExports | `/api/plant-exports` | plant, brand, year, month, value |
+| AutomakerRankings | `/api/automaker-rankings` | year, month, ranking, automaker, value |
+| BatteryMakerRankings | `/api/battery-maker-rankings` | year, month, ranking, maker, value, scope |
+
+### Pipeline Stats
+
+The scraper now tracks industry data processing:
+
+```
+Industry Data:
+  Status: SUCCESS
+  Classified: 3 articles
+  Extracted: 2 articles
+  Submitted: 2 records
+  Errors: 0
+  By Table: {'BatteryMakerMonthly': 1, 'ChinaViaIndex': 1}
+```
 
 ---
 
@@ -419,25 +519,42 @@ scraper/
 │   ├── __init__.py
 │   ├── title_parser.py       # Parse metrics from titles
 │   ├── summary_parser.py     # Extract YoY/MoM from summaries
-│   ├── classifier.py         # Article type classification
+│   ├── classifier.py         # Article type classification (12+ types)
+│   ├── industry_extractor.py # Extract data for 12 industry tables (NEW)
 │   ├── image_ocr.py          # GPT-4o Vision OCR
 │   ├── spec_extractor.py     # Vehicle spec extraction
 │   └── table_extractor.py    # Rankings table extraction
+├── api_client.py             # HTTP client for industry APIs (NEW)
 ├── backfill_cnevdata.py      # Historical backfill script
-├── config.py                 # Configuration (updated)
-└── main.py                   # Entry point (updated)
+├── config.py                 # Configuration (API_BASE_URL added)
+└── main.py                   # Entry point (dual-write pipeline)
 
 src/app/api/
 ├── ev-metrics/
 │   └── route.ts              # EV metrics API
-└── vehicle-specs/
-    └── route.ts              # Vehicle specs API
+├── vehicle-specs/
+│   └── route.ts              # Vehicle specs API
+├── china-battery-installation/
+│   └── route.ts              # Battery installation API (NEW)
+├── caam-nev-sales/
+│   └── route.ts              # CAAM NEV sales API (NEW)
+├── china-via-index/
+│   └── route.ts              # VIA Index API (NEW)
+├── battery-maker-monthly/
+│   └── route.ts              # Battery maker monthly API (NEW)
+├── plant-exports/
+│   └── route.ts              # Plant exports API (NEW)
+├── automaker-rankings/
+│   └── route.ts              # Automaker rankings API (NEW)
+├── battery-maker-rankings/
+│   └── route.ts              # Battery maker rankings API (NEW)
+└── ... (6 more industry table APIs)
 
 .github/workflows/
 └── cnevdata-scraper.yml      # Weekly scraper workflow
 
 prisma/
-└── schema.prisma             # Database schema (updated)
+└── schema.prisma             # Database schema (12 industry tables added)
 ```
 
 ---

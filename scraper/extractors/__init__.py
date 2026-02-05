@@ -5,7 +5,8 @@ from .summary_parser import SummaryParser
 from .image_ocr import ImageOCR
 from .spec_extractor import SpecExtractor
 from .table_extractor import TableExtractor
-from .classifier import ArticleClassifier, ArticleType
+from .classifier import ArticleClassifier, ArticleType, ClassificationResult
+from .industry_extractor import IndustryDataExtractor, ExtractionResult
 
 __all__ = [
     "TitleParser",
@@ -16,4 +17,7 @@ __all__ = [
     "TableExtractor",
     "ArticleClassifier",
     "ArticleType",
+    "ClassificationResult",
+    "IndustryDataExtractor",
+    "ExtractionResult",
 ]

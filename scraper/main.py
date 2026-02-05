@@ -12,9 +12,12 @@ from typing import Any
 
 import requests
 
-from config import WEBHOOK_URL, WEBHOOK_SECRET, SOURCES
+from config import WEBHOOK_URL, WEBHOOK_SECRET, SOURCES, API_BASE_URL
 from sources import NIOSource, XPengSource, LiAutoSource, BYDSource, WeiboSource, CnEVDataSource
 from processors import AIService, process_article
+from extractors.classifier import ArticleClassifier
+from extractors.industry_extractor import IndustryDataExtractor
+from api_client import EVPlatformAPI
 
 
 # Map source names to classes
@@ -62,6 +65,14 @@ def create_stats() -> dict[str, Any]:
             "status": None,
             "posts_published": 0,
             "error": None,
+        },
+        "industry_data": {
+            "status": None,
+            "classified": 0,
+            "extracted": 0,
+            "submitted": 0,
+            "errors": 0,
+            "by_table": {},  # {table_name: count}
         },
     }
 
@@ -144,6 +155,25 @@ def print_summary(stats: dict[str, Any], dry_run: bool = False) -> None:
                 print(f"  Error: {x_pub['error']}")
         else:
             print(f"  Status: {x_pub['status'] or 'NOT RUN'}")
+    print()
+
+    # Industry Data section
+    industry = stats.get("industry_data", {})
+    print("Industry Data:")
+    if dry_run:
+        print("  Status: DRY RUN")
+    elif industry.get("status"):
+        print(f"  Status: {industry['status']}")
+        print(f"  Classified: {industry.get('classified', 0)} articles")
+        print(f"  Extracted: {industry.get('extracted', 0)} articles")
+        print(f"  Submitted: {industry.get('submitted', 0)} records")
+        if industry.get('errors', 0) > 0:
+            print(f"  Errors: {industry['errors']}")
+        by_table = industry.get("by_table", {})
+        if by_table:
+            print(f"  By Table: {by_table}")
+    else:
+        print("  Status: NOT RUN")
 
     print("=" * 44)
 
@@ -231,6 +261,159 @@ def process_articles(
             stats["sources"][source_name]["errors"] += errors
 
     return processed
+
+
+def _get_article_field(article, field_name: str, default=None):
+    """Get a field from an article, handling different article types.
+
+    Supports both standard Article and CnEVDataArticle objects.
+    """
+    # Field mapping for different article types
+    field_mappings = {
+        "original_title": ["original_title", "title"],
+        "translated_summary": ["translated_summary", "summary"],
+        "original_content": ["original_content", "summary"],
+        "source_url": ["source_url", "url"],
+        "original_media_urls": ["original_media_urls", "preview_image"],
+        "published_at": ["published_at", "source_date"],
+    }
+
+    # Get the list of possible field names
+    possible_fields = field_mappings.get(field_name, [field_name])
+
+    for fname in possible_fields:
+        if hasattr(article, fname):
+            val = getattr(article, fname)
+            if val is not None:
+                # Special handling for original_media_urls -> preview_image
+                if field_name == "original_media_urls" and fname == "preview_image":
+                    # preview_image is a single string, wrap in list
+                    return [val] if val else []
+                return val
+
+    return default
+
+
+def process_industry_data(
+    articles: list,
+    api_client: EVPlatformAPI,
+    stats: dict = None,
+    dry_run: bool = False,
+) -> None:
+    """Process articles for new industry tables (dual-write).
+
+    This runs AFTER regular webhook submission. It classifies articles
+    and routes data to specialized industry tables.
+
+    Args:
+        articles: List of Article or CnEVDataArticle objects
+        api_client: EVPlatformAPI client instance
+        stats: Stats dictionary for tracking
+        dry_run: If True, don't actually submit data
+    """
+    classifier = ArticleClassifier()
+    extractor = IndustryDataExtractor()
+
+    classified_count = 0
+    extracted_count = 0
+    submitted_count = 0
+    errors_count = 0
+    by_table: dict[str, int] = {}
+
+    print(f"\n{'='*50}")
+    print("Processing Industry Data")
+    print(f"{'='*50}")
+
+    for article in articles:
+        try:
+            # Get article fields using helper function
+            title = _get_article_field(article, "original_title", "")
+            summary = _get_article_field(article, "translated_summary", "")
+            if not summary:
+                summary = _get_article_field(article, "original_content", "")
+
+            if not title:
+                continue
+
+            # Classify the article
+            classification = classifier.classify(title, summary)
+
+            # Skip if not targeting an industry table
+            if not classification.target_table:
+                continue
+            if not EVPlatformAPI.is_industry_table(classification.target_table):
+                continue
+
+            classified_count += 1
+
+            # Get source URL and image
+            source_url = _get_article_field(article, "source_url", "")
+            media_urls = _get_article_field(article, "original_media_urls", [])
+            image_url = media_urls[0] if media_urls else None
+            published_at = _get_article_field(article, "published_at")
+
+            # Extract structured data
+            result = extractor.extract(
+                title=title,
+                summary=summary,
+                classification=classification,
+                source_url=source_url,
+                source_title=title,
+                image_url=image_url,
+                published_date=published_at,
+            )
+
+            if not result or not result.success:
+                if result and result.error:
+                    print(f"  Extraction failed for '{title[:50]}...': {result.error}")
+                continue
+
+            extracted_count += 1
+
+            # Check if OCR is needed (for rankings tables)
+            if result.data.get("_needs_ocr"):
+                # TODO: Integrate OCR processing for rankings tables
+                # For now, log and skip
+                print(f"  Skipping OCR-required article: {title[:50]}...")
+                continue
+
+            # Submit to API
+            if dry_run:
+                print(f"  [DRY RUN] Would submit to {classification.target_table}:")
+                print(f"    Data: {result.data}")
+            else:
+                response = api_client.submit(classification.target_table, result.data)
+                if response.success:
+                    submitted_count += 1
+                    by_table[classification.target_table] = by_table.get(classification.target_table, 0) + 1
+                    print(f"  Submitted to {classification.target_table}: {title[:50]}...")
+                else:
+                    errors_count += 1
+                    print(f"  Failed to submit to {classification.target_table}: {response.error}")
+
+        except Exception as e:
+            errors_count += 1
+            print(f"  Error processing article: {e}")
+            continue
+
+    # Update stats
+    if stats is not None:
+        stats["industry_data"]["classified"] = classified_count
+        stats["industry_data"]["extracted"] = extracted_count
+        stats["industry_data"]["submitted"] = submitted_count
+        stats["industry_data"]["errors"] = errors_count
+        stats["industry_data"]["by_table"] = by_table
+        stats["industry_data"]["status"] = "SUCCESS" if errors_count == 0 else "PARTIAL"
+
+    print(f"\nIndustry Data Summary:")
+    print(f"  Classified:  {classified_count} articles")
+    print(f"  Extracted:   {extracted_count} articles")
+    print(f"  Submitted:   {submitted_count} records")
+    print(f"  Errors:      {errors_count}")
+    if by_table:
+        print(f"  By Table:")
+        for table, count in sorted(by_table.items()):
+            print(f"    {table}: {count}")
 
 
 def submit_to_webhook(articles: list[dict], batch_id: str = None, stats: dict = None) -> bool:
@@ -402,19 +585,33 @@ def run_scraper(
             print(f"Warning: AI service not available: {e}")
             skip_ai = True
 
+    # Initialize API client for industry data
+    api_client = EVPlatformAPI(API_BASE_URL)
+
     # Scrape each source
-    all_articles = []
+    all_articles = []  # List of dicts for webhook
+    raw_articles = []  # List of Article objects for industry data processing
     for source_name in sources_to_scrape:
         articles = scrape_source(source_name, limit=limit, stats=stats)
+        raw_articles.extend(articles)  # Keep raw articles for industry data
 
         if skip_ai:
             # Convert to dicts without AI processing
             processed_count = 0
             for article in articles:
-                article.relevance_score = 50  # Default score
-                article.translated_title = article.original_title
-                article.translated_content = article.original_content  # Avoid null in webhook
-                article.translated_summary = article.original_title or "EV News"
+                # Handle different article types (Article vs CnEVDataArticle)
+                if hasattr(article, 'relevance_score'):
+                    article.relevance_score = 50
+                if hasattr(article, 'translated_title'):
+                    title = _get_article_field(article, "original_title", "EV News")
+                    article.translated_title = title
+                if hasattr(article, 'translated_content'):
+                    content = _get_article_field(article, "original_content", "")
+                    article.translated_content = content
+                if hasattr(article, 'translated_summary'):
+                    title = _get_article_field(article, "original_title", "EV News")
+                    article.translated_summary = title
+
                 all_articles.append(article.to_dict())
                 processed_count += 1
 
@@ -441,11 +638,19 @@ def run_scraper(
             print(f"  - {article.get('translatedTitle', article.get('originalTitle', 'Untitled'))}")
             print(f"    Score: {article.get('relevanceScore', 0)}, Categories: {article.get('categories', [])}")
 
+        # Process industry data (dry run)
+        process_industry_data(raw_articles, api_client, stats, dry_run=True)
+
         # Print summary
         print_summary(stats, dry_run=True)
     else:
         batch_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         success = submit_to_webhook(all_articles, batch_id, stats)
+
+        # Process industry data (dual-write to specialized tables)
+        # This runs regardless of webhook success - industry data is independent
+        process_industry_data(raw_articles, api_client, stats, dry_run=False)
+
         if success:
             print("\nScraper run completed successfully!")
             # Trigger X publishing after successful scrape (unless disabled)
