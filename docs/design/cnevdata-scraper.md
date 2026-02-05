@@ -463,7 +463,10 @@ assert parser.needs_ocr("Full CPCA rankings: Top-selling models") == True
 
 # Model extraction should NOT match numbers from comma-formatted values
 result = parser.parse("Tesla China wholesale sales in Jan: 69,129")
-assert result.vehicle_model is None  # "129" is NOT a model
+assert result.vehicle_model is None  # "129" preceded by comma - NOT a model
+
+result = parser.parse("BYD NEV sales in Jan: 210,051")
+assert result.vehicle_model is None  # "210" followed by comma - NOT a model
 
 # Model extraction should match standalone Zeekr-style models
 result = parser.parse("Zeekr 001 deliveries in Jan: 15,000")
@@ -472,15 +475,16 @@ assert result.vehicle_model == "001"
 
 ### Title Parser Model Pattern
 
-The title parser uses regex patterns to extract vehicle models. The Zeekr-style pattern uses negative lookbehind to avoid matching numbers from comma-formatted values:
+The title parser uses regex patterns to extract vehicle models. The Zeekr-style pattern uses negative lookbehind AND lookahead to avoid matching numbers from comma-formatted values:
 
 ```python
-r'(?<![,\d])([0-9]{3}[Xx]?)\b'  # Zeekr models like 001, 007, 009
+r'(?<![,\d])([0-9]{3}[Xx]?)(?![,\d])'  # Zeekr models like 001, 007, 009
 ```
 
 This ensures:
 - `Zeekr 001 sales` -> matches `001`
 - `Tesla China wholesale: 69,129` -> does NOT match `129` (preceded by comma)
+- `BYD NEV sales: 210,051` -> does NOT match `210` (followed by comma)
 
 ### Integration Test
 
