@@ -41,7 +41,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sources.cnevdata import CnEVDataSource, CnEVDataArticle
 from extractors import TitleParser, SummaryParser, ArticleClassifier, ImageOCR
-from config import BACKFILL_CONFIG, WEBHOOK_URL, WEBHOOK_SECRET
+from extractors.industry_extractor import IndustryDataExtractor
+from api_client import EVPlatformAPI
+from config import BACKFILL_CONFIG, WEBHOOK_URL, WEBHOOK_SECRET, API_BASE_URL
 
 load_dotenv()
 
@@ -63,6 +65,12 @@ class BackfillStats:
         self.ocr_needed = 0
         self.ocr_processed = 0
         self.errors = []
+        # Industry data stats
+        self.industry_classified = 0
+        self.industry_extracted = 0
+        self.industry_submitted = 0
+        self.industry_failed = 0
+        self.industry_by_table = {}
 
     def to_dict(self) -> dict:
         return {
@@ -75,6 +83,11 @@ class BackfillStats:
             "metrics_failed": self.metrics_failed,
             "ocr_needed": self.ocr_needed,
             "ocr_processed": self.ocr_processed,
+            "industry_classified": self.industry_classified,
+            "industry_extracted": self.industry_extracted,
+            "industry_submitted": self.industry_submitted,
+            "industry_failed": self.industry_failed,
+            "industry_by_table": self.industry_by_table,
             "errors": self.errors[:10],  # Keep last 10 errors
         }
 
@@ -93,6 +106,16 @@ class BackfillStats:
         print(f"OCR needed: {self.ocr_needed}")
         print(f"OCR processed: {self.ocr_processed}")
         print(f"Errors: {len(self.errors)}")
+        # Industry data summary
+        print("\n--- Industry Data ---")
+        print(f"Classified: {self.industry_classified}")
+        print(f"Extracted: {self.industry_extracted}")
+        print(f"Submitted: {self.industry_submitted}")
+        print(f"Failed: {self.industry_failed}")
+        if self.industry_by_table:
+            print("By table:")
+            for table, count in sorted(self.industry_by_table.items()):
+                print(f"  {table}: {count}")
         if self.errors:
             print("\nRecent errors:")
             for err in self.errors[-5:]:
@@ -183,6 +206,80 @@ def submit_metrics_to_api(metrics: list[dict], dry_run: bool = False, stats: Bac
     return (success_count, fail_count)
 
 
+def process_industry_data(
+    article: CnEVDataArticle,
+    classifier: ArticleClassifier,
+    extractor: IndustryDataExtractor,
+    api_client: EVPlatformAPI,
+    stats: BackfillStats,
+    dry_run: bool = False,
+) -> bool:
+    """Process an article for industry data tables.
+
+    Args:
+        article: CnEVDataArticle to process
+        classifier: ArticleClassifier instance
+        extractor: IndustryDataExtractor instance
+        api_client: EVPlatformAPI client
+        stats: BackfillStats tracker
+        dry_run: If True, don't submit to API
+
+    Returns:
+        True if data was extracted and submitted, False otherwise
+    """
+    title = article.title or ""
+    summary = article.summary or ""
+
+    # Classify the article
+    classification = classifier.classify(title, summary)
+
+    # Skip if not targeting an industry table
+    if not classification.target_table:
+        return False
+    if not EVPlatformAPI.is_industry_table(classification.target_table):
+        return False
+
+    stats.industry_classified += 1
+
+    # Extract structured data
+    result = extractor.extract(
+        title=title,
+        summary=summary,
+        classification=classification,
+        source_url=article.url,
+        source_title=title,
+        image_url=article.preview_image,
+        published_date=article.published_at,
+    )
+
+    if not result or not result.success:
+        return False
+
+    stats.industry_extracted += 1
+
+    # Skip OCR-required articles (rankings tables)
+    if result.data.get("_needs_ocr"):
+        return False
+
+    # Submit to API
+    if dry_run:
+        print(f"    [DRY RUN] Would submit to {classification.target_table}")
+        return True
+
+    response = api_client.submit(classification.target_table, result.data)
+    if response.success:
+        stats.industry_submitted += 1
+        stats.industry_by_table[classification.target_table] = (
+            stats.industry_by_table.get(classification.target_table, 0) + 1
+        )
+        print(f"    -> Submitted to {classification.target_table}")
+        return True
+    else:
+        stats.industry_failed += 1
+        print(f"    -> Failed to submit to {classification.target_table}: {response.error}")
+        return False
+
+
 def process_ocr_batch(ocr, articles: list, stats: BackfillStats, dry_run: bool = False) -> dict:
     """Process multiple OCR calls in parallel.
 
@@ -259,6 +356,12 @@ def backfill_pages(
     source = CnEVDataSource()
     processed_urls = []
 
+    # Initialize industry data components
+    classifier = ArticleClassifier()
+    industry_extractor = IndustryDataExtractor()
+    api_client = EVPlatformAPI(API_BASE_URL)
+    print(f"Industry data API initialized: {API_BASE_URL}")
+
     # Initialize OCR if enabled
     ocr = None
     if enable_ocr:
@@ -299,14 +402,25 @@ def backfill_pages(
                         # Submit to API
                         submit_metrics_to_api(metrics, dry_run, stats)
 
-                    elif article.needs_ocr and enable_ocr and ocr and article.preview_image:
-                        # Queue for batch OCR processing
-                        stats.ocr_needed += 1
-                        ocr_queue.append(article)
-                        print(f"    Queued for OCR batch processing")
+                    # Also try to extract industry data (dual-write)
+                    industry_extracted = process_industry_data(
+                        article=article,
+                        classifier=classifier,
+                        extractor=industry_extractor,
+                        api_client=api_client,
+                        stats=stats,
+                        dry_run=dry_run,
+                    )
 
-                    else:
-                        print(f"    No metrics extracted (needs_ocr={article.needs_ocr})")
+                    # If no metrics or industry data, check if OCR is needed
+                    if not metrics and not industry_extracted:
+                        if article.needs_ocr and enable_ocr and ocr and article.preview_image:
+                            # Queue for batch OCR processing
+                            stats.ocr_needed += 1
+                            ocr_queue.append(article)
+                            print(f"    Queued for OCR batch processing")
+                        else:
+                            print(f"    No data extracted (needs_ocr={article.needs_ocr})")
 
                     processed_urls.append(article.url)
                     stats.articles_processed += 1
