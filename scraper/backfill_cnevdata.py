@@ -29,6 +29,7 @@ import os
 import random
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Optional
 
@@ -145,6 +146,55 @@ def submit_metrics_to_api(metrics: list[dict], dry_run: bool = False) -> bool:
     return True
 
 
+def process_ocr_batch(ocr, articles: list, stats: BackfillStats, dry_run: bool = False) -> dict:
+    """Process multiple OCR calls in parallel.
+
+    Args:
+        ocr: ImageOCR instance
+        articles: List of CnEVDataArticle objects needing OCR
+        stats: BackfillStats tracker
+        dry_run: If True, don't submit results to API
+
+    Returns:
+        Dict mapping article URL to OCR results
+    """
+    if not articles:
+        return {}
+
+    ocr_concurrency = BACKFILL_CONFIG.get("ocr_concurrency", 5)
+    results = {}
+
+    print(f"\n  Processing OCR batch of {len(articles)} articles (concurrency: {ocr_concurrency})...")
+
+    with ThreadPoolExecutor(max_workers=ocr_concurrency) as executor:
+        futures = {}
+        for article in articles:
+            # Determine OCR type based on article type
+            ocr_type = "rankings" if article.article_type == "RANKINGS_TABLE" else "metrics"
+            future = executor.submit(
+                ocr.extract_from_url_sync,
+                article.preview_image,
+                ocr_type
+            )
+            futures[future] = article
+
+        for future in as_completed(futures):
+            article = futures[future]
+            try:
+                result = future.result()
+                if result.success and result.data:
+                    stats.ocr_processed += 1
+                    results[article.url] = result.data
+                    print(f"    OCR extracted {len(result.data)} rows from {article.title[:40]}...")
+                else:
+                    print(f"    OCR returned no data for {article.title[:40]}...")
+            except Exception as e:
+                stats.errors.append(f"OCR error for {article.url}: {str(e)[:50]}")
+                print(f"    OCR error for {article.title[:40]}: {str(e)[:50]}")
+
+    return results
+
+
 def backfill_pages(
     start_page: int,
     end_page: int,
@@ -185,6 +235,7 @@ def backfill_pages(
     try:
         current_batch = []
         batch_num = 0
+        ocr_queue = []  # Queue for batch OCR processing
 
         for page in range(start_page, end_page + 1):
             print(f"\n--- Page {page}/{end_page} ---")
@@ -212,22 +263,10 @@ def backfill_pages(
                         submit_metrics_to_api(metrics, dry_run)
 
                     elif article.needs_ocr and enable_ocr and ocr and article.preview_image:
-                        # Try OCR extraction
+                        # Queue for batch OCR processing
                         stats.ocr_needed += 1
-                        print(f"    Needs OCR, processing image...")
-
-                        try:
-                            # Determine OCR type based on article type
-                            ocr_type = "rankings" if article.article_type == "RANKINGS_TABLE" else "metrics"
-                            result = ocr.extract_from_url_sync(article.preview_image, ocr_type)
-
-                            if result.success and result.data:
-                                stats.ocr_processed += 1
-                                print(f"    OCR extracted {len(result.data)} rows")
-                                # Process OCR data (would need additional logic)
-                        except Exception as e:
-                            print(f"    OCR error: {e}")
-                            stats.errors.append(f"OCR error for {article.url}: {str(e)[:50]}")
+                        ocr_queue.append(article)
+                        print(f"    Queued for OCR batch processing")
 
                     else:
                         print(f"    No metrics extracted (needs_ocr={article.needs_ocr})")
@@ -238,6 +277,11 @@ def backfill_pages(
                     # Delay between articles
                     delay = random.uniform(*BACKFILL_CONFIG["article_delay"])
                     time.sleep(delay)
+
+                # Process OCR batch after each page if queue has items
+                if ocr_queue:
+                    process_ocr_batch(ocr, ocr_queue, stats, dry_run)
+                    ocr_queue = []
 
             except Exception as e:
                 print(f"  Error on page {page}: {e}")

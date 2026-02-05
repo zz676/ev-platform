@@ -101,10 +101,11 @@ CNEVDATA_CONFIG = {
 # Backfill Configuration
 BACKFILL_CONFIG = {
     "total_pages": 120,
-    "batch_size": 5,            # Pages per batch
-    "batch_delay": 1800,        # 30 minutes between batches
-    "page_delay": (8, 20),      # 8-20 seconds random between pages
-    "article_delay": (3, 8),    # 3-8 seconds between articles
+    "batch_size": 10,           # Pages per batch (increased from 5)
+    "batch_delay": 60,          # 1 minute between batches (reduced from 30 min)
+    "page_delay": (3, 8),       # 3-8 seconds random between pages (reduced from 8-20)
+    "article_delay": (1, 3),    # 1-3 seconds between articles (reduced from 3-8)
     "max_retries": 3,
     "resume_from_last": True,   # Support checkpoint resume
+    "ocr_concurrency": 5,       # Parallel OCR limit
 }
