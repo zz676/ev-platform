@@ -545,6 +545,10 @@ model ScrapedArticle {
   publishedAt   DateTime?
   previewImage  String?                  // Preview image URL
 
+  // Time period (extracted from title)
+  month         Int?                     // 1-12, extracted from title
+  year          Int?                     // Year extracted from title
+
   // Processing status
   status        ScrapeStatus  @default(PENDING)
   articleType   String?                  // BRAND_METRIC, VEHICLE_SPEC, etc.
@@ -569,6 +573,7 @@ model ScrapedArticle {
   @@index([status])
   @@index([scrapedAt])
   @@index([articleType])
+  @@index([month, year])
 }
 
 // ==========================================
@@ -650,4 +655,681 @@ model VehicleSpecSource {
   createdAt   DateTime    @default(now())
 
   @@index([specId])
+}
+
+// ==========================================
+// Industry Data Tables - Time Series
+// ==========================================
+
+/// Monthly China passenger car inventory levels from CPCA (China Passenger Car Association).
+/// Tracks total inventory at dealerships and manufacturers across China.
+/// Used to monitor supply-demand balance in China's automotive market.
+/// Data frequency: Monthly
+/// Primary source: CPCA reports
+/// Use case: Analyze inventory trends, predict production adjustments, assess market health
+model ChinaPassengerInventory {
+  /// Unique identifier (CUID format)
+  id            String   @id @default(cuid())
+
+  /// Calendar year (e.g., 2024, 2025)
+  year          Int
+
+  /// Month of the year (1-12, where 1=January, 12=December)
+  month         Int
+
+  /// Inventory level in million units (e.g., 3.2 means 3.2 million vehicles in inventory)
+  value         Float
+
+  /// Unit of measurement. Default: "million_units"
+  unit          String   @default("million_units")
+
+  /// Optional summary or context from the source article
+  description   String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl     String
+
+  /// Title of the source article
+  sourceTitle   String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl      String?
+
+  /// Record creation timestamp
+  createdAt     DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt     DateTime @updatedAt
+
+  @@unique([year, month])
+  @@index([year, month])
+}
+
+/// Monthly China power battery installation and production data.
+/// Tracks batteries installed in EVs (installation) and total production by Chinese battery industry.
+/// Installation typically differs from production as batteries may be exported or stockpiled.
+/// Data frequency: Monthly
+/// Primary source: CABIA (China Automotive Battery Innovation Alliance)
+/// Use case: Track EV adoption, battery industry growth, supply chain dynamics
+model ChinaBatteryInstallation {
+  /// Unique identifier (CUID format)
+  id            String   @id @default(cuid())
+
+  /// Calendar year (e.g., 2024, 2025)
+  year          Int
+
+  /// Month of the year (1-12, where 1=January, 12=December)
+  month         Int
+
+  /// Battery installed in vehicles during the month (GWh). This is the primary metric for EV adoption.
+  installation  Float
+
+  /// Battery produced during the month (GWh). May exceed installation due to exports/inventory buildup.
+  production    Float?
+
+  /// Unit of measurement. Default: "GWh" (Gigawatt-hours)
+  unit          String   @default("GWh")
+
+  /// Optional summary or context from the source article
+  description   String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl     String
+
+  /// Title of the source article
+  sourceTitle   String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl      String?
+
+  /// Record creation timestamp
+  createdAt     DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt     DateTime @updatedAt
+
+  @@unique([year, month])
+  @@index([year, month])
+}
+
+/// Monthly NEV (New Energy Vehicle) sales statistics from CAAM.
+/// CAAM (China Association of Automobile Manufacturers) is the official industry body.
+/// CAAM data typically includes both domestic sales and exports, representing total production sold.
+/// Data frequency: Monthly
+/// Primary source: CAAM official releases
+/// Use case: Track total NEV market size, compare with CPCA retail data
+model CaamNevSales {
+  /// Unique identifier (CUID format)
+  id            String   @id @default(cuid())
+
+  /// Calendar year (e.g., 2024, 2025)
+  year          Int
+
+  /// Month of the year (1-12, where 1=January, 12=December)
+  month         Int
+
+  /// Total NEV sales volume in number of vehicles
+  value         Float
+
+  /// Unit of measurement. Default: "vehicles"
+  unit          String   @default("vehicles")
+
+  /// Year-over-year percentage change (e.g., 25.5 means +25.5% vs same month last year)
+  yoyChange     Float?
+
+  /// Month-over-month percentage change (e.g., -10.2 means -10.2% vs previous month)
+  momChange     Float?
+
+  /// Optional summary or context from the source article
+  description   String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl     String
+
+  /// Title of the source article
+  sourceTitle   String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl      String?
+
+  /// Record creation timestamp
+  createdAt     DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt     DateTime @updatedAt
+
+  @@unique([year, month])
+  @@index([year, month])
+}
+
+/// Monthly dealer inventory coefficient (库存系数) for China's auto market.
+/// The inventory coefficient represents months of inventory at dealerships.
+/// Interpretation: 1.0 = 1 month of stock, 1.5+ = oversupply/weak demand, <0.8 = shortage/strong demand
+/// Healthy range is typically 0.8-1.2. Above 1.5 signals market pressure on dealers.
+/// Data frequency: Monthly
+/// Primary source: China Automobile Dealers Association (CADA)
+/// Use case: Assess dealer health, predict pricing pressure, market demand signals
+model ChinaDealerInventoryFactor {
+  /// Unique identifier (CUID format)
+  id            String   @id @default(cuid())
+
+  /// Calendar year (e.g., 2024, 2025)
+  year          Int
+
+  /// Month of the year (1-12, where 1=January, 12=December)
+  month         Int
+
+  /// Inventory coefficient ratio (e.g., 1.31 = 1.31 months of inventory on hand)
+  /// Values >1.5 indicate oversupply, <0.8 indicate shortage
+  value         Float
+
+  /// Unit of measurement. Default: "ratio"
+  unit          String   @default("ratio")
+
+  /// Optional summary or context from the source article
+  description   String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl     String
+
+  /// Title of the source article
+  sourceTitle   String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl      String?
+
+  /// Record creation timestamp
+  createdAt     DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt     DateTime @updatedAt
+
+  @@unique([year, month])
+  @@index([year, month])
+}
+
+/// Monthly NEV retail sales from CPCA (China Passenger Car Association).
+/// Retail sales = units sold to end consumers (registered for road use).
+/// Differs from wholesale: retail reflects actual consumer demand, wholesale reflects dealer orders.
+/// CPCA data focuses on passenger vehicles; excludes commercial vehicles.
+/// Data frequency: Monthly
+/// Primary source: CPCA official releases
+/// Use case: Track consumer EV adoption, compare with wholesale to assess channel inventory
+model CpcaNevRetail {
+  /// Unique identifier (CUID format)
+  id            String   @id @default(cuid())
+
+  /// Calendar year (e.g., 2024, 2025)
+  year          Int
+
+  /// Month of the year (1-12, where 1=January, 12=December)
+  month         Int
+
+  /// NEV units sold to end consumers (retail registrations)
+  value         Float
+
+  /// Unit of measurement. Default: "vehicles"
+  unit          String   @default("vehicles")
+
+  /// Year-over-year percentage change (e.g., 25.5 means +25.5% vs same month last year)
+  yoyChange     Float?
+
+  /// Month-over-month percentage change (e.g., -10.2 means -10.2% vs previous month)
+  momChange     Float?
+
+  /// Optional summary or context from the source article
+  description   String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl     String
+
+  /// Title of the source article
+  sourceTitle   String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl      String?
+
+  /// Record creation timestamp
+  createdAt     DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt     DateTime @updatedAt
+
+  @@unique([year, month])
+  @@index([year, month])
+}
+
+/// Monthly NEV production volume from CPCA (China Passenger Car Association).
+/// Production = units manufactured by automakers during the month.
+/// Production typically leads sales data; comparing production vs sales shows inventory build/draw.
+/// CPCA data focuses on passenger vehicles; excludes commercial vehicles.
+/// Data frequency: Monthly
+/// Primary source: CPCA official releases
+/// Use case: Track manufacturing output, predict future supply, compare with sales
+model CpcaNevProduction {
+  /// Unique identifier (CUID format)
+  id            String   @id @default(cuid())
+
+  /// Calendar year (e.g., 2024, 2025)
+  year          Int
+
+  /// Month of the year (1-12, where 1=January, 12=December)
+  month         Int
+
+  /// NEV units produced by manufacturers
+  value         Float
+
+  /// Unit of measurement. Default: "vehicles"
+  unit          String   @default("vehicles")
+
+  /// Year-over-year percentage change (e.g., 25.5 means +25.5% vs same month last year)
+  yoyChange     Float?
+
+  /// Month-over-month percentage change (e.g., -10.2 means -10.2% vs previous month)
+  momChange     Float?
+
+  /// Optional summary or context from the source article
+  description   String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl     String
+
+  /// Title of the source article
+  sourceTitle   String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl      String?
+
+  /// Record creation timestamp
+  createdAt     DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt     DateTime @updatedAt
+
+  @@unique([year, month])
+  @@index([year, month])
+}
+
+/// Monthly Vehicle Inventory Alert Index (汽车经销商库存预警指数) - market health indicator.
+/// The VIA Index works like PMI: >50% indicates contraction/pessimism, <50% indicates expansion/optimism.
+/// Interpretation: 50% = neutral, 60%+ = significant dealer stress, <45% = healthy/optimistic market
+/// This is a sentiment and inventory pressure indicator surveyed from dealers.
+/// Data frequency: Monthly
+/// Primary source: China Automobile Dealers Association (CADA)
+/// Use case: Gauge dealer confidence, predict market trends, assess inventory pressure
+model ChinaViaIndex {
+  /// Unique identifier (CUID format)
+  id            String   @id @default(cuid())
+
+  /// Calendar year (e.g., 2024, 2025)
+  year          Int
+
+  /// Month of the year (1-12, where 1=January, 12=December)
+  month         Int
+
+  /// VIA Index percentage (e.g., 59.4 = 59.4%)
+  /// >50% = contraction/pressure, <50% = expansion/healthy (inverse of typical PMI interpretation)
+  value         Float
+
+  /// Unit of measurement. Default: "percent"
+  unit          String   @default("percent")
+
+  /// Contextual interpretation (e.g., "automotive industry remains in contraction territory")
+  description   String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl     String
+
+  /// Title of the source article
+  sourceTitle   String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl      String?
+
+  /// Record creation timestamp
+  createdAt     DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt     DateTime @updatedAt
+
+  @@unique([year, month])
+  @@index([year, month])
+}
+
+// ==========================================
+// Industry Data Tables - Entity-Specific Time Series
+// ==========================================
+
+/// Monthly battery data by specific battery maker (individual company performance).
+/// Tracks installation and production volumes for major battery manufacturers.
+/// Major makers: CATL, BYD, LG Energy Solution, SK On, Panasonic, CALB, Gotion (Guoxuan), EVE, Sunwoda
+/// Data frequency: Monthly
+/// Primary source: CABIA (China), SNE Research (Global)
+/// Use case: Track individual battery company performance, market share trends, competitive analysis
+model BatteryMakerMonthly {
+  /// Unique identifier (CUID format)
+  id            String   @id @default(cuid())
+
+  /// Battery maker company name. Common values:
+  /// Chinese: "CATL", "BYD", "CALB", "Gotion", "EVE", "Sunwoda"
+  /// Global: "LG", "SK", "Panasonic", "Samsung SDI"
+  maker         String
+
+  /// Calendar year (e.g., 2024, 2025)
+  year          Int
+
+  /// Month of the year (1-12, where 1=January, 12=December)
+  month         Int
+
+  /// Battery installed in vehicles during the month (GWh)
+  installation  Float
+
+  /// Battery produced during the month (GWh). May differ from installation.
+  production    Float?
+
+  /// Unit of measurement. Default: "GWh" (Gigawatt-hours)
+  unit          String   @default("GWh")
+
+  /// Year-over-year percentage change (e.g., 25.5 means +25.5% vs same month last year)
+  yoyChange     Float?
+
+  /// Month-over-month percentage change (e.g., -10.2 means -10.2% vs previous month)
+  momChange     Float?
+
+  /// Optional summary or context from the source article
+  description   String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl     String
+
+  /// Title of the source article
+  sourceTitle   String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl      String?
+
+  /// Record creation timestamp
+  createdAt     DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt     DateTime @updatedAt
+
+  @@unique([maker, year, month])
+  @@index([maker])
+  @@index([year, month])
+}
+
+/// Monthly export data by manufacturing plant (factory-level exports).
+/// Tracks vehicles exported from specific manufacturing facilities.
+/// Key plants: Tesla Gigafactory Shanghai, BYD Shenzhen, NIO Hefei, etc.
+/// Useful for understanding export hub performance and regional production strategy.
+/// Data frequency: Monthly
+/// Primary source: China Customs, company announcements
+/// Use case: Track export performance by plant, supply chain analysis, regional production trends
+model PlantExports {
+  /// Unique identifier (CUID format)
+  id            String   @id @default(cuid())
+
+  /// Plant identifier. Format: "BRAND_LOCATION"
+  /// Examples: "TESLA_SHANGHAI", "BYD_SHENZHEN", "NIO_HEFEI", "XPENG_ZHAOQING"
+  plant         String
+
+  /// Parent brand/company name (e.g., "TESLA", "BYD", "NIO")
+  brand         String
+
+  /// Calendar year (e.g., 2024, 2025)
+  year          Int
+
+  /// Month of the year (1-12, where 1=January, 12=December)
+  month         Int
+
+  /// Number of vehicles exported from this plant
+  value         Float
+
+  /// Unit of measurement. Default: "vehicles"
+  unit          String   @default("vehicles")
+
+  /// Year-over-year percentage change (e.g., 25.5 means +25.5% vs same month last year)
+  yoyChange     Float?
+
+  /// Month-over-month percentage change (e.g., -10.2 means -10.2% vs previous month)
+  momChange     Float?
+
+  /// Optional summary or context from the source article
+  description   String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl     String
+
+  /// Title of the source article
+  sourceTitle   String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl      String?
+
+  /// Record creation timestamp
+  createdAt     DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt     DateTime @updatedAt
+
+  @@unique([plant, year, month])
+  @@index([plant])
+  @@index([brand])
+  @@index([year, month])
+}
+
+// ==========================================
+// Industry Data Tables - Rankings/Tables
+// ==========================================
+
+/// NEV sales summary for a specific date range (typically weekly or bi-weekly reports).
+/// CPCA releases weekly sales estimates during the month before full monthly data.
+/// Contains both retail (to consumers) and wholesale (to dealers) figures for comparison.
+/// Retail-wholesale gap indicates channel inventory changes.
+/// Data frequency: Weekly or bi-weekly
+/// Primary source: CPCA weekly flash reports
+/// Use case: Early month-to-date sales tracking, weekly trends, retail vs wholesale analysis
+model NevSalesSummary {
+  /// Unique identifier (CUID format)
+  id             String   @id @default(cuid())
+
+  /// Data source organization. Default: "CPCA"
+  /// Values: "CPCA", "CAAM"
+  dataSource     String   @default("CPCA")
+
+  /// Calendar year (e.g., 2024, 2025)
+  year           Int
+
+  /// Start date of the reporting period. Format: "YYYY-MM-DD" (e.g., "2025-01-01")
+  startDate      String
+
+  /// End date of the reporting period. Format: "YYYY-MM-DD" (e.g., "2025-01-18")
+  endDate        String
+
+  /// NEV retail sales (units sold to end consumers) during the period
+  retailSales    Float
+
+  /// Retail year-over-year percentage change vs same period last year
+  retailYoy      Float?
+
+  /// Retail change vs previous comparable period (e.g., previous week)
+  retailMom      Float?
+
+  /// NEV wholesale sales (units sold to dealers) during the period
+  wholesaleSales Float?
+
+  /// Wholesale year-over-year percentage change vs same period last year
+  wholesaleYoy   Float?
+
+  /// Wholesale change vs previous comparable period
+  wholesaleMom   Float?
+
+  /// Unit of measurement. Default: "vehicles"
+  unit           String   @default("vehicles")
+
+  /// Optional summary or context from the source article
+  description    String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl      String
+
+  /// Title of the source article
+  sourceTitle    String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl       String?
+
+  /// Record creation timestamp
+  createdAt      DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt      DateTime @updatedAt
+
+  @@unique([dataSource, year, startDate, endDate])
+  @@index([year])
+}
+
+/// Monthly automaker sales rankings (top-selling car manufacturers).
+/// Tracks competitive positioning of major automakers in China's auto market.
+/// Rankings may be for overall sales or NEV-specific depending on the source article.
+/// Major automakers: BYD, Geely, SAIC, Changan, GAC, Great Wall, NIO, Xpeng, Li Auto, etc.
+/// Data frequency: Monthly
+/// Primary source: CPCA (passenger), CAAM (all vehicles)
+/// Use case: Competitive analysis, market share tracking, brand performance comparison
+model AutomakerRankings {
+  /// Unique identifier (CUID format)
+  id            String   @id @default(cuid())
+
+  /// Data source organization. Default: "CPCA"
+  /// Values: "CPCA" (passenger cars), "CAAM" (all vehicles)
+  dataSource    String   @default("CPCA")
+
+  /// Calendar year (e.g., 2024, 2025)
+  year          Int
+
+  /// Month of the year (1-12, where 1=January, 12=December)
+  month         Int
+
+  /// Ranking position (1 = top seller, 2 = second, etc.)
+  ranking       Int
+
+  /// Automaker company name
+  /// Examples: "BYD", "Geely", "SAIC", "Changan", "GAC", "Great Wall", "NIO", "Xpeng", "Li Auto"
+  automaker     String
+
+  /// Sales volume in number of vehicles
+  value         Float
+
+  /// Unit of measurement. Default: "vehicles"
+  unit          String   @default("vehicles")
+
+  /// Year-over-year percentage change (e.g., 25.5 means +25.5% vs same month last year)
+  yoyChange     Float?
+
+  /// Month-over-month percentage change (e.g., -10.2 means -10.2% vs previous month)
+  momChange     Float?
+
+  /// Market share as percentage (e.g., 15.5 means 15.5% of total market)
+  marketShare   Float?
+
+  /// Optional summary or context from the source article
+  description   String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl     String
+
+  /// Title of the source article
+  sourceTitle   String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl      String?
+
+  /// Record creation timestamp
+  createdAt     DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt     DateTime @updatedAt
+
+  @@unique([dataSource, year, month, automaker])
+  @@index([dataSource])
+  @@index([automaker])
+  @@index([year, month])
+}
+
+/// Battery maker rankings (top battery manufacturers by market share).
+/// Tracks competitive positioning in both China domestic and global battery markets.
+/// China market dominated by CATL, BYD; global includes LG, SK, Panasonic, Samsung SDI.
+/// Can be monthly snapshots, year-to-date (YTD), or yearly totals.
+/// Data frequency: Monthly, quarterly, or yearly
+/// Primary source: CABIA (China domestic), SNE Research (Global)
+/// Use case: Battery industry competitive analysis, supply chain understanding, market share trends
+model BatteryMakerRankings {
+  /// Unique identifier (CUID format)
+  id               String   @id @default(cuid())
+
+  /// Data source organization
+  /// Values: "CABIA" (China Automotive Battery Innovation Alliance - China data),
+  ///         "SNE" (SNE Research - Global data)
+  dataSource       String
+
+  /// Geographic scope of the ranking
+  /// Values: "CHINA" (China domestic market), "GLOBAL" (worldwide)
+  scope            String
+
+  /// Time period type. Default: "MONTHLY"
+  /// Values: "MONTHLY" (single month), "YTD" (year-to-date cumulative), "YEARLY" (full year)
+  periodType       String   @default("MONTHLY")
+
+  /// Calendar year (e.g., 2024, 2025)
+  year             Int
+
+  /// Month of the year (1-12). Null for yearly period type.
+  month            Int?
+
+  /// Ranking position (1 = top seller, 2 = second, etc.)
+  ranking          Int
+
+  /// Battery maker company name
+  /// Chinese: "CATL", "BYD", "CALB", "Gotion", "EVE", "Sunwoda"
+  /// Global: "LG Energy Solution", "SK On", "Panasonic", "Samsung SDI"
+  maker            String
+
+  /// Installation volume in GWh
+  value            Float
+
+  /// Unit of measurement. Default: "GWh" (Gigawatt-hours)
+  unit             String   @default("GWh")
+
+  /// Year-over-year percentage change (e.g., 25.5 means +25.5% vs same period last year)
+  yoyChange        Float?
+
+  /// Market share as percentage (e.g., 35.2 means 35.2% of total market)
+  marketShare      Float?
+
+  /// Market share change vs previous month (e.g., +1.2 means gained 1.2 percentage points)
+  shareVsPrevMonth Float?
+
+  /// Optional summary or context from the source article
+  description      String?
+
+  /// URL of the source article where data was extracted
+  sourceUrl        String
+
+  /// Title of the source article
+  sourceTitle      String
+
+  /// URL of any chart/image used for OCR extraction (if applicable)
+  imageUrl         String?
+
+  /// Record creation timestamp
+  createdAt        DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt        DateTime @updatedAt
+
+  @@unique([dataSource, scope, year, month, maker])
+  @@index([dataSource, scope])
+  @@index([maker])
+  @@index([year, month])
 }
