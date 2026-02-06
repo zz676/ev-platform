@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=\"$CLAUDE_FILE_PATH\"; if [ -z \"$file\" ]; then exit 0; fi; case \"$file\" in *.ts|*.tsx) cd /Users/zhizhou/Downloads/agent/ev-platform-working/Copy1/ev-platform && npx tsc --noEmit 2>&1 | head -30;; *.py) python -m py_compile \"$file\" 2>&1;; esac; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
