@@ -58,7 +58,10 @@ def create_stats() -> dict[str, Any]:
             "status": None,
             "status_code": None,
             "created": 0,
+            "updated": 0,
             "duplicates": 0,
+            "errors": 0,
+            "error_details": [],
             "error": None,
         },
         "x_publish": {
@@ -127,7 +130,13 @@ def print_summary(stats: dict[str, Any], dry_run: bool = False) -> None:
         print("Webhook:")
         if webhook["status"] == "SUCCESS":
             print(f"  Status: SUCCESS ({webhook['status_code']})")
-            print(f"  Created: {webhook['created']} new, {webhook['duplicates']} duplicates")
+            print(f"  Created: {webhook['created']} new, {webhook['updated']} updated, {webhook['duplicates']} unchanged")
+            if webhook["errors"] > 0:
+                print(f"  Errors: {webhook['errors']}")
+                for err in webhook["error_details"][:5]:
+                    print(f"    - {err}")
+                if webhook["errors"] > 5:
+                    print(f"    ... and {webhook['errors'] - 5} more")
         elif webhook["status"] == "SKIPPED":
             print("  Status: SKIPPED (no articles to submit)")
         elif webhook["status"] == "ERROR":
@@ -466,10 +475,15 @@ def submit_to_webhook(articles: list[dict], batch_id: str = None, stats: dict = 
             if stats is not None:
                 stats["webhook"]["status"] = "SUCCESS"
                 stats["webhook"]["status_code"] = response.status_code
-                # Try to extract created/duplicates from response
+                # Extract stats from webhook response (nested under "results" key)
                 if isinstance(result, dict):
-                    stats["webhook"]["created"] = result.get("created", result.get("inserted", 0))
-                    stats["webhook"]["duplicates"] = result.get("duplicates", result.get("skipped", 0))
+                    results = result.get("results", result)
+                    stats["webhook"]["created"] = results.get("created", results.get("inserted", 0))
+                    stats["webhook"]["updated"] = results.get("updated", 0)
+                    stats["webhook"]["duplicates"] = results.get("duplicates", results.get("skipped", 0))
+                    errors = results.get("errors", [])
+                    stats["webhook"]["errors"] = len(errors) if isinstance(errors, list) else 0
+                    stats["webhook"]["error_details"] = errors if isinstance(errors, list) else []
 
             return True
         else:
