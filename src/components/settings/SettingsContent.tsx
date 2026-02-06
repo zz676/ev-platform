@@ -2,7 +2,31 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { User, Shield, Link2, Unlink } from "lucide-react";
+import { User, Shield, Link2, Unlink, Bell, Globe, Newspaper, Save, Check, Loader2 } from "lucide-react";
+
+const ALL_BRANDS = [
+  { value: "BYD", label: "BYD" },
+  { value: "NIO", label: "NIO" },
+  { value: "XPENG", label: "XPeng" },
+  { value: "LI_AUTO", label: "Li Auto" },
+  { value: "ZEEKR", label: "Zeekr" },
+  { value: "XIAOMI", label: "Xiaomi" },
+  { value: "TESLA_CHINA", label: "Tesla China" },
+  { value: "LEAPMOTOR", label: "Leapmotor" },
+  { value: "GEELY", label: "Geely" },
+] as const;
+
+const ALL_TOPICS = [
+  { value: "DELIVERY", labelKey: "topicDelivery" },
+  { value: "EARNINGS", labelKey: "topicEarnings" },
+  { value: "LAUNCH", labelKey: "topicLaunch" },
+  { value: "TECHNOLOGY", labelKey: "topicTechnology" },
+  { value: "CHARGING", labelKey: "topicCharging" },
+  { value: "POLICY", labelKey: "topicPolicy" },
+  { value: "EXPANSION", labelKey: "topicExpansion" },
+  { value: "RECALL", labelKey: "topicRecall" },
+  { value: "PARTNERSHIP", labelKey: "topicPartnership" },
+] as const;
 
 interface SettingsContentProps {
   user: {
@@ -18,12 +42,29 @@ interface SettingsContentProps {
     displayName?: string;
     avatarUrl?: string;
   } | null;
+  preferences: {
+    brands: string[];
+    topics: string[];
+    digestFrequency: string;
+    language: string;
+    alertsEnabled: boolean;
+    alertThreshold: number;
+  } | null;
 }
 
-export function SettingsContent({ user, providers, isAdmin, xAccount }: SettingsContentProps) {
+export function SettingsContent({ user, providers, isAdmin, xAccount, preferences }: SettingsContentProps) {
   const t = useTranslations("Settings");
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Preference state
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(preferences?.brands ?? []);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(preferences?.topics ?? []);
+  const [digestFrequency, setDigestFrequency] = useState(preferences?.digestFrequency ?? "DAILY");
+  const [language, setLanguage] = useState(preferences?.language ?? "EN");
+  const [alertsEnabled, setAlertsEnabled] = useState(preferences?.alertsEnabled ?? true);
+  const [alertThreshold, setAlertThreshold] = useState(preferences?.alertThreshold ?? 80);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const handleConnectX = async () => {
     try {
@@ -53,6 +94,46 @@ export function SettingsContent({ user, providers, isAdmin, xAccount }: Settings
       setError(err instanceof Error ? err.message : "Failed to disconnect");
     } finally {
       setIsUnlinking(false);
+    }
+  };
+
+  const toggleBrand = (brand: string) => {
+    setSelectedBrands((prev) =>
+      prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]
+    );
+    setSaveStatus("idle");
+  };
+
+  const toggleTopic = (topic: string) => {
+    setSelectedTopics((prev) =>
+      prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]
+    );
+    setSaveStatus("idle");
+  };
+
+  const handleSave = async () => {
+    setSaveStatus("saving");
+    try {
+      const res = await fetch("/api/settings/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brands: selectedBrands,
+          topics: selectedTopics,
+          digestFrequency,
+          language,
+          alertsEnabled,
+          alertThreshold,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to save");
+      }
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     }
   };
 
@@ -172,6 +253,200 @@ export function SettingsContent({ user, providers, isAdmin, xAccount }: Settings
           )}
         </div>
       )}
+
+      {/* News Preferences Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Newspaper className="h-4 w-4 text-ev-green-600" />
+          <h2 className="text-lg font-semibold text-gray-900">{t("newsPreferences")}</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-5">{t("newsPreferencesDesc")}</p>
+
+        {/* Brands */}
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("brands")}</label>
+          <div className="flex flex-wrap gap-2">
+            {ALL_BRANDS.map((brand) => (
+              <button
+                key={brand.value}
+                onClick={() => toggleBrand(brand.value)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  selectedBrands.includes(brand.value)
+                    ? "bg-ev-green-50 border-ev-green-300 text-ev-green-700"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+              >
+                {brand.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Topics */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("topics")}</label>
+          <div className="flex flex-wrap gap-2">
+            {ALL_TOPICS.map((topic) => (
+              <button
+                key={topic.value}
+                onClick={() => toggleTopic(topic.value)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  selectedTopics.includes(topic.value)
+                    ? "bg-ev-green-50 border-ev-green-300 text-ev-green-700"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+              >
+                {t(topic.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Notifications Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Bell className="h-4 w-4 text-ev-green-600" />
+          <h2 className="text-lg font-semibold text-gray-900">{t("notifications")}</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-5">{t("notificationsDesc")}</p>
+
+        {/* Digest Frequency */}
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("digestFrequency")}</label>
+          <div className="flex gap-3">
+            {(["DAILY", "WEEKLY", "NONE"] as const).map((freq) => (
+              <label
+                key={freq}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
+                  digestFrequency === freq
+                    ? "bg-ev-green-50 border-ev-green-300 text-ev-green-700"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="digestFrequency"
+                  value={freq}
+                  checked={digestFrequency === freq}
+                  onChange={() => { setDigestFrequency(freq); setSaveStatus("idle"); }}
+                  className="sr-only"
+                />
+                <span className="text-sm font-medium">
+                  {t(freq === "DAILY" ? "daily" : freq === "WEEKLY" ? "weekly" : "none")}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Alerts Enabled */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className="text-sm font-medium text-gray-700">{t("alertsEnabled")}</p>
+            <p className="text-xs text-gray-500">{t("alertsEnabledDesc")}</p>
+          </div>
+          <button
+            onClick={() => { setAlertsEnabled(!alertsEnabled); setSaveStatus("idle"); }}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              alertsEnabled ? "bg-ev-green-500" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                alertsEnabled ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Alert Threshold */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-gray-700">{t("alertThreshold")}</label>
+            <span className="text-sm font-medium text-ev-green-700">{alertThreshold}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={alertThreshold}
+            onChange={(e) => { setAlertThreshold(Number(e.target.value)); setSaveStatus("idle"); }}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-ev-green-500"
+          />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-gray-400">{t("lowSensitivity")}</span>
+            <span className="text-xs text-gray-400">{t("highSensitivity")}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Language Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Globe className="h-4 w-4 text-ev-green-600" />
+          <h2 className="text-lg font-semibold text-gray-900">{t("languagePref")}</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">{t("languagePrefDesc")}</p>
+        <div className="flex gap-3">
+          {(["EN", "ZH"] as const).map((lang) => (
+            <label
+              key={lang}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
+                language === lang
+                  ? "bg-ev-green-50 border-ev-green-300 text-ev-green-700"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              <input
+                type="radio"
+                name="language"
+                value={lang}
+                checked={language === lang}
+                onChange={() => { setLanguage(lang); setSaveStatus("idle"); }}
+                className="sr-only"
+              />
+              <span className="text-sm font-medium">
+                {lang === "EN" ? t("english") : t("chinese")}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleSave}
+          disabled={saveStatus === "saving"}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            saveStatus === "saved"
+              ? "bg-green-100 text-green-700 border border-green-300"
+              : saveStatus === "error"
+                ? "bg-red-100 text-red-700 border border-red-300"
+                : "bg-ev-green-500 text-white hover:bg-ev-green-600 disabled:opacity-50"
+          }`}
+        >
+          {saveStatus === "saving" ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("saving")}
+            </>
+          ) : saveStatus === "saved" ? (
+            <>
+              <Check className="h-4 w-4" />
+              {t("saved")}
+            </>
+          ) : saveStatus === "error" ? (
+            t("saveError")
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              {t("save")}
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
