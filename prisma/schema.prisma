@@ -1422,3 +1422,23 @@ model BatteryMakerRankings {
   @@index([maker])
   @@index([year, month])
 }
+
+model NioPowerSnapshot {
+  id                     String   @id @default(cuid())
+  asOfTime               DateTime
+  totalStations          Int
+  swapStations           Int
+  highwaySwapStations    Int
+  cumulativeSwaps        BigInt
+  chargingStations       Int
+  chargingPiles          Int
+  cumulativeCharges      BigInt
+  thirdPartyPiles        Int
+  thirdPartyUsagePercent Float
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([asOfTime])
+  @@index([asOfTime])
+  @@index([createdAt])
+}
