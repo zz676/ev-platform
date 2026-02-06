@@ -269,6 +269,7 @@ model User {
   SavedPost         SavedPost[]
   Session           Session[]
   UserPreference    UserPreference?
+  XAccount          XAccount?
 
   @@index([emailVerified])
 }
@@ -311,9 +312,25 @@ model XPublication {
   @@index([status, nextRetryAt], map: "idx_xpub_pending")
 }
 
+model XAccount {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  xUserId        String   @unique
+  username       String
+  displayName    String?
+  avatarUrl      String?
+  accessToken    String
+  refreshToken   String
+  tokenExpiresAt DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  User           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 enum AuthProvider {
   GOOGLE
   GITHUB
+  TWITTER
 }
 
 enum Brand {
