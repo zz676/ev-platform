@@ -166,7 +166,7 @@ export function UserPanel() {
         <div className="border-t border-gray-200" />
         <div className="px-1.5 py-1">
           <Link
-            href={`/${locale}/tech`}
+            href={`/${locale}/settings`}
             onClick={close}
             className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
           >

@@ -25,6 +25,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: () => void; // Opens login modal
   loginWithGoogle: () => Promise<void>;
+  loginWithX: () => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpWithEmail: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
@@ -144,6 +145,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [supabase]);
 
+  const loginWithX = useCallback(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "x" as any,
+      options: {
+        redirectTo: `${window.location.origin}/api/auth/callback`,
+      },
+    });
+
+    if (error) {
+      console.error("X login error:", error);
+      throw error;
+    }
+  }, [supabase]);
+
   const loginWithEmail = useCallback(
     async (email: string, password: string) => {
       const { error } = await supabase.auth.signInWithPassword({
@@ -204,6 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         loginWithGoogle,
+        loginWithX,
         loginWithEmail,
         signUpWithEmail,
         logout,

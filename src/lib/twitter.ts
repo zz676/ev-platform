@@ -192,13 +192,23 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
 }
 
 // Post a tweet (v2 API)
+// If bearerToken is provided (from linked user account), uses OAuth 2.0 Bearer.
+// Otherwise falls back to app-level OAuth 1.0a.
 export async function postTweet(
   text: string,
-  mediaIds?: string[]
+  mediaIds?: string[],
+  bearerToken?: string
 ): Promise<TweetResponse> {
-  const creds = getCredentials();
-  if (!creds.apiKey || !creds.apiSecret || !creds.accessToken || !creds.accessTokenSecret) {
-    throw new Error("X API credentials not configured");
+  let authHeader: string;
+
+  if (bearerToken) {
+    authHeader = `Bearer ${bearerToken}`;
+  } else {
+    const creds = getCredentials();
+    if (!creds.apiKey || !creds.apiSecret || !creds.accessToken || !creds.accessTokenSecret) {
+      throw new Error("X API credentials not configured");
+    }
+    authHeader = generateOAuthHeader("POST", TWEETS_URL);
   }
 
   const payload: { text: string; media?: { media_ids: string[] } } = { text };
@@ -210,7 +220,7 @@ export async function postTweet(
   const response = await fetch(TWEETS_URL, {
     method: "POST",
     headers: {
-      Authorization: generateOAuthHeader("POST", TWEETS_URL),
+      Authorization: authHeader,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
