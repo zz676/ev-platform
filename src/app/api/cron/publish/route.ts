@@ -8,7 +8,6 @@ import {
   startPublishingAttempt,
   recordPublishSuccess,
   recordPublishFailure,
-  hasImageFailed,
   MAX_ATTEMPTS,
 } from "@/lib/x-publication";
 import { POSTING_CONFIG } from "@/lib/config/posting";
@@ -160,43 +159,59 @@ export async function GET(request: NextRequest) {
         let mediaId: string | undefined;
         let imageSource: ImageSource = ImageSource.NONE;
 
-        // Skip image upload if it previously failed (saves API calls)
-        const imagePreviouslyFailed = await hasImageFailed(post.id);
-        if (imagePreviouslyFailed) {
-          console.log(`Skipping image for post ${post.id}: previous upload failed`);
-          imageSource = ImageSource.FAILED;
-        } else {
+        // Build ordered list of candidate image URLs to try
+        const candidateImages: { url: string; source: ImageSource }[] = [];
+
+        // Priority 1: cardImageUrl (AI-generated or good-ratio original)
+        if (post.cardImageUrl) {
+          const isOriginal = post.originalMediaUrls?.includes(post.cardImageUrl);
+          candidateImages.push({
+            url: post.cardImageUrl,
+            source: isOriginal ? ImageSource.SCRAPED : ImageSource.AI_GENERATED,
+          });
+        }
+
+        // Priority 2: originalMediaUrls (scraped images)
+        if (post.originalMediaUrls && post.originalMediaUrls.length > 0) {
+          for (const url of post.originalMediaUrls) {
+            if (url !== post.cardImageUrl) {
+              candidateImages.push({ url, source: ImageSource.SCRAPED });
+            }
+          }
+        }
+
+        // Try each candidate image URL
+        for (const candidate of candidateImages) {
           try {
-            let imageUrl: string | undefined;
+            console.log(`Trying image for post ${post.id}: ${candidate.url} (${candidate.source})`);
+            mediaId = await uploadMedia(candidate.url);
+            mediaIds = [mediaId];
+            imageSource = candidate.source;
+            console.log(`Image uploaded for post ${post.id}, media_id: ${mediaId}`);
+            break; // Success
+          } catch (imgErr) {
+            console.error(`Image upload failed for post ${post.id} (${candidate.url}):`, imgErr);
+            // Continue to next candidate
+          }
+        }
 
-            // Priority 1: Use cardImageUrl (AI-generated or good-ratio original)
-            if (post.cardImageUrl) {
-              imageUrl = post.cardImageUrl;
-              // Determine source based on whether it matches originalMediaUrls
-              const isOriginal = post.originalMediaUrls?.includes(post.cardImageUrl);
-              imageSource = isOriginal ? ImageSource.SCRAPED : ImageSource.AI_GENERATED;
-              console.log(`Using card image for post ${post.id}: ${imageUrl} (${imageSource})`);
-            }
-            // Priority 2: Generate AI image if no cardImageUrl
-            else {
-              console.log(`No card image for post ${post.id}, generating AI image...`);
-              imageUrl = await generatePostImage(
-                post.translatedTitle || post.originalTitle || "EV News",
-                post.translatedSummary || "",
-                { source: "cron_publish", postId: post.id }
-              );
-              imageSource = ImageSource.AI_GENERATED;
-            }
-
-            // Upload image to X
-            if (imageUrl) {
-              mediaId = await uploadMedia(imageUrl);
+        // Priority 3: Generate AI image if no existing image worked
+        if (!mediaIds) {
+          try {
+            console.log(`No existing image worked for post ${post.id}, generating AI image...`);
+            const aiImageUrl = await generatePostImage(
+              post.translatedTitle || post.originalTitle || "EV News",
+              post.translatedSummary || "",
+              { source: "cron_publish", postId: post.id }
+            );
+            if (aiImageUrl) {
+              mediaId = await uploadMedia(aiImageUrl);
               mediaIds = [mediaId];
-              console.log(`Image uploaded for post ${post.id}, media_id: ${mediaId}`);
+              imageSource = ImageSource.AI_GENERATED;
+              console.log(`AI image uploaded for post ${post.id}, media_id: ${mediaId}`);
             }
-          } catch (imageError) {
-            // Log image error but continue with text-only tweet
-            console.error(`Failed to process image for post ${post.id}:`, imageError);
+          } catch (aiImgErr) {
+            console.error(`AI image generation/upload failed for post ${post.id}:`, aiImgErr);
             imageSource = ImageSource.FAILED;
           }
         }

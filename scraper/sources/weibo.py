@@ -91,17 +91,20 @@ class WeiboSource(BaseSource):
             self._playwright.stop()
             self._playwright = None
 
-    def fetch_articles(self, limit: int = 10) -> list[Article]:
-        """Fetch posts from configured Weibo accounts.
+    def fetch_articles(self, limit: int = 10, max_age_hours: int = 8) -> list[Article]:
+        """Fetch recent posts from configured Weibo accounts.
 
         Args:
-            limit: Maximum total number of posts to return
+            limit: Maximum posts to fetch per user (used for per-account cap)
+            max_age_hours: Only return posts newer than this many hours (default: 8,
+                slightly more than the 6h scrape interval for overlap)
 
         Returns:
-            List of Article objects
+            List of Article objects (all recent posts, not globally truncated)
         """
         articles = []
         posts_per_user = max(3, limit // len(WEIBO_USER_IDS))
+        cutoff = datetime.now() - timedelta(hours=max_age_hours)
 
         try:
             self._init_browser()
@@ -109,9 +112,9 @@ class WeiboSource(BaseSource):
             for user_id, user_name in WEIBO_USER_IDS.items():
                 try:
                     print(f"  Fetching Weibo posts from {user_name} ({user_id})...")
-                    posts = self._fetch_user_posts(user_id, user_name, limit=posts_per_user)
+                    posts = self._fetch_user_posts(user_id, user_name, limit=posts_per_user, cutoff=cutoff)
                     articles.extend(posts)
-                    print(f"    Found {len(posts)} posts")
+                    print(f"    Found {len(posts)} recent posts")
 
                     # Rate limiting: random delay between 1-3 seconds
                     time.sleep(random.uniform(1, 3))
@@ -123,17 +126,18 @@ class WeiboSource(BaseSource):
         finally:
             self._cleanup_browser()
 
-        # Sort by date (newest first) and limit
+        # Sort by date (newest first) — no global truncation, time filtering bounds the count
         articles.sort(key=lambda x: x.source_date, reverse=True)
-        return articles[:limit]
+        return articles
 
-    def _fetch_user_posts(self, user_id: str, user_name: str, limit: int) -> list[Article]:
+    def _fetch_user_posts(self, user_id: str, user_name: str, limit: int, cutoff: datetime = None) -> list[Article]:
         """Fetch posts from a specific Weibo user using Playwright.
 
         Args:
             user_id: Weibo user ID
             user_name: Display name for the user
-            limit: Maximum posts to fetch
+            limit: Maximum posts to fetch per user
+            cutoff: Skip posts older than this datetime
 
         Returns:
             List of Article objects
@@ -178,7 +182,7 @@ class WeiboSource(BaseSource):
             if not mblog:
                 continue
 
-            article = self._parse_mblog(mblog, user_name)
+            article = self._parse_mblog(mblog, user_name, cutoff=cutoff)
             if article:
                 articles.append(article)
 
@@ -187,12 +191,26 @@ class WeiboSource(BaseSource):
 
         return articles
 
-    def _parse_mblog(self, mblog: dict, user_name: str) -> Optional[Article]:
+    def _generate_source_id(self, url: str, date: datetime = None) -> str:
+        """Generate a stable source ID using URL only.
+
+        Overrides BaseSource._generate_source_id to exclude the date component.
+        Weibo's relative dates ("9小时前") resolve to different timestamps each run,
+        so including them produces unstable IDs that break deduplication.
+        Each Weibo post has a unique URL (https://weibo.com/{user_id}/{bid}),
+        so URL alone is sufficient for uniqueness.
+        """
+        import hashlib
+        unique = f"Weibo_{url}"
+        return hashlib.md5(unique.encode()).hexdigest()[:16]
+
+    def _parse_mblog(self, mblog: dict, user_name: str, cutoff: datetime = None) -> Optional[Article]:
         """Parse a Weibo mblog (post) into an Article.
 
         Args:
             mblog: Weibo post data from API
             user_name: Display name of the user
+            cutoff: Skip posts older than this datetime
 
         Returns:
             Article object or None if parsing fails
@@ -217,6 +235,11 @@ class WeiboSource(BaseSource):
 
             # Parse date (pass URL for logging if fallback occurs)
             created_at = self._parse_weibo_date(mblog.get("created_at", ""), source_url)
+
+            # Time-based filtering: skip posts older than cutoff
+            if cutoff and created_at < cutoff:
+                print(f"    Skipping old post ({created_at.strftime('%Y-%m-%d %H:%M')}): {source_url}")
+                return None
 
             # Extract images
             pics = mblog.get("pics", [])

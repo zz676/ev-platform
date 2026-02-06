@@ -95,33 +95,67 @@ export async function POST(
       let mediaId: string | undefined;
       let imageSource: ImageSource = ImageSource.NONE;
 
-      try {
-        let imageUrl: string | undefined;
+      // Build ordered list of candidate image URLs to try
+      const candidateImages: { url: string; source: ImageSource }[] = [];
 
-        // Use custom image if provided
-        if (customContent.imageUrl) {
-          imageUrl = customContent.imageUrl;
-          imageSource = ImageSource.SCRAPED; // Treat custom as scraped for tracking
-        } else if (post.originalMediaUrls && post.originalMediaUrls.length > 0) {
-          imageUrl = post.originalMediaUrls[0];
-          imageSource = ImageSource.SCRAPED;
-        } else {
-          imageUrl = await generatePostImage(
+      if (customContent.imageUrl) {
+        // Custom image takes top priority
+        candidateImages.push({ url: customContent.imageUrl, source: ImageSource.SCRAPED });
+      } else {
+        // Priority 1: cardImageUrl (AI-generated or good-ratio original)
+        if (post.cardImageUrl) {
+          const isOriginal = post.originalMediaUrls?.includes(post.cardImageUrl);
+          candidateImages.push({
+            url: post.cardImageUrl,
+            source: isOriginal ? ImageSource.SCRAPED : ImageSource.AI_GENERATED,
+          });
+        }
+
+        // Priority 2: originalMediaUrls (scraped images)
+        if (post.originalMediaUrls && post.originalMediaUrls.length > 0) {
+          for (const url of post.originalMediaUrls) {
+            if (url !== post.cardImageUrl) {
+              candidateImages.push({ url, source: ImageSource.SCRAPED });
+            }
+          }
+        }
+      }
+
+      // Try each candidate image URL
+      for (const candidate of candidateImages) {
+        try {
+          console.log(`Trying image for post ${post.id}: ${candidate.url} (${candidate.source})`);
+          mediaId = await uploadMedia(candidate.url);
+          mediaIds = [mediaId];
+          imageSource = candidate.source;
+          console.log(`Image uploaded for post ${post.id}, media_id: ${mediaId}`);
+          break; // Success
+        } catch (imgErr) {
+          console.error(`Image upload failed for post ${post.id} (${candidate.url}):`, imgErr);
+          // Continue to next candidate
+        }
+      }
+
+      // Fallback: Generate AI image if no existing image worked
+      if (!mediaIds && !customContent.imageUrl) {
+        try {
+          console.log(`No existing image worked for post ${post.id}, generating AI image...`);
+          const aiImageUrl = await generatePostImage(
             post.translatedTitle || post.originalTitle || "EV News",
             post.translatedSummary!,
             { source: "manual_post_to_x", postId: post.id }
           );
-          if (imageUrl) {
+          if (aiImageUrl) {
+            mediaId = await uploadMedia(aiImageUrl);
+            mediaIds = [mediaId];
             imageSource = ImageSource.AI_GENERATED;
+            console.log(`AI image uploaded for post ${post.id}, media_id: ${mediaId}`);
           }
+        } catch (aiImgErr) {
+          console.error(`AI image generation/upload failed for post ${post.id}:`, aiImgErr);
+          imageSource = ImageSource.FAILED;
         }
-
-        if (imageUrl) {
-          mediaId = await uploadMedia(imageUrl);
-          mediaIds = [mediaId];
-        }
-      } catch (imageError) {
-        console.error(`Image processing failed for post ${post.id}:`, imageError);
+      } else if (!mediaIds && customContent.imageUrl) {
         imageSource = ImageSource.FAILED;
       }
 
