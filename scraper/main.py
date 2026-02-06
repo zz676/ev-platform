@@ -426,11 +426,16 @@ def process_industry_data(
 
 
 def submit_to_webhook(articles: list[dict], batch_id: str = None, stats: dict = None) -> bool:
-    """Submit articles to the webhook endpoint.
+    """Submit articles to the webhook endpoint in batches.
+
+    Articles are split into chunks to avoid Vercel's serverless function
+    timeout (60s). Each chunk is submitted as a separate request.
 
     Returns:
-        True if successful, False otherwise.
+        True if all batches succeeded, False otherwise.
     """
+    BATCH_SIZE = 5
+
     if not articles:
         print("No articles to submit")
         if stats is not None:
@@ -440,66 +445,81 @@ def submit_to_webhook(articles: list[dict], batch_id: str = None, stats: dict = 
     if not batch_id:
         batch_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    payload = {
-        "posts": articles,
-        "batchId": batch_id,
-    }
+    # Split into chunks
+    chunks = [articles[i:i + BATCH_SIZE] for i in range(0, len(articles), BATCH_SIZE)]
+    total_chunks = len(chunks)
 
-    payload_json = json.dumps(payload)
+    print(f"\nSubmitting {len(articles)} articles to webhook in {total_chunks} batch(es) of up to {BATCH_SIZE}...")
 
-    # Generate signature
-    headers = {"Content-Type": "application/json"}
-    if WEBHOOK_SECRET:
-        signature = hmac.new(
-            WEBHOOK_SECRET.encode(),
-            payload_json.encode(),
-            hashlib.sha256
-        ).hexdigest()
-        headers["x-webhook-signature"] = signature
+    all_success = True
+    for chunk_idx, chunk in enumerate(chunks):
+        chunk_batch_id = f"{batch_id}_{chunk_idx + 1}" if total_chunks > 1 else batch_id
 
-    print(f"\nSubmitting {len(articles)} articles to webhook...")
+        payload = {
+            "posts": chunk,
+            "batchId": chunk_batch_id,
+        }
 
-    try:
-        response = requests.post(
-            WEBHOOK_URL,
-            data=payload_json,
-            headers=headers,
-            timeout=60,
-        )
+        payload_json = json.dumps(payload)
 
-        if response.ok:
-            result = response.json()
-            print(f"Webhook response: {result}")
+        # Generate signature per request (payload differs per chunk)
+        headers = {"Content-Type": "application/json"}
+        if WEBHOOK_SECRET:
+            signature = hmac.new(
+                WEBHOOK_SECRET.encode(),
+                payload_json.encode(),
+                hashlib.sha256
+            ).hexdigest()
+            headers["x-webhook-signature"] = signature
 
-            # Parse webhook response for stats
-            if stats is not None:
-                stats["webhook"]["status"] = "SUCCESS"
-                stats["webhook"]["status_code"] = response.status_code
-                # Extract stats from webhook response (nested under "results" key)
-                if isinstance(result, dict):
-                    results = result.get("results", result)
-                    stats["webhook"]["created"] = results.get("created", results.get("inserted", 0))
-                    stats["webhook"]["updated"] = results.get("updated", 0)
-                    stats["webhook"]["duplicates"] = results.get("duplicates", results.get("skipped", 0))
-                    errors = results.get("errors", [])
-                    stats["webhook"]["errors"] = len(errors) if isinstance(errors, list) else 0
-                    stats["webhook"]["error_details"] = errors if isinstance(errors, list) else []
-
-            return True
+        if total_chunks > 1:
+            print(f"  Batch {chunk_idx + 1}/{total_chunks}: {len(chunk)} articles...")
         else:
-            print(f"Webhook error: {response.status_code} - {response.text}")
+            print(f"  Submitting {len(chunk)} articles...")
+
+        try:
+            response = requests.post(
+                WEBHOOK_URL,
+                data=payload_json,
+                headers=headers,
+                timeout=60,
+            )
+
+            if response.ok:
+                result = response.json()
+                print(f"  Response: {result}")
+
+                # Accumulate stats across batches
+                if stats is not None:
+                    stats["webhook"]["status"] = "SUCCESS"
+                    stats["webhook"]["status_code"] = response.status_code
+                    if isinstance(result, dict):
+                        results = result.get("results", result)
+                        stats["webhook"]["created"] += results.get("created", results.get("inserted", 0))
+                        stats["webhook"]["updated"] += results.get("updated", 0)
+                        stats["webhook"]["duplicates"] += results.get("duplicates", results.get("skipped", 0))
+                        errors = results.get("errors", [])
+                        if isinstance(errors, list):
+                            stats["webhook"]["errors"] += len(errors)
+                            stats["webhook"]["error_details"].extend(errors)
+            else:
+                print(f"  Webhook error: {response.status_code} - {response.text}")
+                if stats is not None:
+                    stats["webhook"]["status"] = "ERROR"
+                    stats["webhook"]["status_code"] = response.status_code
+                    stats["webhook"]["error"] = response.text[:100]
+                all_success = False
+                break
+
+        except Exception as e:
+            print(f"  Failed to submit batch {chunk_idx + 1}: {e}")
             if stats is not None:
                 stats["webhook"]["status"] = "ERROR"
-                stats["webhook"]["status_code"] = response.status_code
-                stats["webhook"]["error"] = response.text[:100]
-            return False
+                stats["webhook"]["error"] = str(e)[:100]
+            all_success = False
+            break
 
-    except Exception as e:
-        print(f"Failed to submit to webhook: {e}")
-        if stats is not None:
-            stats["webhook"]["status"] = "ERROR"
-            stats["webhook"]["error"] = str(e)[:100]
-        return False
+    return all_success
 
 
 def trigger_x_publish(stats: dict = None) -> bool:

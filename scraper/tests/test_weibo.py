@@ -1,9 +1,10 @@
 """Tests for Weibo scraper: date parsing, text cleaning, time filtering,
-sourceId stability, and article parsing."""
+sourceId stability, article parsing, and webhook batching."""
 
 import hashlib
+import json
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from sources.weibo import WeiboSource
 
@@ -503,3 +504,136 @@ class TestWeiboFetchArticlesBehavior:
     def test_source_type(self):
         assert self.source.source_type == "WEIBO"
         assert self.source.name == "Weibo"
+
+
+class TestWebhookBatching:
+    """Test that submit_to_webhook splits large payloads into batches.
+
+    We can't directly import main.py in test environments (it pulls in openai
+    and other heavy deps). Instead we mock requests at the module level and
+    import submit_to_webhook with the processors dependency stubbed out.
+    """
+
+    @staticmethod
+    def _import_submit():
+        """Import submit_to_webhook with heavy dependencies mocked."""
+        import sys
+        # Stub out modules that main.py imports but aren't available in test env
+        stubs = {}
+        for mod in ["openai", "processors", "processors.ai_service"]:
+            if mod not in sys.modules:
+                stubs[mod] = MagicMock()
+                sys.modules[mod] = stubs[mod]
+        try:
+            import importlib
+            import main as main_mod
+            importlib.reload(main_mod)
+            return main_mod.submit_to_webhook, main_mod
+        finally:
+            # Clean up stubs so they don't leak
+            for mod in stubs:
+                sys.modules.pop(mod, None)
+
+    @staticmethod
+    def _make_response(created=0, updated=0, skipped=0, errors=None):
+        """Create a mock response matching the webhook API shape."""
+        resp = MagicMock()
+        resp.ok = True
+        resp.status_code = 200
+        resp.json.return_value = {
+            "message": "Webhook processed",
+            "results": {
+                "created": created,
+                "updated": updated,
+                "skipped": skipped,
+                "errors": errors or [],
+            },
+        }
+        return resp
+
+    def test_small_batch_single_request(self):
+        """3 articles should be sent in 1 request (batch size is 5)."""
+        submit_to_webhook, main_mod = self._import_submit()
+        with patch.object(main_mod.requests, "post") as mock_post:
+            mock_post.return_value = self._make_response(created=3)
+
+            articles = [{"sourceId": f"id_{i}"} for i in range(3)]
+            stats = _make_stats()
+            result = submit_to_webhook(articles, stats=stats)
+
+            assert result is True
+            assert mock_post.call_count == 1
+            sent_payload = json.loads(mock_post.call_args[1]["data"])
+            assert len(sent_payload["posts"]) == 3
+            assert stats["webhook"]["created"] == 3
+
+    def test_large_batch_splits_into_chunks(self):
+        """12 articles should be split into 3 requests (5+5+2)."""
+        submit_to_webhook, main_mod = self._import_submit()
+        with patch.object(main_mod.requests, "post") as mock_post:
+            mock_post.side_effect = [
+                self._make_response(created=5),
+                self._make_response(created=5),
+                self._make_response(created=2),
+            ]
+
+            articles = [{"sourceId": f"id_{i}"} for i in range(12)]
+            stats = _make_stats()
+            result = submit_to_webhook(articles, stats=stats)
+
+            assert result is True
+            assert mock_post.call_count == 3
+            assert stats["webhook"]["created"] == 12
+
+    def test_stats_accumulate_across_batches(self):
+        """Stats from multiple batches should be summed."""
+        submit_to_webhook, main_mod = self._import_submit()
+        with patch.object(main_mod.requests, "post") as mock_post:
+            mock_post.side_effect = [
+                self._make_response(created=3, updated=1, skipped=1),
+                self._make_response(created=2, updated=0, skipped=1, errors=["bad post"]),
+            ]
+
+            articles = [{"sourceId": f"id_{i}"} for i in range(8)]
+            stats = _make_stats()
+            submit_to_webhook(articles, stats=stats)
+
+            assert stats["webhook"]["created"] == 5
+            assert stats["webhook"]["updated"] == 1
+            assert stats["webhook"]["duplicates"] == 2
+            assert stats["webhook"]["errors"] == 1
+            assert stats["webhook"]["error_details"] == ["bad post"]
+
+    def test_stops_on_first_failure(self):
+        """If a batch fails, remaining batches should not be sent."""
+        submit_to_webhook, main_mod = self._import_submit()
+        with patch.object(main_mod.requests, "post") as mock_post:
+            fail_resp = MagicMock()
+            fail_resp.ok = False
+            fail_resp.status_code = 500
+            fail_resp.text = "Internal Server Error"
+
+            mock_post.side_effect = [
+                self._make_response(created=5),
+                fail_resp,
+            ]
+
+            articles = [{"sourceId": f"id_{i}"} for i in range(12)]
+            stats = _make_stats()
+            result = submit_to_webhook(articles, stats=stats)
+
+            assert result is False
+            assert mock_post.call_count == 2  # Tried 2, stopped before 3rd
+            assert stats["webhook"]["created"] == 5  # Only first batch counted
+            assert stats["webhook"]["status"] == "ERROR"
+
+    def test_empty_articles_skips(self):
+        """Empty list should not make any requests."""
+        submit_to_webhook, main_mod = self._import_submit()
+        with patch.object(main_mod.requests, "post") as mock_post:
+            stats = _make_stats()
+            result = submit_to_webhook([], stats=stats)
+
+            assert result is True
+            assert mock_post.call_count == 0
+            assert stats["webhook"]["status"] == "SKIPPED"
