@@ -20,6 +20,7 @@ model AIUsage {
   source       String   // "webhook", "admin_approve", "process_content", "translate", etc.
   inputTokens  Int?     // prompt tokens (for text completions)
   outputTokens Int?     // completion tokens (for text completions)
+  durationMs   Int?     // request duration in milliseconds
   createdAt    DateTime @default(now())
   Post         Post?    @relation(fields: [postId], references: [id])
 
@@ -744,6 +745,9 @@ model ChinaPassengerInventory {
   /// Title of the source article
   sourceTitle   String
 
+  /// Publication date of the source article
+  publishedAt   DateTime?
+
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl      String?
 
@@ -790,6 +794,9 @@ model ChinaBatteryInstallation {
 
   /// Title of the source article
   sourceTitle   String
+
+  /// Publication date of the source article
+  publishedAt   DateTime?
 
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl      String?
@@ -841,6 +848,9 @@ model CaamNevSales {
   /// Title of the source article
   sourceTitle   String
 
+  /// Publication date of the source article
+  publishedAt   DateTime?
+
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl      String?
 
@@ -886,6 +896,9 @@ model ChinaDealerInventoryFactor {
 
   /// Title of the source article
   sourceTitle   String
+
+  /// Publication date of the source article
+  publishedAt   DateTime?
 
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl      String?
@@ -938,6 +951,9 @@ model CpcaNevRetail {
   /// Title of the source article
   sourceTitle   String
 
+  /// Publication date of the source article
+  publishedAt   DateTime?
+
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl      String?
 
@@ -989,6 +1005,9 @@ model CpcaNevProduction {
   /// Title of the source article
   sourceTitle   String
 
+  /// Publication date of the source article
+  publishedAt   DateTime?
+
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl      String?
 
@@ -1034,6 +1053,9 @@ model ChinaViaIndex {
 
   /// Title of the source article
   sourceTitle   String
+
+  /// Publication date of the source article
+  publishedAt   DateTime?
 
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl      String?
@@ -1097,6 +1119,9 @@ model BatteryMakerMonthly {
   /// Title of the source article
   sourceTitle   String
 
+  /// Publication date of the source article
+  publishedAt   DateTime?
+
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl      String?
 
@@ -1155,6 +1180,9 @@ model PlantExports {
 
   /// Title of the source article
   sourceTitle   String
+
+  /// Publication date of the source article
+  publishedAt   DateTime?
 
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl      String?
@@ -1229,6 +1257,9 @@ model NevSalesSummary {
   /// Title of the source article
   sourceTitle    String
 
+  /// Publication date of the source article
+  publishedAt    DateTime?
+
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl       String?
 
@@ -1293,6 +1324,9 @@ model AutomakerRankings {
 
   /// Title of the source article
   sourceTitle   String
+
+  /// Publication date of the source article
+  publishedAt   DateTime?
 
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl      String?
@@ -1370,6 +1404,9 @@ model BatteryMakerRankings {
 
   /// Title of the source article
   sourceTitle      String
+
+  /// Publication date of the source article
+  publishedAt      DateTime?
 
   /// URL of any chart/image used for OCR extraction (if applicable)
   imageUrl         String?

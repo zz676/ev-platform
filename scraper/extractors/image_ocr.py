@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from typing import Optional
 from dataclasses import dataclass
 
@@ -22,6 +23,7 @@ class OCRResult:
     input_tokens: int = 0
     output_tokens: int = 0
     cost: float = 0.0
+    duration_ms: int = 0  # Request duration in milliseconds
 
 
 # GPT-4o Vision pricing (per 1M tokens, as of 2024)
@@ -44,24 +46,47 @@ def calculate_ocr_cost(input_tokens: int, output_tokens: int) -> float:
     return (input_tokens * GPT4O_PRICING["input"] + output_tokens * GPT4O_PRICING["output"]) / 1_000_000
 
 
+def _unwrap_data_array(parsed: dict) -> list:
+    """Unwrap a dict response into a flat list of data entries.
+
+    GPT-4o Vision may wrap the array in various wrapper keys like
+    "data", "results", "result", "rows", or "entries". This function
+    extracts the inner list regardless of wrapper key name.
+    """
+    # Known wrapper keys (order: most common first)
+    for key in ("data", "results", "result", "rows", "entries", "rankings"):
+        if key in parsed and isinstance(parsed[key], list):
+            return parsed[key]
+    # No recognized wrapper — treat as a single object (e.g., vehicle spec)
+    return [parsed]
+
+
 class ImageOCR:
     """Extract data from images using GPT-4o Vision."""
 
     # Prompt templates for different data types
     PROMPTS = {
         "rankings": """
-Extract all data from this rankings/leaderboard table image.
+Extract ALL data from every column in this rankings/leaderboard table image.
 Return as a JSON array with each entry containing:
 - rank: ranking position (integer)
 - brand: brand/company name (string)
-- value: sales/delivery count (integer)
-- mom: month-over-month change % (float, negative if down)
-- yoy: year-over-year change % (float, negative if down)
-- share: market share % (float, optional)
+- value: the most recent period's value (integer or float)
+- prior_value: prior period's value if shown (integer or float, optional)
+- mom: month-over-month change % (float, negative if down, optional)
+- yoy: year-over-year change % (float, negative if down, optional)
+- share: most recent market share % (float, optional)
+- prior_share: prior period's market share % (float, optional)
+
+IMPORTANT: Extract ALL columns visible in the table. If the table shows data for
+multiple time periods (e.g., "Jan-Dec 2024" and "Jan-Dec 2025"), include both as
+"prior_value" and "value". If there are multiple share columns (e.g., "2024 Share"
+and "2025 Share"), include both as "prior_share" and "share".
 
 Only include fields that are visible in the table.
 Example format:
 [{"rank": 1, "brand": "BYD", "value": 339854, "mom": 13.6, "yoy": -15.7, "share": 25.4}]
+[{"rank": 1, "brand": "CATL", "prior_value": 342.5, "value": 464.7, "yoy": 35.7, "prior_share": 38.0, "share": 39.2}]
 """,
 
         "metrics": """
@@ -97,6 +122,31 @@ Return as a JSON object with these fields (use null for missing data):
   "top_speed": top speed in km/h (integer),
   "vehicle_type": "BEV" or "PHEV" or "EREV"
 }
+""",
+
+        "trend": """
+Extract ALL data from every column in this time-series table or trend chart.
+The image may contain line charts, bar charts, or tables showing data over time.
+
+Return as a JSON array sorted by date (earliest first), with each entry containing:
+- date: date or period label as shown (string, e.g., "20251201-20251207")
+- value: the primary metric value (integer or float)
+- yoy: year-over-year change % (float, optional, negative if down)
+- mom: month-over-month change % (float, optional, negative if down)
+- label: any series/category label if multiple data series are shown (string, optional)
+
+IMPORTANT: If the table has separate columns for different data series (e.g.,
+"NEV Retail" and "NEV Wholesale"), create a separate entry for each series at each
+time point. Each series may have its own YoY and MoM columns — extract ALL of them.
+
+If the image contains a data table instead of (or in addition to) a chart, extract
+the table data. Prefer table data over visually estimated chart values.
+
+Example (table with retail and wholesale, each with YoY and MoM):
+[
+  {"date": "20251201-20251207", "value": 185000, "yoy": -17.0, "mom": -10.0, "label": "NEV Retail"},
+  {"date": "20251201-20251207", "value": 191000, "yoy": -22.0, "mom": -20.0, "label": "NEV Wholesale"}
+]
 """,
 
         "general": """
@@ -140,6 +190,7 @@ Mark percentage changes as negative if they indicate decline.
         """
         prompt = self.PROMPTS.get(data_type, self.PROMPTS["general"])
 
+        start_time = time.monotonic()
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -158,6 +209,7 @@ Mark percentage changes as negative if they indicate decline.
                 response_format={"type": "json_object"},
                 max_tokens=4096,
             )
+            duration_ms = int((time.monotonic() - start_time) * 1000)
 
             content = response.choices[0].message.content
 
@@ -171,16 +223,7 @@ Mark percentage changes as negative if they indicate decline.
                 parsed = json.loads(content)
                 # Normalize to list format
                 if isinstance(parsed, dict):
-                    # Check if it's a wrapper with a data array
-                    if "data" in parsed:
-                        data = parsed["data"]
-                    elif "results" in parsed:
-                        data = parsed["results"]
-                    elif "rows" in parsed:
-                        data = parsed["rows"]
-                    else:
-                        # Single spec object
-                        data = [parsed]
+                    data = _unwrap_data_array(parsed)
                 else:
                     data = parsed
 
@@ -191,7 +234,8 @@ Mark percentage changes as negative if they indicate decline.
                     confidence=0.9,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
-                    cost=cost
+                    cost=cost,
+                    duration_ms=duration_ms
                 )
 
             except json.JSONDecodeError as e:
@@ -202,15 +246,18 @@ Mark percentage changes as negative if they indicate decline.
                     error=f"JSON parse error: {str(e)}",
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
-                    cost=cost
+                    cost=cost,
+                    duration_ms=duration_ms
                 )
 
         except Exception as e:
+            duration_ms = int((time.monotonic() - start_time) * 1000)
             return OCRResult(
                 success=False,
                 data=[],
                 raw_response="",
-                error=str(e)
+                error=str(e),
+                duration_ms=duration_ms
             )
 
     def extract_from_url_sync(
@@ -229,6 +276,7 @@ Mark percentage changes as negative if they indicate decline.
         """
         prompt = self.PROMPTS.get(data_type, self.PROMPTS["general"])
 
+        start_time = time.monotonic()
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -247,6 +295,7 @@ Mark percentage changes as negative if they indicate decline.
                 response_format={"type": "json_object"},
                 max_tokens=4096,
             )
+            duration_ms = int((time.monotonic() - start_time) * 1000)
 
             content = response.choices[0].message.content
 
@@ -258,14 +307,7 @@ Mark percentage changes as negative if they indicate decline.
             try:
                 parsed = json.loads(content)
                 if isinstance(parsed, dict):
-                    if "data" in parsed:
-                        data = parsed["data"]
-                    elif "results" in parsed:
-                        data = parsed["results"]
-                    elif "rows" in parsed:
-                        data = parsed["rows"]
-                    else:
-                        data = [parsed]
+                    data = _unwrap_data_array(parsed)
                 else:
                     data = parsed
 
@@ -276,7 +318,8 @@ Mark percentage changes as negative if they indicate decline.
                     confidence=0.9,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
-                    cost=cost
+                    cost=cost,
+                    duration_ms=duration_ms
                 )
 
             except json.JSONDecodeError as e:
@@ -287,15 +330,18 @@ Mark percentage changes as negative if they indicate decline.
                     error=f"JSON parse error: {str(e)}",
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
-                    cost=cost
+                    cost=cost,
+                    duration_ms=duration_ms
                 )
 
         except Exception as e:
+            duration_ms = int((time.monotonic() - start_time) * 1000)
             return OCRResult(
                 success=False,
                 data=[],
                 raw_response="",
-                error=str(e)
+                error=str(e),
+                duration_ms=duration_ms
             )
 
 

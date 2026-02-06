@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
         postId: body.postId || null,
         inputTokens: body.inputTokens || null,
         outputTokens: body.outputTokens || null,
+        durationMs: body.durationMs || null,
       },
     });
 
@@ -127,6 +128,7 @@ export async function GET() {
         createdAt: true,
         inputTokens: true,
         outputTokens: true,
+        durationMs: true,
       },
     });
 

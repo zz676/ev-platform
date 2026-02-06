@@ -43,6 +43,7 @@ class ClassificationResult:
     needs_ocr: bool
     dimensions: dict  # Extra dimensions to add to metrics
     confidence: float = 1.0
+    ocr_data_type: Optional[str] = None  # "rankings", "trend", "metrics", "specs"
 
 
 class ArticleClassifier:
@@ -66,6 +67,8 @@ class ArticleClassifier:
     CAAM_PATTERNS = [
         r"caam\s*(?:nev|ev|new\s*energy)",
         r"caam.*sales",
+        r"nev\s*sales.*(?:by\s*)?caam",
+        r"sales\s*data\s*(?:by\s*)?caam",
     ]
 
     # Case 7: Dealer inventory factor/coefficient
@@ -79,6 +82,8 @@ class ArticleClassifier:
         r"cpca.*nev.*retail",
         r"cpca.*retail.*nev",
         r"nev\s*retail\s*sales.*cpca",
+        r"nev\s*retail\s*(?:data\s*)?(?:by\s*)?cpca",
+        r"retail\s*(?:data|sales)\s*(?:by\s*)?cpca",
     ]
 
     # Case 10: CPCA NEV production
@@ -86,6 +91,8 @@ class ArticleClassifier:
         r"cpca.*nev.*production",
         r"cpca.*production.*nev",
         r"nev\s*production.*cpca",
+        r"nev\s*production\s*(?:data\s*)?(?:by\s*)?cpca",
+        r"production\s*(?:data|output)\s*(?:by\s*)?cpca",
     ]
 
     # Case 11: VIA Index
@@ -203,7 +210,8 @@ class ArticleClassifier:
                 target_table="ChinaViaIndex",
                 needs_ocr=not has_number,
                 dimensions={},
-                confidence=0.95
+                confidence=0.95,
+                ocr_data_type="chart",
             )
 
         # 2. Dealer inventory factor/coefficient
@@ -213,7 +221,8 @@ class ArticleClassifier:
                 target_table="ChinaDealerInventoryFactor",
                 needs_ocr=not has_number,
                 dimensions={},
-                confidence=0.95
+                confidence=0.95,
+                ocr_data_type="chart",
             )
 
         # 3. Battery maker rankings (global or China)
@@ -224,7 +233,8 @@ class ArticleClassifier:
                 target_table="BatteryMakerRankings",
                 needs_ocr=True,  # Rankings always need OCR for full table
                 dimensions={"scope": scope},
-                confidence=0.9
+                confidence=0.9,
+                ocr_data_type="rankings",
             )
 
         # 4. Automaker rankings
@@ -234,17 +244,19 @@ class ArticleClassifier:
                 target_table="AutomakerRankings",
                 needs_ocr=True,  # Rankings always need OCR for full table
                 dimensions={},
-                confidence=0.9
+                confidence=0.9,
+                ocr_data_type="rankings",
             )
 
-        # 5. NEV sales summary (date range)
+        # 5. NEV sales summary (date range) — trend chart with daily/weekly data
         if self._match_any(self._nev_sales_summary_re, title_lower):
             return ClassificationResult(
                 article_type=ArticleType.NEV_SALES_SUMMARY,
                 target_table="NevSalesSummary",
                 needs_ocr=not has_number,
                 dimensions={},
-                confidence=0.9
+                confidence=0.9,
+                ocr_data_type="trend",
             )
 
         # 6. Plant exports (Tesla Shanghai, etc.)
@@ -254,7 +266,8 @@ class ArticleClassifier:
                 target_table="PlantExports",
                 needs_ocr=not has_number,
                 dimensions={},
-                confidence=0.9
+                confidence=0.9,
+                ocr_data_type="chart",
             )
 
         # 7. Battery maker monthly (entity-specific: CATL, BYD battery data)
@@ -265,7 +278,8 @@ class ArticleClassifier:
                 target_table="BatteryMakerMonthly",
                 needs_ocr=not has_number,
                 dimensions={"maker": battery_maker},
-                confidence=0.9
+                confidence=0.9,
+                ocr_data_type="chart",
             )
 
         # 8. China battery installation (industry-wide)
@@ -275,7 +289,8 @@ class ArticleClassifier:
                 target_table="ChinaBatteryInstallation",
                 needs_ocr=not has_number,
                 dimensions={},
-                confidence=0.9
+                confidence=0.9,
+                ocr_data_type="chart",
             )
 
         # 9. CAAM NEV sales
@@ -285,7 +300,8 @@ class ArticleClassifier:
                 target_table="CaamNevSales",
                 needs_ocr=not has_number,
                 dimensions={},
-                confidence=0.9
+                confidence=0.9,
+                ocr_data_type="chart",
             )
 
         # 10. CPCA NEV production
@@ -295,7 +311,8 @@ class ArticleClassifier:
                 target_table="CpcaNevProduction",
                 needs_ocr=not has_number,
                 dimensions={},
-                confidence=0.9
+                confidence=0.9,
+                ocr_data_type="chart",
             )
 
         # 11. CPCA NEV retail
@@ -305,7 +322,8 @@ class ArticleClassifier:
                 target_table="CpcaNevRetail",
                 needs_ocr=not has_number,
                 dimensions={},
-                confidence=0.9
+                confidence=0.9,
+                ocr_data_type="chart",
             )
 
         # 12. Passenger car inventory
@@ -315,7 +333,8 @@ class ArticleClassifier:
                 target_table="ChinaPassengerInventory",
                 needs_ocr=not has_number,
                 dimensions={},
-                confidence=0.9
+                confidence=0.9,
+                ocr_data_type="chart",
             )
 
         # ========================================
@@ -329,7 +348,8 @@ class ArticleClassifier:
                 target_table="VehicleSpec",
                 needs_ocr=True,
                 dimensions={},
-                confidence=0.95
+                confidence=0.95,
+                ocr_data_type="specs",
             )
 
         # Model breakdown (e.g., "Tesla Apr sales breakdown: 13,196 Model 3s")

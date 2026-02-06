@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "name": "battery_china_rankings",
+    "data_type": "rankings",
+    "image_url": "https://cdn.cnevdata.com/wp-content/uploads/2026/01/2026011610053525.jpg",
+    "article_title": "Data table: Top EV battery makers' installations in China in Dec and full-year 2025",
+    "article_url": "https://cnevdata.com/2026/01/16/top-ev-battery-makers-installations-china-dec-2025/",
+    "model": "gpt-4o"
+  },
+  "result": {
+    "success": true,
+    "data": [
+      {
+        "rank": 1,
+        "brand": "CATL",
+        "value": 45.71,
+        "share": 46.66,
+        "share_change": 2.75
+      },
+      {
+        "rank": 2,
+        "brand": "BYD",
+        "value": 17.63,
+        "share": 17.99,
+        "share_change": -2.37
+      },
+      {
+        "rank": 3,
+        "brand": "CALB",
+        "value": 7.0,
+        "share": 7.15,
+        "share_change": 0.77
+      },
+      {
+        "rank": 4,
+        "brand": "Gotion High-tech",
+        "value": 5.7,
+        "share": 5.81,
+        "share_change": -0.49
+      },
+      {
+        "rank": 5,
+        "brand": "Eve Energy",
+        "value": 4.33,
+        "share": 4.42,
+        "share_change": 0.78
+      },
+      {
+        "rank": 6,
+        "brand": "LG Energy Solution",
+        "value": 3.07,
+        "share": 3.13,
+        "share_change": 0.56
+      },
+      {
+        "rank": 7,
+        "brand": "Rept Battero Energy",
+        "value": 2.87,
+        "share": 2.92,
+        "share_change": -0.27
+      },
+      {
+        "rank": 8,
+        "brand": "Sunwoda",
+        "value": 2.56,
+        "share": 2.61,
+        "share_change": -0.07
+      }
+    ],
+    "raw_response": "{\"rankings\":[{\"rank\":1,\"brand\":\"CATL\",\"value\":45.71,\"share\":46.66,\"share_change\":2.75},{\"rank\":2,\"brand\":\"BYD\",\"value\":17.63,\"share\":17.99,\"share_change\":-2.37},{\"rank\":3,\"brand\":\"CALB\",\"value\":7.00,\"share\":7.15,\"share_change\":0.77},{\"rank\":4,\"brand\":\"Gotion High-tech\",\"value\":5.70,\"share\":5.81,\"share_change\":-0.49},{\"rank\":5,\"brand\":\"Eve Energy\",\"value\":4.33,\"share\":4.42,\"share_change\":0.78},{\"rank\":6,\"brand\":\"LG Energy Solution\",\"value\":3.07,\"share\":3.13,\"share_change\":0.56},{\"rank\":7,\"brand\":\"Rept Battero Energy\",\"value\":2.87,\"share\":2.92,\"share_change\":-0.27},{\"rank\":8,\"brand\":\"Sunwoda\",\"value\":2.56,\"share\":2.61,\"share_change\":-0.07}]}",
+    "error": null,
+    "confidence": 0.9,
+    "input_tokens": 1267,
+    "output_tokens": 242,
+    "cost": 0.0055875
+  }
+}

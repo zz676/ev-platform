@@ -1,6 +1,6 @@
 # CnEVData Scraper & EV Sales Data Pipeline
 
-> **Last Updated**: February 4, 2026
+> **Last Updated**: February 6, 2026
 > **Status**: Implemented
 
 ## Overview
@@ -186,22 +186,31 @@ The classifier routes articles to specialized tables based on their content type
 | REGIONAL_DATA | "Shanghai Apr NEV license plates: 45,000" | No | EVMetric |
 | VEHICLE_SPEC | "NIO EC7: Main specs" | Yes | VehicleSpec |
 
-#### Industry Data Tables (NEW - 12 Specialized Tables)
+#### Industry Data Tables (12 Specialized Tables)
 
-| Type | Example Title | OCR? | Target Table |
-|------|---------------|------|--------------|
-| CHINA_PASSENGER_INVENTORY | "China passenger car inventory: 3.2M units" | No | ChinaPassengerInventory |
-| CHINA_BATTERY_INSTALLATION | "China EV battery installations: 45.2 GWh" | No | ChinaBatteryInstallation |
-| CAAM_NEV_SALES | "CAAM NEV sales: 1.2 million in Jan" | No | CaamNevSales |
-| CHINA_DEALER_INVENTORY_FACTOR | "Dealer inventory factor rises to 1.31" | No | ChinaDealerInventoryFactor |
-| CPCA_NEV_RETAIL | "CPCA: NEV retail sales reach 850,000" | No | CpcaNevRetail |
-| CPCA_NEV_PRODUCTION | "CPCA: NEV production hits 920,000" | No | CpcaNevProduction |
-| CHINA_VIA_INDEX | "VIA index rises to 59.4%" | No | ChinaViaIndex |
-| BATTERY_MAKER_MONTHLY | "CATL battery installations: 25.6 GWh" | No | BatteryMakerMonthly |
-| PLANT_EXPORTS | "Tesla Shanghai exports 35,000" | No | PlantExports |
-| NEV_SALES_SUMMARY | "NEV sales Jan 1-18 reach 420,000" | No | NevSalesSummary |
-| AUTOMAKER_RANKINGS | "CPCA top-selling automakers Jan 2025" | Yes | AutomakerRankings |
-| BATTERY_MAKER_RANKINGS | "Top battery makers China Jan 2025" | Yes | BatteryMakerRankings |
+Articles are classified with an explicit `ocr_data_type` field that distinguishes chart images (skip OCR) from table images (do OCR):
+
+**Chart-type articles** (`ocr_data_type="chart"`) — OCR skipped, stored as news posts with image:
+
+| Type | Example Title | Target Table |
+|------|---------------|--------------|
+| CHINA_VIA_INDEX | "VIA index rises to 59.4%" | ChinaViaIndex |
+| CHINA_DEALER_INVENTORY_FACTOR | "Dealer inventory factor rises to 1.31" | ChinaDealerInventoryFactor |
+| CHINA_PASSENGER_INVENTORY | "China passenger car inventory: 3.2M units" | ChinaPassengerInventory |
+| CHINA_BATTERY_INSTALLATION | "China EV battery installations: 45.2 GWh" | ChinaBatteryInstallation |
+| CAAM_NEV_SALES | "CAAM NEV sales: 1.2 million in Jan" | CaamNevSales |
+| CPCA_NEV_RETAIL | "CPCA: NEV retail sales reach 850,000" | CpcaNevRetail |
+| CPCA_NEV_PRODUCTION | "CPCA: NEV production hits 920,000" | CpcaNevProduction |
+| BATTERY_MAKER_MONTHLY | "CATL battery installations: 25.6 GWh" | BatteryMakerMonthly |
+| PLANT_EXPORTS | "Tesla Shanghai exports 35,000" | PlantExports |
+
+**Table-type articles** (`ocr_data_type="rankings"/"trend"/"specs"`) — OCR used for data extraction:
+
+| Type | Example Title | OCR Type | Target Table |
+|------|---------------|----------|--------------|
+| AUTOMAKER_RANKINGS | "CPCA top-selling automakers Jan 2025" | rankings | AutomakerRankings |
+| BATTERY_MAKER_RANKINGS | "Top battery makers China Jan 2025" | rankings | BatteryMakerRankings |
+| NEV_SALES_SUMMARY | "NEV sales Jan 1-18 reach 420,000" | trend | NevSalesSummary |
 
 ---
 
@@ -210,8 +219,10 @@ The classifier routes articles to specialized tables based on their content type
 ### Dual-Write Architecture
 
 The scraper uses a dual-write approach where articles are:
-1. Sent to the **Post table** via webhook (existing flow for news display)
-2. **AND** routed to specialized **industry data tables** (new structured data flow)
+1. Routed to specialized **industry data tables** (structured data flow, title parsing + optional OCR)
+2. **AND** chart-type articles are submitted as **Post entries** via webhook (news feed with chart image)
+
+Chart articles are submitted with `relevanceScore=30` (PENDING status, requires manual approval) so they appear in the news feed with the chart image visible.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -219,14 +230,15 @@ The scraper uses a dual-write approach where articles are:
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌─────────────┐     ┌─────────────────────────────────────┐   │
-│  │   Scrape    │ ──▶ │  Process & Submit to Webhook        │   │
-│  │   Articles  │     │  (Posts table - news display)       │   │
+│  │   Scrape    │ ──▶ │  Classify & Extract Industry Data   │   │
+│  │   Articles  │     │  (12 specialized tables)            │   │
 │  └──────┬──────┘     └─────────────────────────────────────┘   │
 │         │                                                        │
 │         │            ┌─────────────────────────────────────┐   │
-│         └──────────▶ │  Classify & Extract Industry Data   │   │
-│                      │  (12 specialized tables)            │   │
-│                      └──────────────────────────────────────┘   │
+│         └──────────▶ │  Chart articles → Submit as Post    │   │
+│                      │  (news feed with chart image)       │   │
+│                      │  relevanceScore=30 → PENDING        │   │
+│                      └─────────────────────────────────────┘   │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -274,7 +286,7 @@ Each table has a POST endpoint for data submission:
 
 ### Pipeline Stats
 
-The scraper now tracks industry data processing:
+The scraper tracks industry data processing and news post creation:
 
 ```
 Industry Data:
@@ -284,6 +296,10 @@ Industry Data:
   Submitted: 2 records
   Errors: 0
   By Table: {'BatteryMakerMonthly': 1, 'ChinaViaIndex': 1}
+
+News Posts:
+  Posts submitted: 2
+  Posts failed: 0
 ```
 
 ---
@@ -330,6 +346,19 @@ CNEVDATA_CONFIG = {
 
 ## OCR Strategy
 
+### Chart vs Table Distinction
+
+Not all images benefit from OCR. The classifier sets `ocr_data_type` to distinguish:
+
+| Image Type | `ocr_data_type` | OCR Action | Rationale |
+|------------|-----------------|------------|-----------|
+| **Line/bar charts** | `"chart"` | **Skipped** | GPT-4o Vision approximates pixel positions, giving inaccurate values. Key data point is in the title. |
+| **Rankings tables** | `"rankings"` | Extracted | Discrete text values are read accurately |
+| **Trend tables** | `"trend"` | Extracted | Tabular data with date ranges and values |
+| **Vehicle specs** | `"specs"` | Extracted | Structured specification text |
+
+Chart articles (VIA Index, Passenger Inventory, CPCA Production, etc.) are instead stored as news posts with the chart image visible in the feed.
+
 ### Parallel OCR Processing
 
 OCR calls are batched and processed in parallel for performance:
@@ -338,17 +367,25 @@ OCR calls are batched and processed in parallel for performance:
 |---------|-------|-------------|
 | `ocr_concurrency` | 5 | Max parallel OCR calls |
 | Batch trigger | End of each page | Process queued articles together |
+| OCR filter | `ocr_data_type in ("rankings", "trend", "specs")` | Skip chart images |
 
 This reduces scraping time from ~5.5 min to ~1-2 min for 3 pages (3x faster).
 
 ### When OCR is Needed
 
+Two layers of filtering determine whether OCR runs:
+
+1. **Title number check**: `needs_ocr = not has_number` — if the title has a significant number (4+ digits or comma-separated), OCR is skipped.
+2. **OCR type filter**: `process_ocr_batch()` only processes articles with `ocr_data_type` in `("rankings", "trend", "specs")`. Chart-type articles (`ocr_data_type="chart"`) are always skipped regardless of `needs_ocr`.
+
 ```python
-def needs_ocr(title: str) -> bool:
-    """OCR needed only when title has no significant numbers."""
-    # Has numbers like "20,011" or "210051"?
-    has_number = bool(re.search(r'\d{1,3}(?:,\d{3})+|\d{4,}', title))
-    return not has_number
+# Layer 1: Title-based (in classifier)
+has_number = bool(re.search(r'\d{1,3}(?:,\d{3})+|\d{4,}', title))
+needs_ocr = not has_number
+
+# Layer 2: Type-based (in process_ocr_batch)
+OCR_ELIGIBLE_TYPES = {"rankings", "trend", "specs"}
+ocr_articles = [a for a in articles if a.ocr_data_type in OCR_ELIGIBLE_TYPES]
 ```
 
 ### OCR Cost Estimate
@@ -356,10 +393,11 @@ def needs_ocr(title: str) -> bool:
 | Item | Estimate |
 |------|----------|
 | Articles with data in title | ~70% (no OCR) |
-| Articles needing OCR | ~30% |
+| Chart articles (OCR skipped) | ~15% |
+| Articles needing OCR (tables) | ~15% |
 | GPT-4o Vision cost | ~$0.01-0.02/image |
-| Monthly OCR images | ~15-20 |
-| **Monthly OCR cost** | **$0.15-0.40** |
+| Monthly OCR images | ~8-12 |
+| **Monthly OCR cost** | **$0.08-0.24** |
 
 ### GPT-4o Vision Prompts
 
@@ -626,7 +664,7 @@ LIMIT 5;
 
 | Component | Monthly Cost |
 |-----------|--------------|
-| GPT-4o Vision OCR | $0.15-0.40 |
+| GPT-4o Vision OCR (tables only, charts skipped) | $0.08-0.24 |
 | GitHub Actions | Free (public repo) |
 | Database storage | Included in Supabase free tier |
-| **Total** | **~$0.40/month** |
+| **Total** | **~$0.25/month** |

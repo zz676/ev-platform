@@ -1,0 +1,84 @@
+{
+  "metadata": {
+    "name": "battery_maker_rankings",
+    "data_type": "rankings",
+    "image_url": "https://cdn.cnevdata.com/wp-content/uploads/2026/02/2026020405155886.jpg",
+    "article_title": "Data table: Top EV battery makers' global installations in 2025",
+    "article_url": "https://cnevdata.com/2026/02/04/top-ev-battery-makers-global-installations-2025/",
+    "model": "gpt-4o"
+  },
+  "result": {
+    "success": true,
+    "data": [
+      {
+        "rank": 1,
+        "brand": "CATL",
+        "prior_value": 342.5,
+        "value": 464.7,
+        "yoy": 35.7,
+        "prior_share": 38.0,
+        "share": 39.2
+      },
+      {
+        "rank": 2,
+        "brand": "BYD",
+        "prior_value": 152.6,
+        "value": 194.8,
+        "yoy": 27.7,
+        "prior_share": 16.9,
+        "share": 16.4
+      },
+      {
+        "rank": 3,
+        "brand": "LG Energy Solution",
+        "prior_value": 97.8,
+        "value": 108.8,
+        "yoy": 11.3,
+        "prior_share": 10.9,
+        "share": 9.2
+      },
+      {
+        "rank": 4,
+        "brand": "CALB",
+        "prior_value": 41.2,
+        "value": 62.8,
+        "yoy": 52.6,
+        "prior_share": 4.6,
+        "share": 5.3
+      },
+      {
+        "rank": 5,
+        "brand": "Gotion High-tech",
+        "prior_value": 29.3,
+        "value": 53.5,
+        "yoy": 82.5,
+        "prior_share": 3.3,
+        "share": 4.5
+      },
+      {
+        "rank": 6,
+        "brand": "SK On",
+        "prior_value": 39.7,
+        "value": 44.5,
+        "yoy": 12.3,
+        "prior_share": 4.4,
+        "share": 3.7
+      },
+      {
+        "rank": 7,
+        "brand": "Panasonic",
+        "prior_value": 34.6,
+        "value": 44.2,
+        "yoy": 27.8,
+        "prior_share": 3.8,
+        "share": 3.7
+      }
+    ],
+    "raw_response": "\n{\n    \"rankings\": [\n        {\n            \"rank\": 1,\n            \"brand\": \"CATL\",\n            \"prior_value\": 342.5,\n            \"value\": 464.7,\n            \"yoy\": 35.7,\n            \"prior_share\": 38.0,\n            \"share\": 39.2\n        },\n        {\n            \"rank\": 2,\n            \"brand\": \"BYD\",\n            \"prior_value\": 152.6,\n            \"value\": 194.8,\n            \"yoy\": 27.7,\n            \"prior_share\": 16.9,\n            \"share\": 16.4\n        },\n        {\n            \"rank\": 3,\n            \"brand\": \"LG Energy Solution\",\n            \"prior_value\": 97.8,\n            \"value\": 108.8,\n            \"yoy\": 11.3,\n            \"prior_share\": 10.9,\n            \"share\": 9.2\n        },\n        {\n            \"rank\": 4,\n            \"brand\": \"CALB\",\n            \"prior_value\": 41.2,\n            \"value\": 62.8,\n            \"yoy\": 52.6,\n            \"prior_share\": 4.6,\n            \"share\": 5.3\n        },\n        {\n            \"rank\": 5,\n            \"brand\": \"Gotion High-tech\",\n            \"prior_value\": 29.3,\n            \"value\": 53.5,\n            \"yoy\": 82.5,\n            \"prior_share\": 3.3,\n            \"share\": 4.5\n        },\n        {\n            \"rank\": 6,\n            \"brand\": \"SK On\",\n            \"prior_value\": 39.7,\n            \"value\": 44.5,\n            \"yoy\": 12.3,\n            \"prior_share\": 4.4,\n            \"share\": 3.7\n        },\n        {\n            \"rank\": 7,\n            \"brand\": \"Panasonic\",\n            \"prior_value\": 34.6,\n            \"value\": 44.2,\n            \"yoy\": 27.8,\n            \"prior_share\": 3.8,\n            \"share\": 3.7\n        }\n    ]\n}",
+    "error": null,
+    "confidence": 0.9,
+    "input_tokens": 1447,
+    "output_tokens": 483,
+    "cost": 0.0084475
+  }
+}

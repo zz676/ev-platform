@@ -126,6 +126,8 @@ class IndustryDataExtractor:
             # Add common fields
             data["sourceUrl"] = source_url
             data["sourceTitle"] = source_title
+            if published_date:
+                data["publishedAt"] = published_date.isoformat()
             if image_url:
                 data["imageUrl"] = image_url
 
@@ -182,9 +184,14 @@ class IndustryDataExtractor:
         year_match = re.search(r'\b(20[2-3]\d)\b', title)
         year = int(year_match.group(1)) if year_match else None
 
-        # If no year but we have month, use current year
+        # If no year but we have month, use reference year with adjustment
         if month and not year:
             year = current_year
+            # If the data month is after the reference month, the data
+            # is from the previous year (e.g., "Dec" data published Jan → Dec prev year)
+            ref_month = published_date.month if published_date else datetime.now().month
+            if month > ref_month:
+                year -= 1
 
         # If no month but we have year, try to get from published date
         if year and not month and published_date:
@@ -550,17 +557,15 @@ class IndustryDataExtractor:
         start_date = f"{month:02d}-{start_day:02d}"
         end_date = f"{month:02d}-{end_day:02d}"
 
-        if value is None:
-            return None
-
         data = {
             "dataSource": "CPCA",
             "year": year,
             "startDate": start_date,
             "endDate": end_date,
-            "retailSales": value,
             "unit": "vehicles",
         }
+        if value is not None:
+            data["retailSales"] = value
         if yoy is not None:
             data["retailYoy"] = yoy
         if mom is not None:
