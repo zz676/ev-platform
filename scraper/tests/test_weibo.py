@@ -62,6 +62,29 @@ class TestWeiboDateParsing:
         result = self.source._parse_weibo_date("garbage_date_string")
         assert abs((datetime.now() - result).total_seconds()) < 5
 
+    def test_timezone_aware_string_returns_naive(self):
+        """dateutil.parser.parse can return tz-aware datetimes; we must strip tzinfo
+        so the result is always comparable with naive cutoff datetimes."""
+        # ISO 8601 with timezone offset
+        result = self.source._parse_weibo_date("2025-01-15T10:30:00+08:00")
+        assert result.tzinfo is None, "Should strip timezone info to stay naive"
+        assert result.year == 2025
+        assert result.month == 1
+        assert result.day == 15
+
+    def test_timezone_aware_string_comparable_with_cutoff(self):
+        """Regression test: comparing parsed tz-aware dates with naive cutoff
+        must not raise TypeError."""
+        cutoff = datetime.now() - timedelta(hours=8)
+        # This would raise TypeError before the fix
+        result = self.source._parse_weibo_date("2025-01-15T10:30:00+08:00")
+        # Should not raise — both are naive now
+        assert (result < cutoff) or (result >= cutoff)
+
+    def test_utc_timezone_string_returns_naive(self):
+        result = self.source._parse_weibo_date("2025-06-01T12:00:00Z")
+        assert result.tzinfo is None
+
 
 class TestWeiboTextCleaning:
     """Test Weibo HTML text cleaning."""

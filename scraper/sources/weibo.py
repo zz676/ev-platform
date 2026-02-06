@@ -361,7 +361,11 @@ class WeiboSource(BaseSource):
         # Full date format
         try:
             from dateutil import parser
-            return parser.parse(date_str)
+            parsed = parser.parse(date_str)
+            # Strip timezone info to keep all returns naive (consistent with cutoff)
+            if parsed.tzinfo is not None:
+                parsed = parsed.replace(tzinfo=None)
+            return parsed
         except Exception:
             pass
 
