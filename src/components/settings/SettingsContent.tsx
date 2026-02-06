@@ -112,8 +112,8 @@ export function SettingsContent({ user, providers, isAdmin, xAccount }: Settings
               </svg>
               <span className="text-sm font-medium text-gray-900">X</span>
             </div>
-            <span className={`text-xs font-medium px-2 py-1 rounded-full ${providers.includes("twitter") ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-              {providers.includes("twitter") ? t("connected") : t("notConnected")}
+            <span className={`text-xs font-medium px-2 py-1 rounded-full ${providers.includes("x") ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+              {providers.includes("x") ? t("connected") : t("notConnected")}
             </span>
           </div>
         </div>
