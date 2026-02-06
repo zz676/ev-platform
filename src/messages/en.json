@@ -148,6 +148,24 @@
     "message": "Getting Juiced... Be sure to check back later!",
     "backToNews": "Back to News"
   },
+  "Settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "email": "Email",
+    "name": "Name",
+    "role": "Role",
+    "connectedAccounts": "Connected Accounts",
+    "loginProviders": "Login Providers",
+    "loginProvidersDesc": "These are managed by your authentication provider.",
+    "xPublishing": "X Publishing Account",
+    "xPublishingDesc": "Link your X account to publish platform content from your own account.",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "connectXAccount": "Connect X Account",
+    "disconnectXAccount": "Disconnect",
+    "xHandle": "X Handle",
+    "backToHome": "Back to Home"
+  },
   "Terms": {
     "title": "Terms of Service",
     "lastUpdated": "Last updated: February 2025",

@@ -148,6 +148,24 @@
     "message": "正在充电中... 记得回来看看！",
     "backToNews": "返回新闻"
   },
+  "Settings": {
+    "title": "设置",
+    "profile": "个人资料",
+    "email": "邮箱",
+    "name": "姓名",
+    "role": "角色",
+    "connectedAccounts": "关联账户",
+    "loginProviders": "登录方式",
+    "loginProvidersDesc": "由身份验证提供商管理。",
+    "xPublishing": "X 发布账户",
+    "xPublishingDesc": "关联您的 X 账户，以从您自己的账户发布平台内容。",
+    "connected": "已关联",
+    "notConnected": "未关联",
+    "connectXAccount": "关联 X 账户",
+    "disconnectXAccount": "断开关联",
+    "xHandle": "X 用户名",
+    "backToHome": "返回首页"
+  },
   "Terms": {
     "title": "服务条款",
     "lastUpdated": "最后更新：2025年2月",
