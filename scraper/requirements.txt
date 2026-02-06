@@ -23,3 +23,6 @@ apscheduler>=3.10.0
 
 # Utilities
 python-dateutil>=2.8.0
+
+# Testing
+pytest>=8.0.0
