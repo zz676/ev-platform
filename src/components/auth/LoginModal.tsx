@@ -11,7 +11,7 @@ type TabType = "signin" | "signup";
 
 export function LoginModal() {
   const { isOpen, close } = useLoginModal();
-  const { loginWithGoogle, loginWithEmail, signUpWithEmail } = useAuth();
+  const { loginWithGoogle, loginWithX, loginWithEmail, signUpWithEmail } = useAuth();
   const t = useTranslations("Header");
 
   const [activeTab, setActiveTab] = useState<TabType>("signin");
@@ -49,6 +49,18 @@ export function LoginModal() {
       // Redirect happens automatically
     } catch {
       setError("Failed to sign in with Google. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleXLogin = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      await loginWithX();
+    } catch {
+      setError("Failed to sign in with X. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -210,6 +222,20 @@ export function LoginModal() {
               </svg>
               <span className="font-medium text-gray-700">
                 Continue with Google
+              </span>
+            </button>
+
+            {/* X Sign In */}
+            <button
+              onClick={handleXLogin}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-3"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              <span className="font-medium text-gray-700">
+                {t("continueWithX")}
               </span>
             </button>
 
