@@ -1,0 +1,119 @@
+{
+  "metadata": {
+    "name": "nev_sales_jan_1_11",
+    "data_type": "trend",
+    "image_url": "https://cdn.cnevdata.com/wp-content/uploads/2026/01/2026011409475431.jpg",
+    "article_title": "Data table: China NEV sales in Jan 1-11",
+    "article_url": "https://cnevdata.com/2026/01/14/china-nev-sales-jan-1-11-2025/",
+    "model": "gpt-4o"
+  },
+  "result": {
+    "success": true,
+    "data": [
+      {
+        "date": "20251101-20251130",
+        "value": 1354000,
+        "yoy": 7.0,
+        "mom": 6.0,
+        "label": "NEV Retail"
+      },
+      {
+        "date": "20251101-20251130",
+        "value": 1720000,
+        "yoy": 20.0,
+        "mom": 7.0,
+        "label": "NEV Wholesale"
+      },
+      {
+        "date": "20251201-20251207",
+        "value": 185000,
+        "yoy": -17.0,
+        "mom": -10.0,
+        "label": "NEV Retail"
+      },
+      {
+        "date": "20251201-20251207",
+        "value": 191000,
+        "yoy": -22.0,
+        "mom": -20.0,
+        "label": "NEV Wholesale"
+      },
+      {
+        "date": "20251201-20251214",
+        "value": 476000,
+        "yoy": -4.0,
+        "mom": 1.0,
+        "label": "NEV Retail"
+      },
+      {
+        "date": "20251201-20251214",
+        "value": 457000,
+        "yoy": -15.0,
+        "mom": -14.0,
+        "label": "NEV Wholesale"
+      },
+      {
+        "date": "20251201-20251221",
+        "value": 788000,
+        "yoy": 1.0,
+        "mom": 3.0,
+        "label": "NEV Retail"
+      },
+      {
+        "date": "20251201-20251221",
+        "value": 782000,
+        "yoy": -10.0,
+        "mom": -12.0,
+        "label": "NEV Wholesale"
+      },
+      {
+        "date": "20251201-20251228",
+        "value": 1192000,
+        "yoy": 5.0,
+        "mom": 1.0,
+        "label": "NEV Retail"
+      },
+      {
+        "date": "20251201-20251228",
+        "value": 1261000,
+        "yoy": -4.0,
+        "mom": -16.0,
+        "label": "NEV Wholesale"
+      },
+      {
+        "date": "20251201-20251231",
+        "value": 1387000,
+        "yoy": 7.0,
+        "mom": 5.0,
+        "label": "NEV Retail"
+      },
+      {
+        "date": "20251201-20251231",
+        "value": 1554000,
+        "yoy": 3.0,
+        "mom": -9.0,
+        "label": "NEV Wholesale"
+      },
+      {
+        "date": "20260101-20260111",
+        "value": 117000,
+        "yoy": -38.0,
+        "mom": -67.0,
+        "label": "NEV Retail"
+      },
+      {
+        "date": "20260101-20260111",
+        "value": 167000,
+        "yoy": -30.0,
+        "mom": -51.0,
+        "label": "NEV Wholesale"
+      }
+    ],
+    "raw_response": "\n{\n  \"data\": [\n    {\"date\": \"20251101-20251130\", \"value\": 1354000, \"yoy\": 7.0, \"mom\": 6.0, \"label\": \"NEV Retail\"},\n    {\"date\": \"20251101-20251130\", \"value\": 1720000, \"yoy\": 20.0, \"mom\": 7.0, \"label\": \"NEV Wholesale\"},\n    {\"date\": \"20251201-20251207\", \"value\": 185000, \"yoy\": -17.0, \"mom\": -10.0, \"label\": \"NEV Retail\"},\n    {\"date\": \"20251201-20251207\", \"value\": 191000, \"yoy\": -22.0, \"mom\": -20.0, \"label\": \"NEV Wholesale\"},\n    {\"date\": \"20251201-20251214\", \"value\": 476000, \"yoy\": -4.0, \"mom\": 1.0, \"label\": \"NEV Retail\"},\n    {\"date\": \"20251201-20251214\", \"value\": 457000, \"yoy\": -15.0, \"mom\": -14.0, \"label\": \"NEV Wholesale\"},\n    {\"date\": \"20251201-20251221\", \"value\": 788000, \"yoy\": 1.0, \"mom\": 3.0, \"label\": \"NEV Retail\"},\n    {\"date\": \"20251201-20251221\", \"value\": 782000, \"yoy\": -10.0, \"mom\": -12.0, \"label\": \"NEV Wholesale\"},\n    {\"date\": \"20251201-20251228\", \"value\": 1192000, \"yoy\": 5.0, \"mom\": 1.0, \"label\": \"NEV Retail\"},\n    {\"date\": \"20251201-20251228\", \"value\": 1261000, \"yoy\": -4.0, \"mom\": -16.0, \"label\": \"NEV Wholesale\"},\n    {\"date\": \"20251201-20251231\", \"value\": 1387000, \"yoy\": 7.0, \"mom\": 5.0, \"label\": \"NEV Retail\"},\n    {\"date\": \"20251201-20251231\", \"value\": 1554000, \"yoy\": 3.0, \"mom\": -9.0, \"label\": \"NEV Wholesale\"},\n    {\"date\": \"20260101-20260111\", \"value\": 117000, \"yoy\": -38.0, \"mom\": -67.0, \"label\": \"NEV Retail\"},\n    {\"date\": \"20260101-20260111\", \"value\": 167000, \"yoy\": -30.0, \"mom\": -51.0, \"label\": \"NEV Wholesale\"}\n  ]\n}",
+    "error": null,
+    "confidence": 0.9,
+    "input_tokens": 1450,
+    "output_tokens": 646,
+    "cost": 0.010085
+  }
+}

@@ -15,10 +15,12 @@ Tracks token usage and costs for all text completion calls:
 - Digest generation (`callDeepSeek`, `callOpenAI`)
 
 ### OCR (Vision)
-Tracks **GPT-4o Vision** calls from the scraper pipeline for extracting data from images:
-- Rankings table extraction
-- Metrics table extraction
-- Vehicle specs extraction
+Tracks **GPT-4o Vision** calls from the scraper pipeline for extracting data from table images:
+- Rankings table extraction (`ocr_data_type="rankings"`)
+- Trend table extraction (`ocr_data_type="trend"`)
+- Vehicle specs extraction (`ocr_data_type="specs"`)
+
+**Note**: Chart images (line/bar charts) are skipped for OCR — GPT-4o Vision is inaccurate at reading pixel-based values. Chart articles are instead stored as news posts with the image visible.
 
 ## Problem Solved
 
@@ -74,6 +76,7 @@ model AIUsage {
   source       String   // "webhook", "admin_approve", "process_content", "translate", "x_summary", "digest_deepseek", "digest_openai"
   inputTokens  Int?     // prompt tokens (for text completions)
   outputTokens Int?     // completion tokens (for text completions)
+  durationMs   Int?     // request duration in milliseconds
   createdAt    DateTime @default(now())
 
   Post Post? @relation(fields: [postId], references: [id])
@@ -154,7 +157,7 @@ function calculateTextCost(model: string, inputTokens: number, outputTokens: num
 | `ImageOCR.extract_from_url()` | Async OCR extraction | `"ocr_backfill"` |
 | `ImageOCR.extract_from_url_sync()` | Sync OCR extraction | `"ocr_backfill"` |
 
-OCR usage is tracked via `EVPlatformAPI.track_ocr_usage()` in `scraper/api_client.py`, which POSTs to `/api/admin/ai-usage`.
+OCR usage is tracked via `EVPlatformAPI.track_ocr_usage()` in `scraper/api_client.py`, which POSTs to `/api/admin/ai-usage`. Each OCR request tracks duration (milliseconds) in addition to tokens and cost.
 
 ### Tracking Behavior
 
@@ -180,13 +183,16 @@ OCR usage is tracked via `EVPlatformAPI.track_ocr_usage()` in `scraper/api_clien
 
 #### OCR (Vision)
 
-| Scenario | Model | Typical Tokens | Typical Cost |
-|----------|-------|----------------|--------------|
-| Rankings table OCR | gpt-4o | ~5000 input, ~500 output | ~$0.017 |
-| Metrics table OCR | gpt-4o | ~5000 input, ~300 output | ~$0.016 |
-| Vehicle specs OCR | gpt-4o | ~4000 input, ~200 output | ~$0.012 |
+Only table-type images are processed with OCR. Chart images (`ocr_data_type="chart"`) are skipped.
 
-Note: Input tokens for OCR include image tokens which vary based on image size and detail level.
+| Scenario | Model | OCR Type | Typical Tokens | Typical Cost | Typical Duration |
+|----------|-------|----------|----------------|--------------|-----------------|
+| Rankings table OCR | gpt-4o | rankings | ~5000 input, ~500 output | ~$0.017 | ~5-15s |
+| Trend table OCR | gpt-4o | trend | ~5000 input, ~300 output | ~$0.016 | ~5-12s |
+| Vehicle specs OCR | gpt-4o | specs | ~4000 input, ~200 output | ~$0.012 | ~4-10s |
+| Chart images | — | chart | **Skipped** | $0.00 | — |
+
+Note: Input tokens for OCR include image tokens which vary based on image size and detail level. Chart OCR was removed because GPT-4o Vision approximates pixel positions inaccurately for line/bar charts. Duration is tracked per-request and displayed on the admin monitoring page.
 
 ## API Endpoints
 
@@ -211,7 +217,7 @@ Track AI usage from external services (e.g., scraper OCR). No authentication req
 
 **Required fields:** `type`, `model`, `cost`, `success`, `source`
 
-**Optional fields:** `size`, `errorMsg`, `postId`, `inputTokens`, `outputTokens`
+**Optional fields:** `size`, `errorMsg`, `postId`, `inputTokens`, `outputTokens`, `durationMs`
 
 **Response:**
 
@@ -318,9 +324,9 @@ Return image URL                   Success         Failure
 | `scripts/fix-image-ratios.ts` | Added Together AI with DALL-E fallback |
 | `src/app/api/admin/ai-usage/route.ts` | Admin endpoint for usage stats + POST handler for external tracking |
 | `src/app/[locale]/admin/monitoring/page.tsx` | Display token counts in Recent Activity table |
-| `scraper/extractors/image_ocr.py` | Added token/cost tracking to OCRResult, GPT-4o pricing constants |
-| `scraper/api_client.py` | Added `track_ocr_usage()` method for submitting OCR usage |
-| `scraper/backfill_cnevdata.py` | Integrated OCR usage tracking in `process_ocr_batch()` |
+| `scraper/extractors/image_ocr.py` | Added token/cost/duration tracking to OCRResult, GPT-4o pricing constants |
+| `scraper/api_client.py` | Added `track_ocr_usage()` method with `duration_ms` parameter |
+| `scraper/backfill_cnevdata.py` | Integrated OCR usage tracking with duration in `process_ocr_batch()` |
 
 ## Database Queries
 

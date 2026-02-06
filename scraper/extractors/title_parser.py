@@ -82,30 +82,31 @@ class TitleParser:
         "kia": "OTHER_BRAND",
     }
 
-    # Metric type keywords
-    METRIC_KEYWORDS = {
-        "deliveries": "DELIVERY",
-        "delivery": "DELIVERY",
-        "delivered": "DELIVERY",
-        "sales": "SALES",
-        "sold": "SALES",
-        "retail": "SALES",
-        "wholesale": "WHOLESALE",
-        "production": "PRODUCTION",
-        "produced": "PRODUCTION",
-        "output": "PRODUCTION",
-        "battery": "BATTERY_INSTALL",
-        "battery install": "BATTERY_INSTALL",
-        "battery installation": "BATTERY_INSTALL",
-        "gwh": "BATTERY_INSTALL",
-        "exports": "EXPORTS",
-        "export": "EXPORTS",
-        "imports": "IMPORTS",
-        "import": "IMPORTS",
-        "registrations": "REGISTRATIONS",
-        "license plate": "REGISTRATIONS",
-        "inventory": "DEALER_INVENTORY",
-    }
+    # Metric type keywords - ordered: longer/more-specific keywords first
+    # to avoid partial matches (e.g., "wholesale sales" matching "sales")
+    METRIC_KEYWORDS = [
+        ("wholesale", "WHOLESALE"),
+        ("battery installation", "BATTERY_INSTALL"),
+        ("battery install", "BATTERY_INSTALL"),
+        ("license plate", "REGISTRATIONS"),
+        ("deliveries", "DELIVERY"),
+        ("delivery", "DELIVERY"),
+        ("delivered", "DELIVERY"),
+        ("retail", "SALES"),
+        ("sales", "SALES"),
+        ("sold", "SALES"),
+        ("production", "PRODUCTION"),
+        ("produced", "PRODUCTION"),
+        ("output", "PRODUCTION"),
+        ("battery", "BATTERY_INSTALL"),
+        ("gwh", "BATTERY_INSTALL"),
+        ("exports", "EXPORTS"),
+        ("export", "EXPORTS"),
+        ("imports", "IMPORTS"),
+        ("import", "IMPORTS"),
+        ("registrations", "REGISTRATIONS"),
+        ("inventory", "DEALER_INVENTORY"),
+    ]
 
     # Month name mappings
     MONTH_NAMES = {
@@ -255,7 +256,7 @@ class TitleParser:
 
     def _extract_metric_type(self, title_lower: str) -> Optional[str]:
         """Extract metric type from title."""
-        for keyword, metric in self.METRIC_KEYWORDS.items():
+        for keyword, metric in self.METRIC_KEYWORDS:
             if keyword in title_lower:
                 return metric
         return None
@@ -312,6 +313,12 @@ class TitleParser:
                     year = int(year_str) if len(year_str) == 4 else 2000 + int(year_str)
                 else:
                     year = current_year
+                    # If the data month is after the reference month, the data
+                    # is from the previous year (e.g., "Dec" data published in
+                    # Jan 2025 → Dec 2024).
+                    ref_month = published_date.month if published_date else datetime.now().month
+                    if month_num > ref_month:
+                        year -= 1
                 return year, month_num, None, "MONTHLY"
 
         # Check for year only

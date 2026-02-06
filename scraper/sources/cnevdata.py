@@ -28,6 +28,7 @@ class CnEVDataArticle:
     preview_image: Optional[str] = None
     article_type: Optional[str] = None
     needs_ocr: bool = False
+    ocr_data_type: Optional[str] = None  # "rankings", "trend", "metrics", "specs"
 
     def to_dict(self) -> dict:
         """Convert to dictionary for database storage."""
@@ -40,6 +41,7 @@ class CnEVDataArticle:
             "previewImage": self.preview_image,
             "articleType": self.article_type,
             "needsOcr": self.needs_ocr,
+            "ocrDataType": self.ocr_data_type,
         }
 
 
@@ -187,12 +189,25 @@ class CnEVDataSource:
             summary_elem = elem.select_one('p, .post-subtitle, [class*="subtitle"], [class*="preview"]')
             summary = summary_elem.get_text(strip=True) if summary_elem else None
 
-            # Extract date
+            # Extract date - try HTML element first, fall back to URL date
             date_elem = elem.select_one('time, [class*="date"], [datetime]')
             published_at = None
             if date_elem:
                 date_str = date_elem.get('datetime') or date_elem.get_text(strip=True)
                 published_at = self._parse_date(date_str)
+
+            # Fallback: extract date from URL (/YYYY/MM/DD/)
+            if published_at is None:
+                url_date_match = re.search(r'/(\d{4})/(\d{2})/(\d{2})/', url)
+                if url_date_match:
+                    try:
+                        published_at = datetime(
+                            int(url_date_match.group(1)),
+                            int(url_date_match.group(2)),
+                            int(url_date_match.group(3)),
+                        )
+                    except ValueError:
+                        pass
 
             # Extract preview image
             img_elem = elem.select_one('img')
@@ -214,6 +229,7 @@ class CnEVDataSource:
                 preview_image=preview_image,
                 article_type=article_type,
                 needs_ocr=needs_ocr,
+                ocr_data_type=classification.ocr_data_type,
             )
 
         except Exception as e:

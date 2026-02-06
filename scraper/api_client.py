@@ -228,6 +228,7 @@ class EVPlatformAPI:
         success: bool,
         error_msg: Optional[str] = None,
         source: str = "ocr_backfill",
+        duration_ms: Optional[int] = None,
     ) -> APIResponse:
         """Submit OCR usage data to the AI usage tracking API.
 
@@ -238,6 +239,7 @@ class EVPlatformAPI:
             success: Whether the OCR call was successful
             error_msg: Error message if failed
             source: Source identifier (default: "ocr_backfill")
+            duration_ms: Request duration in milliseconds
 
         Returns:
             APIResponse with result
@@ -257,6 +259,9 @@ class EVPlatformAPI:
 
             if error_msg:
                 data["errorMsg"] = error_msg
+
+            if duration_ms is not None:
+                data["durationMs"] = duration_ms
 
             logger.debug(f"Tracking OCR usage: {data}")
 

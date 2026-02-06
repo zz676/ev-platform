@@ -36,6 +36,7 @@ interface RecentUsage {
   createdAt: string;
   inputTokens: number | null;
   outputTokens: number | null;
+  durationMs: number | null;
 }
 
 interface AIUsageData {
@@ -245,6 +246,9 @@ export default function MonitoringPage() {
                       Cost
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Duration
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                   </tr>
@@ -279,6 +283,17 @@ export default function MonitoringPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           ${usage.cost.toFixed(4)}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {usage.durationMs != null ? (
+                            <span>
+                              {usage.durationMs >= 1000
+                                ? `${(usage.durationMs / 1000).toFixed(1)}s`
+                                : `${usage.durationMs}ms`}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">&mdash;</span>
+                          )}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {usage.success ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
@@ -300,7 +315,7 @@ export default function MonitoringPage() {
                   ) : (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-6 py-8 text-center text-gray-500"
                       >
                         No recent activity

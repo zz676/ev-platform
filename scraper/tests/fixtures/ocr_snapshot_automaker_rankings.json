@@ -1,0 +1,85 @@
+{
+  "metadata": {
+    "name": "automaker_rankings",
+    "data_type": "rankings",
+    "image_url": "https://cdn.cnevdata.com/wp-content/uploads/2026/01/2026011214070273.jpg",
+    "article_title": "CPCA rankings: Top-selling automakers in China in Dec 2025",
+    "article_url": "https://cnevdata.com/2026/01/12/top-selling-automakers-china-dec-2025/",
+    "model": "gpt-4o"
+  },
+  "result": {
+    "success": true,
+    "data": [
+      {
+        "rank": 1,
+        "brand": "BYD",
+        "value": 339854,
+        "mom": 10.9,
+        "yoy": -15.7,
+        "share": 25.4
+      },
+      {
+        "rank": 2,
+        "brand": "Geely",
+        "value": 135989,
+        "mom": -21.0,
+        "yoy": 25.0,
+        "share": 10.2
+      },
+      {
+        "rank": 3,
+        "brand": "Tesla China",
+        "value": 93843,
+        "mom": 28.3,
+        "yoy": 13.2,
+        "share": 7.0
+      },
+      {
+        "rank": 4,
+        "brand": "HIMA",
+        "value": 89611,
+        "mom": 9.5,
+        "yoy": 81.1,
+        "share": 6.7
+      },
+      {
+        "rank": 5,
+        "brand": "SAIC-GM-Wuling",
+        "value": 68777,
+        "mom": -28.5,
+        "yoy": -23.5,
+        "share": 5.1
+      },
+      {
+        "rank": 6,
+        "brand": "Changan",
+        "value": 61630,
+        "mom": -4.2,
+        "yoy": -14.4,
+        "share": 4.6
+      },
+      {
+        "rank": 7,
+        "brand": "Seres",
+        "value": 57778,
+        "mom": 11.7,
+        "yoy": 92.0,
+        "share": 4.3
+      },
+      {
+        "rank": 8,
+        "brand": "Chery",
+        "value": 51723,
+        "mom": -10.5,
+        "yoy": -34.2,
+        "share": 3.9
+      }
+    ],
+    "raw_response": "\n{\n    \"result\": [\n        {\n            \"rank\": 1,\n            \"brand\": \"BYD\",\n            \"value\": 339854,\n            \"mom\": 10.9,\n            \"yoy\": -15.7,\n            \"share\": 25.4\n        },\n        {\n            \"rank\": 2,\n            \"brand\": \"Geely\",\n            \"value\": 135989,\n            \"mom\": -21.0,\n            \"yoy\": 25.0,\n            \"share\": 10.2\n        },\n        {\n            \"rank\": 3,\n            \"brand\": \"Tesla China\",\n            \"value\": 93843,\n            \"mom\": 28.3,\n            \"yoy\": 13.2,\n            \"share\": 7.0\n        },\n        {\n            \"rank\": 4,\n            \"brand\": \"HIMA\",\n            \"value\": 89611,\n            \"mom\": 9.5,\n            \"yoy\": 81.1,\n            \"share\": 6.7\n        },\n        {\n            \"rank\": 5,\n            \"brand\": \"SAIC-GM-Wuling\",\n            \"value\": 68777,\n            \"mom\": -28.5,\n            \"yoy\": -23.5,\n            \"share\": 5.1\n        },\n        {\n            \"rank\": 6,\n            \"brand\": \"Changan\",\n            \"value\": 61630,\n            \"mom\": -4.2,\n            \"yoy\": -14.4,\n            \"share\": 4.6\n        },\n        {\n            \"rank\": 7,\n            \"brand\": \"Seres\",\n            \"value\": 57778,\n            \"mom\": 11.7,\n            \"yoy\": 92.0,\n            \"share\": 4.3\n        },\n        {\n            \"rank\": 8,\n            \"brand\": \"Chery\",\n            \"value\": 51723,\n            \"mom\": -10.5,\n            \"yoy\": -34.2,\n            \"share\": 3.9\n        }\n    ]\n}",
+    "error": null,
+    "confidence": 0.9,
+    "input_tokens": 1262,
+    "output_tokens": 454,
+    "cost": 0.007695
+  }
+}

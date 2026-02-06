@@ -1,0 +1,69 @@
+{
+  "metadata": {
+    "name": "tesla_exports_trend",
+    "data_type": "trend",
+    "image_url": "https://cdn.cnevdata.com/wp-content/uploads/2026/01/2026010910525647.jpg",
+    "article_title": "Tesla Shanghai plant exports in Dec: 3,328",
+    "article_url": "https://cnevdata.com/2026/01/09/tesla-shanghai-plant-exports-dec-2025/",
+    "model": "gpt-4o"
+  },
+  "result": {
+    "success": true,
+    "data": [
+      {
+        "date": "Jan-25",
+        "value": 20000
+      },
+      {
+        "date": "Feb-25",
+        "value": 10000
+      },
+      {
+        "date": "Mar-25",
+        "value": 30000
+      },
+      {
+        "date": "Apr-25",
+        "value": 30000
+      },
+      {
+        "date": "May-25",
+        "value": 25000
+      },
+      {
+        "date": "Jun-25",
+        "value": 15000
+      },
+      {
+        "date": "Jul-25",
+        "value": 30000
+      },
+      {
+        "date": "Aug-25",
+        "value": 15000
+      },
+      {
+        "date": "Sep-25",
+        "value": 10000
+      },
+      {
+        "date": "Oct-25",
+        "value": 50000
+      },
+      {
+        "date": "Nov-25",
+        "value": 25000
+      },
+      {
+        "date": "Dec-25",
+        "value": 10000
+      }
+    ],
+    "raw_response": "{\n    \"data\": [\n        {\"date\": \"Jan-25\", \"value\": 20000},\n        {\"date\": \"Feb-25\", \"value\": 10000},\n        {\"date\": \"Mar-25\", \"value\": 30000},\n        {\"date\": \"Apr-25\", \"value\": 30000},\n        {\"date\": \"May-25\", \"value\": 25000},\n        {\"date\": \"Jun-25\", \"value\": 15000},\n        {\"date\": \"Jul-25\", \"value\": 30000},\n        {\"date\": \"Aug-25\", \"value\": 15000},\n        {\"date\": \"Sep-25\", \"value\": 10000},\n        {\"date\": \"Oct-25\", \"value\": 50000},\n        {\"date\": \"Nov-25\", \"value\": 25000},\n        {\"date\": \"Dec-25\", \"value\": 10000}\n    ]\n}",
+    "error": null,
+    "confidence": 0.9,
+    "input_tokens": 1309,
+    "output_tokens": 201,
+    "cost": 0.0052825
+  }
+}
