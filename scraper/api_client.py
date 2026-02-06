@@ -36,6 +36,7 @@ class EVPlatformAPI:
         "NevSalesSummary": "nev-sales-summary",
         "AutomakerRankings": "automaker-rankings",
         "BatteryMakerRankings": "battery-maker-rankings",
+        "NioPowerSnapshot": "nio-power-snapshot",
         # Existing tables
         "EVMetric": "ev-metrics",
         "VehicleSpec": "vehicle-specs",

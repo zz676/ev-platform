@@ -7,6 +7,7 @@ from .li_auto import LiAutoSource
 from .byd import BYDSource
 from .weibo import WeiboSource
 from .cnevdata import CnEVDataSource, CnEVDataArticle
+from .nio_power import NioPowerScraper, NioPowerData
 
 __all__ = [
     "BaseSource",
@@ -18,4 +19,6 @@ __all__ = [
     "WeiboSource",
     "CnEVDataSource",
     "CnEVDataArticle",
+    "NioPowerScraper",
+    "NioPowerData",
 ]

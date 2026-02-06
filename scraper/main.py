@@ -183,6 +183,7 @@ def print_summary(stats: dict[str, Any], dry_run: bool = False) -> None:
             print(f"  By Table: {by_table}")
     else:
         print("  Status: NOT RUN")
+    print()
 
     print("=" * 44)
 
