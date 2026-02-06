@@ -25,8 +25,18 @@ export function SettingsContent({ user, providers, isAdmin, xAccount }: Settings
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleConnectX = () => {
-    window.location.href = "/api/auth/x/link";
+  const handleConnectX = async () => {
+    try {
+      const res = await fetch("/api/auth/x/link", { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to initiate X connection");
+      }
+      const { url } = await res.json();
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect");
+    }
   };
 
   const handleDisconnectX = async () => {
