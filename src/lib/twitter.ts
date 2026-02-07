@@ -104,6 +104,38 @@ export interface MediaUploadResponse {
   };
 }
 
+// Validate that an image URL is accessible and returns actual image data
+export async function isImageUrlAccessible(imageUrl: string): Promise<boolean> {
+  try {
+    console.log(`[Twitter] Validating image URL accessibility: ${imageUrl}`);
+    
+    const response = await fetch(imageUrl, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(10000), // 10 second timeout
+    });
+    
+    if (!response.ok) {
+      console.log(`[Twitter] Image URL not accessible: HTTP ${response.status}`);
+      return false;
+    }
+    
+    const contentType = response.headers.get("content-type");
+    
+    // Check if content-type indicates an image
+    if (!contentType || !contentType.startsWith("image/")) {
+      console.log(`[Twitter] Image URL returned non-image content-type: ${contentType}`);
+      return false;
+    }
+    
+    console.log(`[Twitter] Image URL is accessible: content-type=${contentType}`);
+    return true;
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.log(`[Twitter] Image URL validation failed: ${errorMsg}`);
+    return false;
+  }
+}
+
 // Download image from URL and return as base64
 export async function downloadImageAsBase64(imageUrl: string): Promise<string> {
   console.log(`[Twitter] Downloading image from: ${imageUrl}`);
@@ -119,7 +151,22 @@ export async function downloadImageAsBase64(imageUrl: string): Promise<string> {
   const contentLength = response.headers.get("content-length");
   console.log(`[Twitter] Image response: content-type=${contentType}, content-length=${contentLength}`);
 
+  // Verify content-type is actually an image
+  if (!contentType || !contentType.startsWith("image/")) {
+    const errorMsg = `URL did not return an image. Content-Type: ${contentType}`;
+    console.error(`[Twitter] ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+
   const arrayBuffer = await response.arrayBuffer();
+  
+  // Additional check: verify the response is large enough to be a real image
+  if (arrayBuffer.byteLength < 1000) {
+    const errorMsg = `Downloaded content too small to be a valid image (${arrayBuffer.byteLength} bytes)`;
+    console.error(`[Twitter] ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+  
   const base64 = Buffer.from(arrayBuffer).toString("base64");
   console.log(`[Twitter] Image downloaded: ${arrayBuffer.byteLength} bytes, base64 length: ${base64.length}`);
 
