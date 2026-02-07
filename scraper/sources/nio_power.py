@@ -279,11 +279,13 @@ class NioPowerScraper:
                         if (!label || seen.has(label)) return;
                         seen.add(label);
 
-                        // Walk up to find the metric container
-                        const container = h6.closest('div');
+                        // Use h6's direct parent — scopes search to this metric only.
+                        // closest('div') + parentElement was too broad and matched
+                        // digit-flip counters from neighboring metric sections.
+                        const container = h6.parentElement;
                         if (!container) return;
 
-                        // Check for static <strong> values (may be multiple per section)
+                        // 1. Static <strong> values (may be multiple, joined with " / ")
                         const strongs = container.querySelectorAll('strong[class*="totalNum"]');
                         if (strongs.length > 0) {
                             const vals = Array.from(strongs).map(s => s.innerText.trim());
@@ -291,15 +293,20 @@ class NioPowerScraper:
                             return;
                         }
 
-                        // Check for animated digit-flip counter
-                        // The flip <ul> may be in a sibling or parent div
-                        const parent = container.parentElement;
-                        const flip = parent ? parent.querySelector('.pe-biz-digit-flip') : null;
+                        // 2. Digit-flip counter within this container
+                        const flip = container.querySelector('.pe-biz-digit-flip');
                         if (flip) {
                             const digits = Array.from(flip.querySelectorAll('li'))
                                 .map(li => li.innerText.trim())
                                 .join('');
                             parts.push(label + ' ' + digits);
+                            return;
+                        }
+
+                        // 3. Any <strong> (without totalNum class)
+                        const anyStrong = container.querySelector('strong');
+                        if (anyStrong) {
+                            parts.push(label + ' ' + anyStrong.innerText.trim());
                         }
                     });
 
