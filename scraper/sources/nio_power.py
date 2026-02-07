@@ -194,9 +194,10 @@ def parse_metrics_from_text(text: str) -> Optional[NioPowerData]:
 class NioPowerScraper:
     """Scrapes NIO Power charger map for infrastructure statistics."""
 
-    def __init__(self, url: str = NIO_POWER_URL, settle_seconds: int = 5):
+    def __init__(self, url: str = NIO_POWER_URL, max_wait: int = 30, poll_interval: int = 2):
         self.url = url
-        self.settle_seconds = settle_seconds
+        self.max_wait = max_wait
+        self.poll_interval = poll_interval
 
     def scrape(self) -> Optional[NioPowerData]:
         """Scrape NIO Power charger map and return parsed metrics.
@@ -241,13 +242,27 @@ class NioPowerScraper:
                         "'截至' text not found after 15s, attempting extraction anyway"
                     )
 
-                # Settle wait for real-time counters to stabilize
+                # Poll until animated counters stabilize (stop changing)
                 import time
 
-                time.sleep(self.settle_seconds)
+                prev_text = ""
+                stable = False
+                elapsed = 0
+                while elapsed < self.max_wait:
+                    time.sleep(self.poll_interval)
+                    elapsed += self.poll_interval
+                    body_text = page.evaluate("() => document.body.innerText")
+                    if body_text == prev_text:
+                        stable = True
+                        logger.info(f"Page text stabilized after {elapsed}s")
+                        break
+                    prev_text = body_text
 
-                # Extract page text
-                body_text = page.evaluate("() => document.body.innerText")
+                if not stable:
+                    logger.warning(
+                        f"Page text still changing after {self.max_wait}s, using last snapshot"
+                    )
+                    body_text = prev_text
 
                 browser.close()
 
