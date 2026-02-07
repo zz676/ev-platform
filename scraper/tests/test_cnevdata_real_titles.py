@@ -415,19 +415,15 @@ class TestExtractionWithRealTitles:
         NEV_SALES_SUMMARY_TITLES,
         ids=[t[0][:50] for t in NEV_SALES_SUMMARY_TITLES],
     )
-    def test_nev_sales_summary_date_ranges(
+    def test_nev_sales_summary_data_table_skips_extraction(
         self, title, published_date, expected_start, expected_end
     ):
+        """'Data table:' titles have no numeric value — extraction should
+        return failure so the article falls through to OCR instead of
+        making a doomed API call with missing retailSales."""
         result = self._classify_and_extract(title, published_date=published_date)
-        assert result is not None, f"Extraction returned None for '{title}'"
-        assert result.success, f"Extraction failed for '{title}': {result.error}"
-        assert result.table_name == "NevSalesSummary"
-        assert result.data["startDate"] == expected_start
-        assert result.data["endDate"] == expected_end
-        # "Data table:" titles have no value - retailSales is optional
-        # When present, it should be a positive number
-        if "retailSales" in result.data:
-            assert result.data["retailSales"] > 0
+        assert result is not None
+        assert not result.success
 
     def test_via_index_unit_is_percent(self):
         result = self._classify_and_extract(
