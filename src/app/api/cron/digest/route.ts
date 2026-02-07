@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { PostStatus } from "@prisma/client";
-import { postTweet, uploadMedia } from "@/lib/twitter";
+import { postTweet, uploadMedia, isImageUrlAccessible } from "@/lib/twitter";
 import { generatePostImage } from "@/lib/ai";
 import { POSTING_CONFIG } from "@/lib/config/posting";
 import { generateFullDigestTweet } from "@/lib/llm/digest";
@@ -150,17 +150,28 @@ export async function GET(request: NextRequest) {
       console.log(`[Digest] Top post originalMediaUrls: ${JSON.stringify(topPost.originalMediaUrls || [])}`);
 
       try {
-        // Priority 1: Use cardImageUrl (AI-generated or good-ratio original)
+        // Priority 1: Use cardImageUrl (AI-generated or good-ratio original) - but validate accessibility first
         if (topPost.cardImageUrl) {
-          imageUrl = topPost.cardImageUrl;
           const isOriginal = topPost.originalMediaUrls?.includes(topPost.cardImageUrl);
-          imageSource = isOriginal ? "scraped" : "ai-generated";
-          console.log(`[Digest] Using existing cardImageUrl: ${imageUrl}`);
-          console.log(`[Digest] Image source determined as: ${imageSource}`);
+          const potentialSource = isOriginal ? "scraped" : "ai-generated";
+          console.log(`[Digest] Checking cardImageUrl accessibility: ${topPost.cardImageUrl}`);
+          
+          // Validate that the image URL is actually accessible (especially for scraped Weibo images)
+          const isAccessible = await isImageUrlAccessible(topPost.cardImageUrl);
+          
+          if (isAccessible) {
+            imageUrl = topPost.cardImageUrl;
+            imageSource = potentialSource;
+            console.log(`[Digest] Using existing cardImageUrl: ${imageUrl}`);
+            console.log(`[Digest] Image source determined as: ${imageSource}`);
+          } else {
+            console.log(`[Digest] cardImageUrl is not accessible (likely blocked Weibo image), falling back to AI generation`);
+          }
         }
-        // Priority 2: Generate AI image
-        else {
-          console.log("[Digest] No cardImageUrl, generating AI image...");
+        
+        // Priority 2: Generate AI image (also used as fallback when cardImageUrl is inaccessible)
+        if (!imageUrl) {
+          console.log("[Digest] Generating AI image...");
           imageUrl = await generatePostImage(
             topPost.translatedTitle || topPost.originalTitle || "EV Juice Digest",
             topPost.translatedSummary || "",
