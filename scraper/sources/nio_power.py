@@ -242,27 +242,48 @@ class NioPowerScraper:
                         "'截至' text not found after 15s, attempting extraction anyway"
                     )
 
-                # Poll until animated counters stabilize (stop changing)
+                # Wait for digit-flip animations to complete.
+                # Counters use <li> elements inside .pe-biz-digit-flip;
+                # animating digits have class="refresh". Wait until none remain.
                 import time
 
-                prev_text = ""
-                stable = False
                 elapsed = 0
                 while elapsed < self.max_wait:
+                    refresh_count = page.evaluate(
+                        "() => document.querySelectorAll('li.refresh').length"
+                    )
+                    if refresh_count == 0:
+                        logger.info(
+                            f"All digit-flip animations complete after {elapsed}s"
+                        )
+                        break
                     time.sleep(self.poll_interval)
                     elapsed += self.poll_interval
-                    body_text = page.evaluate("() => document.body.innerText")
-                    if body_text == prev_text:
-                        stable = True
-                        logger.info(f"Page text stabilized after {elapsed}s")
-                        break
-                    prev_text = body_text
-
-                if not stable:
+                else:
                     logger.warning(
-                        f"Page text still changing after {self.max_wait}s, using last snapshot"
+                        f"Still {refresh_count} animating digits after {self.max_wait}s"
                     )
-                    body_text = prev_text
+
+                # Extra settle for any trailing CSS transitions
+                time.sleep(2)
+
+                # Extract text — read digit-flip counters structurally,
+                # then append full innerText for labels/timestamps.
+                # Each counter: <div> <h6>label</h6> ... <ul.pe-biz-digit-flip> <li>digit</li>... </ul> </div>
+                body_text = page.evaluate("""() => {
+                    let parts = [];
+                    document.querySelectorAll('.pe-biz-digit-flip').forEach(ul => {
+                        const section = ul.closest('div')?.parentElement;
+                        const h6 = section ? section.querySelector('h6') : null;
+                        if (h6) {
+                            const digits = Array.from(ul.querySelectorAll('li'))
+                                .map(li => li.innerText.trim())
+                                .join('');
+                            parts.push(h6.innerText + ' ' + digits);
+                        }
+                    });
+                    return parts.join('\\n') + '\\n' + document.body.innerText;
+                }""")
 
                 browser.close()
 
