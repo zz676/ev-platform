@@ -147,17 +147,31 @@ def parse_metrics_from_text(text: str) -> Optional[NioPowerData]:
     if third_party_usage is None:
         third_party_usage = find_float_after("蔚来能源充电桩电量第三方用户占比", text)
 
-    # Parse charging stations / piles (slash-separated)
+    # Parse charging stations / piles
+    # Try slash-separated format first ("X / Y" from legacy layout),
+    # then individual labels (current layout has separate <h6> elements).
+    # Note: "蔚来能源充电桩" is a prefix of "蔚来能源充电桩电量第三方用户占比"
+    # so we use the more specific label with unit suffix to avoid false matches.
     charging_stations = None
     charging_piles = None
     slash_result = find_slash_numbers("蔚来能源充电站", text)
+    if not slash_result:
+        slash_result = find_slash_numbers("充电站", text)
     if slash_result:
         charging_stations, charging_piles = slash_result
     else:
-        # Try alternate label
-        slash_result = find_slash_numbers("充电站", text)
-        if slash_result:
-            charging_stations, charging_piles = slash_result
+        charging_stations = find_number_after("蔚来能源充电站", text)
+        # Use label+unit "充电桩\n" or match right before 座/个/根 unit
+        charging_piles = find_number_after("蔚来能源充电桩 ", text)
+        if charging_piles is None:
+            # Try matching "蔚来能源充电桩" followed immediately by a number
+            # but NOT followed by "电量" (which is the usage-percent label)
+            match = re.search(r"蔚来能源充电桩(?!电量)[\s\S]{0,20}?([\d,]+)", text)
+            if match:
+                try:
+                    charging_piles = int(match.group(1).replace(",", ""))
+                except ValueError:
+                    pass
 
     # Count missing required fields
     required = [
@@ -267,11 +281,23 @@ class NioPowerScraper:
                 # Extra settle for any trailing CSS transitions
                 time.sleep(2)
 
-                # Extract text — read digit-flip counters structurally,
-                # then append full innerText for labels/timestamps.
-                # Each counter: <div> <h6>label</h6> ... <ul.pe-biz-digit-flip> <li>digit</li>... </ul> </div>
+                # Extract metrics structurally from the DOM.
+                # Two rendering patterns:
+                #   Static:   <h6>label</h6> <strong class="totalNum-JpRDD">3,729</strong>
+                #   Animated: <h6>label</h6> <ul class="pe-biz-digit-flip"> <li>d</li>... </ul>
                 body_text = page.evaluate("""() => {
                     let parts = [];
+
+                    // 1. Static values: <strong class="totalNum-JpRDD">
+                    document.querySelectorAll('strong[class*="totalNum"]').forEach(el => {
+                        const parent = el.closest('div');
+                        const h6 = parent ? parent.querySelector('h6') : null;
+                        if (h6) {
+                            parts.push(h6.innerText.trim() + ' ' + el.innerText.trim());
+                        }
+                    });
+
+                    // 2. Animated digit-flip: <ul class="pe-biz-digit-flip">
                     document.querySelectorAll('.pe-biz-digit-flip').forEach(ul => {
                         const section = ul.closest('div')?.parentElement;
                         const h6 = section ? section.querySelector('h6') : null;
@@ -279,9 +305,11 @@ class NioPowerScraper:
                             const digits = Array.from(ul.querySelectorAll('li'))
                                 .map(li => li.innerText.trim())
                                 .join('');
-                            parts.push(h6.innerText + ' ' + digits);
+                            parts.push(h6.innerText.trim() + ' ' + digits);
                         }
                     });
+
+                    // Prepend structured data, then full page text for timestamp etc.
                     return parts.join('\\n') + '\\n' + document.body.innerText;
                 }""")
 
