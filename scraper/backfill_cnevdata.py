@@ -23,7 +23,6 @@ Usage:
 """
 
 import argparse
-import hashlib
 import json
 import os
 import random
@@ -43,26 +42,12 @@ from sources.cnevdata import CnEVDataSource, CnEVDataArticle
 from extractors import TitleParser, SummaryParser, ArticleClassifier, ImageOCR
 from extractors.industry_extractor import IndustryDataExtractor
 from api_client import EVPlatformAPI
-from config import BACKFILL_CONFIG, WEBHOOK_URL, WEBHOOK_SECRET, API_BASE_URL
+from config import BACKFILL_CONFIG, API_BASE_URL
 
 load_dotenv()
 
 # Checkpoint file
 CHECKPOINT_FILE = os.path.join(os.path.dirname(__file__), ".cnevdata_checkpoint.json")
-
-
-# Chart article types that should be stored as news posts
-CHART_ARTICLE_TYPES = {
-    "CHINA_VIA_INDEX",
-    "CHINA_PASSENGER_INVENTORY",
-    "CPCA_NEV_PRODUCTION",
-    "CPCA_NEV_RETAIL",
-    "CAAM_NEV_SALES",
-    "CHINA_BATTERY_INSTALLATION",
-    "PLANT_EXPORTS",
-    "CHINA_DEALER_INVENTORY_FACTOR",
-    "BATTERY_MAKER_MONTHLY",
-}
 
 
 class BackfillStats:
@@ -78,8 +63,6 @@ class BackfillStats:
         self.metrics_failed = 0
         self.ocr_needed = 0
         self.ocr_processed = 0
-        self.posts_submitted = 0
-        self.posts_failed = 0
         self.errors = []
         # Industry data stats
         self.industry_classified = 0
@@ -99,8 +82,6 @@ class BackfillStats:
             "metrics_failed": self.metrics_failed,
             "ocr_needed": self.ocr_needed,
             "ocr_processed": self.ocr_processed,
-            "posts_submitted": self.posts_submitted,
-            "posts_failed": self.posts_failed,
             "industry_classified": self.industry_classified,
             "industry_extracted": self.industry_extracted,
             "industry_submitted": self.industry_submitted,
@@ -123,8 +104,6 @@ class BackfillStats:
         print(f"Metrics failed: {self.metrics_failed}")
         print(f"OCR needed: {self.ocr_needed}")
         print(f"OCR processed: {self.ocr_processed}")
-        print(f"Posts submitted: {self.posts_submitted}")
-        print(f"Posts failed: {self.posts_failed}")
         print(f"Errors: {len(self.errors)}")
         # Industry data summary
         print("\n--- Industry Data ---")
@@ -224,97 +203,6 @@ def submit_metrics_to_api(metrics: list[dict], dry_run: bool = False, stats: Bac
         stats.metrics_failed += fail_count
 
     return (success_count, fail_count)
-
-
-def submit_as_post(
-    article: CnEVDataArticle,
-    stats: BackfillStats,
-    dry_run: bool = False,
-) -> bool:
-    """Submit a CnEVData article as a Post entry via the webhook.
-
-    This makes chart articles visible in the news feed with their images.
-    Posts are created with relevanceScore=30 (PENDING status, requires manual approval).
-
-    Args:
-        article: CnEVDataArticle to submit
-        stats: BackfillStats tracker
-        dry_run: If True, don't actually submit
-
-    Returns:
-        True if submitted successfully, False otherwise
-    """
-    # Only submit articles with preview images and industry-type classification
-    if not article.preview_image:
-        print(f"    -> Skipping post (no preview image)")
-        return False
-    if article.article_type not in CHART_ARTICLE_TYPES:
-        return False
-
-    if dry_run:
-        print(f"    [DRY RUN] Would submit as news post: {article.title[:50]}")
-        stats.posts_submitted += 1
-        return True
-
-    # Build webhook payload
-    post_data = {
-        "sourceId": article.url_hash,
-        "source": "MEDIA",
-        "sourceUrl": article.url,
-        "sourceAuthor": "CnEVData",
-        "sourceDate": article.published_at.isoformat() if article.published_at else datetime.now().isoformat(),
-        "originalTitle": article.title,
-        "originalContent": article.summary or article.title,
-        "originalMediaUrls": [article.preview_image],
-        "relevanceScore": 30,  # Low score -> PENDING status, requires manual approval
-    }
-
-    payload = {
-        "posts": [post_data],
-        "batchId": f"cnevdata-backfill-{article.url_hash[:8]}",
-    }
-
-    try:
-        # Build webhook URL and sign the request
-        webhook_url = WEBHOOK_URL
-        payload_str = json.dumps(payload)
-
-        headers = {"Content-Type": "application/json"}
-        if WEBHOOK_SECRET:
-            import hmac as hmac_mod
-            signature = hmac_mod.new(
-                WEBHOOK_SECRET.encode(),
-                payload_str.encode(),
-                hashlib.sha256,
-            ).hexdigest()
-            headers["x-webhook-signature"] = signature
-
-        response = httpx.post(
-            webhook_url,
-            content=payload_str,
-            headers=headers,
-            timeout=30,
-        )
-
-        if response.is_success:
-            result = response.json()
-            created = result.get("results", {}).get("created", 0)
-            skipped = result.get("results", {}).get("skipped", 0)
-            if created > 0:
-                stats.posts_submitted += 1
-                print(f"    -> Submitted as news post (created)")
-            elif skipped > 0:
-                print(f"    -> News post already exists (skipped)")
-            return True
-        else:
-            stats.posts_failed += 1
-            print(f"    -> Failed to submit as post: {response.status_code}: {response.text[:200]}")
-            return False
-
-    except Exception as e:
-        stats.posts_failed += 1
-        print(f"    -> Error submitting as post: {e}")
-        return False
 
 
 def process_industry_data(
@@ -562,10 +450,6 @@ def backfill_pages(
                         stats=stats,
                         dry_run=dry_run,
                     )
-
-                    # Submit chart articles as news posts (visible in news feed with image)
-                    if article.preview_image and article.article_type in CHART_ARTICLE_TYPES:
-                        submit_as_post(article, stats, dry_run)
 
                     # If no metrics or industry data, check if OCR is needed
                     if not metrics and not industry_extracted:

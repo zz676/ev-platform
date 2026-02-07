@@ -190,7 +190,7 @@ The classifier routes articles to specialized tables based on their content type
 
 Articles are classified with an explicit `ocr_data_type` field that distinguishes chart images (skip OCR) from table images (do OCR):
 
-**Chart-type articles** (`ocr_data_type="chart"`) — OCR skipped, stored as news posts with image:
+**Chart-type articles** (`ocr_data_type="chart"`) — OCR skipped, data extracted from title:
 
 | Type | Example Title | Target Table |
 |------|---------------|--------------|
@@ -216,34 +216,11 @@ Articles are classified with an explicit `ocr_data_type` field that distinguishe
 
 ## Industry Data Pipeline Integration
 
-### Dual-Write Architecture
+### Architecture
 
-The scraper uses a dual-write approach where articles are:
-1. Routed to specialized **industry data tables** (structured data flow, title parsing + optional OCR)
-2. **AND** chart-type articles are submitted as **Post entries** via webhook (news feed with chart image)
+The scraper routes articles to specialized **industry data tables** via title parsing and optional OCR. Chart-type articles have their key data point extracted from the title; table-type articles use OCR for structured data extraction.
 
-Chart articles are submitted with `relevanceScore=30` (PENDING status, requires manual approval) so they appear in the news feed with the chart image visible.
-
-**Image URL Normalization**: The source adapter normalizes preview image URLs before submission. CnEVData images may be extracted as relative paths (e.g. `/uploads/chart.jpg`), which would fail the webhook's `z.string().url()` validation. The adapter prepends the `base_url` (`https://cnevdata.com`) to relative paths, matching the existing article URL normalization pattern.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    DUAL-WRITE PIPELINE                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌─────────────┐     ┌─────────────────────────────────────┐   │
-│  │   Scrape    │ ──▶ │  Classify & Extract Industry Data   │   │
-│  │   Articles  │     │  (12 specialized tables)            │   │
-│  └──────┬──────┘     └─────────────────────────────────────┘   │
-│         │                                                        │
-│         │            ┌─────────────────────────────────────┐   │
-│         └──────────▶ │  Chart articles → Submit as Post    │   │
-│                      │  (news feed with chart image)       │   │
-│                      │  relevanceScore=30 → PENDING        │   │
-│                      └─────────────────────────────────────┘   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Image URL Normalization**: The source adapter normalizes preview image URLs (used by OCR and industry extraction). CnEVData images may be extracted as relative paths (e.g. `/uploads/chart.jpg`). The adapter prepends the `base_url` (`https://cnevdata.com`) to relative paths, matching the existing article URL normalization pattern.
 
 ### New Components
 
@@ -288,7 +265,7 @@ Each table has a POST endpoint for data submission:
 
 ### Pipeline Stats
 
-The scraper tracks industry data processing and news post creation:
+The scraper tracks industry data processing:
 
 ```
 Industry Data:
@@ -298,13 +275,7 @@ Industry Data:
   Submitted: 2 records
   Errors: 0
   By Table: {'BatteryMakerMonthly': 1, 'ChinaViaIndex': 1}
-
-News Posts:
-  Posts submitted: 2
-  Posts failed: 0
 ```
-
-Post submission failures log the full HTTP response body (up to 200 chars) and untruncated exception messages for debugging.
 
 ---
 
@@ -361,7 +332,7 @@ Not all images benefit from OCR. The classifier sets `ocr_data_type` to distingu
 | **Trend tables** | `"trend"` | **Skipped** | Trend diagrams are line/bar charts disguised as tables; GPT-4o Vision gives inaccurate values |
 | **Vehicle specs** | `"specs"` | Extracted | Structured specification text |
 
-Chart articles (VIA Index, Passenger Inventory, CPCA Production, etc.) are instead stored as news posts with the chart image visible in the feed.
+Chart articles (VIA Index, Passenger Inventory, CPCA Production, etc.) have their key data point extracted from the title into dedicated industry tables.
 
 ### Parallel OCR Processing
 
@@ -571,9 +542,9 @@ scraper/
 ├── api_client.py             # HTTP client for industry APIs (NEW)
 ├── backfill_cnevdata.py      # Historical backfill script
 ├── config.py                 # Configuration (API_BASE_URL added)
-├── main.py                   # Entry point (dual-write pipeline)
+├── main.py                   # Entry point (industry data pipeline)
 └── tests/
-    ├── test_cnevdata_posts.py    # Image URL normalization & post submission tests
+    ├── test_cnevdata_posts.py    # Image URL normalization tests
     └── ...
 
 src/app/api/
