@@ -226,14 +226,15 @@ class NioPowerScraper:
                 )
                 page = context.new_page()
 
-                # Load the page
-                page.goto(self.url, wait_until="networkidle", timeout=30000)
+                # Load the page — use domcontentloaded instead of networkidle
+                # because this SPA has persistent connections that never go idle
+                page.goto(self.url, wait_until="domcontentloaded", timeout=30000)
 
                 # Wait for the "截至" text to appear (indicates data loaded)
                 try:
                     page.wait_for_function(
                         "document.body.innerText.includes('截至')",
-                        timeout=15000,
+                        timeout=30000,
                     )
                 except Exception:
                     logger.warning(
