@@ -354,7 +354,7 @@ Not all images benefit from OCR. The classifier sets `ocr_data_type` to distingu
 |------------|-----------------|------------|-----------|
 | **Line/bar charts** | `"chart"` | **Skipped** | GPT-4o Vision approximates pixel positions, giving inaccurate values. Key data point is in the title. |
 | **Rankings tables** | `"rankings"` | Extracted | Discrete text values are read accurately |
-| **Trend tables** | `"trend"` | Extracted | Tabular data with date ranges and values |
+| **Trend tables** | `"trend"` | **Skipped** | Trend diagrams are line/bar charts disguised as tables; GPT-4o Vision gives inaccurate values |
 | **Vehicle specs** | `"specs"` | Extracted | Structured specification text |
 
 Chart articles (VIA Index, Passenger Inventory, CPCA Production, etc.) are instead stored as news posts with the chart image visible in the feed.
@@ -367,7 +367,7 @@ OCR calls are batched and processed in parallel for performance:
 |---------|-------|-------------|
 | `ocr_concurrency` | 5 | Max parallel OCR calls |
 | Batch trigger | End of each page | Process queued articles together |
-| OCR filter | `ocr_data_type in ("rankings", "trend", "specs")` | Skip chart images |
+| OCR filter | `ocr_data_type in ("rankings", "specs")` | Skip charts and trend diagrams |
 
 This reduces scraping time from ~5.5 min to ~1-2 min for 3 pages (3x faster).
 
@@ -376,7 +376,7 @@ This reduces scraping time from ~5.5 min to ~1-2 min for 3 pages (3x faster).
 Two layers of filtering determine whether OCR runs:
 
 1. **Title number check**: `needs_ocr = not has_number` — if the title has a significant number (4+ digits or comma-separated), OCR is skipped.
-2. **OCR type filter**: `process_ocr_batch()` only processes articles with `ocr_data_type` in `("rankings", "trend", "specs")`. Chart-type articles (`ocr_data_type="chart"`) are always skipped regardless of `needs_ocr`.
+2. **OCR type filter**: `process_ocr_batch()` only processes articles with `ocr_data_type` in `("rankings", "specs")`. Chart-type articles (`ocr_data_type="chart"`) and trend diagrams (`ocr_data_type="trend"`) are always skipped — trend diagrams are visually similar to charts and GPT-4o Vision gives inaccurate values for them.
 
 ```python
 # Layer 1: Title-based (in classifier)
@@ -384,7 +384,7 @@ has_number = bool(re.search(r'\d{1,3}(?:,\d{3})+|\d{4,}', title))
 needs_ocr = not has_number
 
 # Layer 2: Type-based (in process_ocr_batch)
-OCR_ELIGIBLE_TYPES = {"rankings", "trend", "specs"}
+OCR_ELIGIBLE_TYPES = {"rankings", "specs"}
 ocr_articles = [a for a in articles if a.ocr_data_type in OCR_ELIGIBLE_TYPES]
 ```
 
@@ -542,8 +542,10 @@ on:
         default: false
       enable_ocr:
         type: boolean
-        default: false
+        default: true
 ```
+
+**Note**: OCR is enabled by default for both scheduled and manual runs. Scheduled runs always pass `--enable-ocr` to extract tabular data from rankings and specs images.
 
 ---
 
