@@ -112,4 +112,5 @@ BACKFILL_CONFIG = {
     "max_retries": 3,
     "resume_from_last": True,   # Support checkpoint resume
     "ocr_concurrency": 5,       # Parallel OCR limit
+    "article_concurrency": 10,  # Parallel article processing workers
 }
