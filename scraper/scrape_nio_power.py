@@ -52,6 +52,18 @@ def main():
     print(f"  Third-party piles:      {data.third_party_piles:,}")
     print(f"  Third-party usage:      {data.third_party_usage_percent}%")
 
+    # Sanity check: cumulative counters should be in the millions,
+    # stations/piles in the thousands. Reject mid-animation garbage.
+    if data.cumulative_swaps < 1_000_000:
+        print(f"\nFAILED: cumulativeSwaps={data.cumulative_swaps:,} looks like mid-animation data")
+        sys.exit(1)
+    if data.cumulative_charges < 1_000_000:
+        print(f"\nFAILED: cumulativeCharges={data.cumulative_charges:,} looks like mid-animation data")
+        sys.exit(1)
+    if data.swap_stations < 100:
+        print(f"\nFAILED: swapStations={data.swap_stations} looks like mid-animation data")
+        sys.exit(1)
+
     # Submit or dry-run
     if args.dry_run:
         print("\n[DRY RUN] Skipping API submission")
