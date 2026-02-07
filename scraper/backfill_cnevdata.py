@@ -412,9 +412,9 @@ def process_ocr_batch(
     if not articles:
         return {}
 
-    # Filter out chart-type articles — OCR is inaccurate for line/bar charts.
-    # Only OCR articles with table-like data (rankings, trend tables, specs).
-    OCR_ELIGIBLE_TYPES = {"rankings", "trend", "specs"}
+    # Filter out chart/trend diagram articles — OCR is inaccurate for line/bar charts.
+    # Only OCR articles with table-like data (rankings tables, specs tables).
+    OCR_ELIGIBLE_TYPES = {"rankings", "specs"}
     ocr_articles = [a for a in articles if a.ocr_data_type in OCR_ELIGIBLE_TYPES]
     skipped = len(articles) - len(ocr_articles)
     if skipped > 0:

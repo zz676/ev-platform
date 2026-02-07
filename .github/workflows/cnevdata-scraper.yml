@@ -20,7 +20,7 @@ on:
       enable_ocr:
         description: 'Enable OCR for image tables'
         required: false
-        default: 'false'
+        default: 'true'
         type: boolean
 
 jobs:
@@ -55,7 +55,8 @@ jobs:
           cd scraper
           python backfill_cnevdata.py \
             --pages 1-3 \
-            --batch-size 3
+            --batch-size 3 \
+            --enable-ocr
 
       - name: Run CnEVData scraper (manual)
         if: github.event_name == 'workflow_dispatch'
