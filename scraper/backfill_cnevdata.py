@@ -246,6 +246,7 @@ def submit_as_post(
     """
     # Only submit articles with preview images and industry-type classification
     if not article.preview_image:
+        print(f"    -> Skipping post (no preview image)")
         return False
     if article.article_type not in CHART_ARTICLE_TYPES:
         return False
@@ -307,12 +308,12 @@ def submit_as_post(
             return True
         else:
             stats.posts_failed += 1
-            print(f"    -> Failed to submit as post: {response.status_code}")
+            print(f"    -> Failed to submit as post: {response.status_code}: {response.text[:200]}")
             return False
 
     except Exception as e:
         stats.posts_failed += 1
-        print(f"    -> Error submitting as post: {str(e)[:50]}")
+        print(f"    -> Error submitting as post: {e}")
         return False
 
 

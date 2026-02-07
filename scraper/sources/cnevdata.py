@@ -213,7 +213,14 @@ class CnEVDataSource:
             img_elem = elem.select_one('img')
             preview_image = None
             if img_elem:
-                preview_image = img_elem.get('src') or img_elem.get('data-src')
+                raw_url = img_elem.get('src') or img_elem.get('data-src')
+                if raw_url:
+                    if raw_url.startswith('http'):
+                        preview_image = raw_url
+                    elif raw_url.startswith('/'):
+                        preview_image = f"{self.base_url}{raw_url}"
+                    else:
+                        preview_image = f"{self.base_url}/{raw_url}"
 
             # Classify the article
             classification = self.classifier.classify(title, summary or "")

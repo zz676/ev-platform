@@ -1,6 +1,6 @@
 # CnEVData Scraper & EV Sales Data Pipeline
 
-> **Last Updated**: February 6, 2026
+> **Last Updated**: February 7, 2026
 > **Status**: Implemented
 
 ## Overview
@@ -224,6 +224,8 @@ The scraper uses a dual-write approach where articles are:
 
 Chart articles are submitted with `relevanceScore=30` (PENDING status, requires manual approval) so they appear in the news feed with the chart image visible.
 
+**Image URL Normalization**: The source adapter normalizes preview image URLs before submission. CnEVData images may be extracted as relative paths (e.g. `/uploads/chart.jpg`), which would fail the webhook's `z.string().url()` validation. The adapter prepends the `base_url` (`https://cnevdata.com`) to relative paths, matching the existing article URL normalization pattern.
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    DUAL-WRITE PIPELINE                          │
@@ -301,6 +303,8 @@ News Posts:
   Posts submitted: 2
   Posts failed: 0
 ```
+
+Post submission failures log the full HTTP response body (up to 200 chars) and untruncated exception messages for debugging.
 
 ---
 
@@ -567,7 +571,10 @@ scraper/
 ├── api_client.py             # HTTP client for industry APIs (NEW)
 ├── backfill_cnevdata.py      # Historical backfill script
 ├── config.py                 # Configuration (API_BASE_URL added)
-└── main.py                   # Entry point (dual-write pipeline)
+├── main.py                   # Entry point (dual-write pipeline)
+└── tests/
+    ├── test_cnevdata_posts.py    # Image URL normalization & post submission tests
+    └── ...
 
 src/app/api/
 ├── ev-metrics/
