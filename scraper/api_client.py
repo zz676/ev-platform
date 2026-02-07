@@ -45,6 +45,22 @@ class EVPlatformAPI:
     # Tables that are industry-level (new tables)
     INDUSTRY_TABLES = set(TABLE_TO_ENDPOINT.keys()) - {"EVMetric", "VehicleSpec"}
 
+    # Required fields per table, matching API endpoint validation
+    REQUIRED_FIELDS = {
+        "ChinaBatteryInstallation": ["year", "month", "installation", "sourceUrl", "sourceTitle"],
+        "CaamNevSales": ["year", "month", "value", "sourceUrl", "sourceTitle"],
+        "ChinaDealerInventoryFactor": ["year", "month", "value", "sourceUrl", "sourceTitle"],
+        "CpcaNevRetail": ["year", "month", "value", "sourceUrl", "sourceTitle"],
+        "CpcaNevProduction": ["year", "month", "value", "sourceUrl", "sourceTitle"],
+        "ChinaViaIndex": ["year", "month", "value", "sourceUrl", "sourceTitle"],
+        "ChinaPassengerInventory": ["year", "month", "value", "sourceUrl", "sourceTitle"],
+        "BatteryMakerMonthly": ["maker", "year", "month", "installation", "sourceUrl", "sourceTitle"],
+        "PlantExports": ["plant", "brand", "year", "month", "value", "sourceUrl", "sourceTitle"],
+        "NevSalesSummary": ["year", "startDate", "endDate", "retailSales", "sourceUrl", "sourceTitle"],
+        "AutomakerRankings": ["year", "month", "ranking", "automaker", "value", "sourceUrl", "sourceTitle"],
+        "BatteryMakerRankings": ["year", "month", "ranking", "maker", "value", "sourceUrl", "sourceTitle"],
+    }
+
     def __init__(self, base_url: str, timeout: int = 30):
         """Initialize the API client.
 
@@ -89,6 +105,15 @@ class EVPlatformAPI:
 
             # Remove internal fields (start with _)
             clean_data = {k: v for k, v in data.items() if not k.startswith("_")}
+
+            # Validate required fields before making HTTP call
+            required = self.REQUIRED_FIELDS.get(table_name)
+            if required:
+                missing = [f for f in required if f not in clean_data or clean_data[f] is None]
+                if missing:
+                    error_msg = f"Missing required fields for {table_name}: {', '.join(missing)}"
+                    logger.error(error_msg)
+                    return APIResponse(success=False, status_code=0, error=error_msg)
 
             logger.info(f"Submitting to {endpoint}: {json.dumps(clean_data)[:200]}...")
 
