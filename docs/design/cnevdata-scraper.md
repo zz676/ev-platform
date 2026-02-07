@@ -17,6 +17,7 @@ A data pipeline to scrape EV sales/delivery data from cnevdata.com, storing stru
 | **Anti-Detection** | User-Agent rotation, random delays, rate limiting |
 | **Deduplication** | Track scraped articles to prevent duplicate processing |
 | **Historical Backfill** | Batch scraping with checkpoint resume support |
+| **Parallel Processing** | Concurrent article processing with configurable worker count |
 
 ---
 
@@ -314,7 +315,7 @@ CNEVDATA_CONFIG = {
 | Weekly article limit | 100 | Stay under detection threshold |
 | Batch delay | 1 minute | Short pause between page batches |
 | Page delay | 3-8 seconds | Random delay between pages |
-| Article delay | 1-3 seconds | Random delay between articles |
+| Article concurrency | 10 workers | Parallel article processing (own API only) |
 | Exponential backoff | 2x on 429/503 | Handle rate limiting gracefully |
 
 ---
@@ -463,16 +464,36 @@ BACKFILL_CONFIG = {
     "batch_size": 10,           # Pages per batch
     "batch_delay": 60,          # 1 minute between batches
     "page_delay": (3, 8),       # 3-8 seconds between pages
-    "article_delay": (1, 3),    # 1-3 seconds between articles
+    "article_delay": (1, 3),    # Per-article delay (used in sequential mode)
     "ocr_concurrency": 5,       # Parallel OCR limit
+    "article_concurrency": 10,  # Parallel article processing workers
 }
 ```
+
+### Parallel Article Processing
+
+Page fetches remain sequential (anti-detection for cnevdata.com), but article processing within each page runs in parallel using `ThreadPoolExecutor`. Article processing only hits our own API (Vercel), so parallelization is safe.
+
+| Setting | Default | CLI Flag | Description |
+|---------|---------|----------|-------------|
+| `article_concurrency` | 10 | `--concurrency` | Number of parallel workers per page |
+
+**Speedup example (10 pages, ~200 articles):**
+
+| Phase | Sequential | Parallel (10 workers) |
+|-------|-----------|----------------------|
+| Page fetches | 55s | 55s (unchanged) |
+| Article processing | ~400s | ~15s |
+| Batch delay | 60s | 60s (unchanged) |
+| **Total** | **~8.5 min** | **~2 min** |
+
+Use `--concurrency 1` to fall back to sequential processing.
 
 ### Phased Approach
 
 | Phase | Pages | Duration | Method |
 |-------|-------|----------|--------|
-| 1. Recent data | 1-10 | Same day | Manual run (~3-4 min) |
+| 1. Recent data | 1-10 | Same day | Manual run (~2 min) |
 | 2. Mid-term | 11-50 | 1-2 days | 20 pages/batch |
 | 3. Historical | 51-120 | 3-5 days | GitHub Actions |
 
@@ -518,6 +539,9 @@ on:
       enable_ocr:
         type: boolean
         default: true
+      concurrency:
+        description: 'Parallel article processing workers'
+        default: '10'
 ```
 
 **Note**: OCR is enabled by default for both scheduled and manual runs. Scheduled runs always pass `--enable-ocr` to extract tabular data from rankings and specs images.
@@ -624,8 +648,14 @@ This ensures:
 ### Integration Test
 
 ```bash
-# Dry run scraper
+# Dry run scraper (parallel, default 10 workers)
 python scraper/backfill_cnevdata.py --pages 1-2 --dry-run
+
+# Dry run with sequential fallback
+python scraper/backfill_cnevdata.py --pages 1-2 --dry-run --concurrency 1
+
+# Custom concurrency
+python scraper/backfill_cnevdata.py --pages 1-5 --concurrency 5
 ```
 
 ### Database Verification

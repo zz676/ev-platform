@@ -27,6 +27,7 @@ import json
 import os
 import random
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -51,9 +52,10 @@ CHECKPOINT_FILE = os.path.join(os.path.dirname(__file__), ".cnevdata_checkpoint.
 
 
 class BackfillStats:
-    """Track backfill statistics."""
+    """Track backfill statistics (thread-safe)."""
 
     def __init__(self):
+        self._lock = threading.Lock()
         self.start_time = datetime.now()
         self.pages_processed = 0
         self.articles_found = 0
@@ -70,6 +72,21 @@ class BackfillStats:
         self.industry_submitted = 0
         self.industry_failed = 0
         self.industry_by_table = {}
+
+    def increment(self, field: str, amount: int = 1):
+        """Thread-safe increment of a counter field."""
+        with self._lock:
+            setattr(self, field, getattr(self, field) + amount)
+
+    def increment_table(self, table: str, amount: int = 1):
+        """Thread-safe increment of industry_by_table counter."""
+        with self._lock:
+            self.industry_by_table[table] = self.industry_by_table.get(table, 0) + amount
+
+    def add_error(self, error: str):
+        """Thread-safe append to errors list."""
+        with self._lock:
+            self.errors.append(error)
 
     def to_dict(self) -> dict:
         return {
@@ -199,8 +216,8 @@ def submit_metrics_to_api(metrics: list[dict], dry_run: bool = False, stats: Bac
 
     # Update stats if provided
     if stats:
-        stats.metrics_submitted += success_count
-        stats.metrics_failed += fail_count
+        stats.increment("metrics_submitted", success_count)
+        stats.increment("metrics_failed", fail_count)
 
     return (success_count, fail_count)
 
@@ -238,7 +255,7 @@ def process_industry_data(
     if not EVPlatformAPI.is_industry_table(classification.target_table):
         return False
 
-    stats.industry_classified += 1
+    stats.increment("industry_classified")
 
     # Extract structured data
     result = extractor.extract(
@@ -254,7 +271,7 @@ def process_industry_data(
     if not result or not result.success:
         return False
 
-    stats.industry_extracted += 1
+    stats.increment("industry_extracted")
 
     # Skip OCR-required articles (rankings tables)
     if result.data.get("_needs_ocr"):
@@ -267,14 +284,12 @@ def process_industry_data(
 
     response = api_client.submit(classification.target_table, result.data)
     if response.success:
-        stats.industry_submitted += 1
-        stats.industry_by_table[classification.target_table] = (
-            stats.industry_by_table.get(classification.target_table, 0) + 1
-        )
+        stats.increment("industry_submitted")
+        stats.increment_table(classification.target_table)
         print(f"    -> Submitted to {classification.target_table}")
         return True
     else:
-        stats.industry_failed += 1
+        stats.increment("industry_failed")
         print(f"    -> Failed to submit to {classification.target_table}: {response.error}")
         return False
 
@@ -348,16 +363,80 @@ def process_ocr_batch(
                     print(f"    OCR usage tracked: {result.input_tokens}+{result.output_tokens} tokens, ${result.cost:.4f}{duration_str}")
 
                 if result.success and result.data:
-                    stats.ocr_processed += 1
+                    stats.increment("ocr_processed")
                     results[article.url] = result.data
                     print(f"    OCR extracted {len(result.data)} rows from {article.title[:40]}...")
                 else:
                     print(f"    OCR returned no data for {article.title[:40]}...")
             except Exception as e:
-                stats.errors.append(f"OCR error for {article.url}: {str(e)[:50]}")
+                stats.add_error(f"OCR error for {article.url}: {str(e)[:50]}")
                 print(f"    OCR error for {article.title[:40]}: {str(e)[:50]}")
 
     return results
+
+
+def process_single_article(
+    article: CnEVDataArticle,
+    source: CnEVDataSource,
+    classifier: ArticleClassifier,
+    industry_extractor: IndustryDataExtractor,
+    api_client: EVPlatformAPI,
+    stats: BackfillStats,
+    dry_run: bool,
+    enable_ocr: bool,
+) -> Optional[CnEVDataArticle]:
+    """Process a single article: extract metrics, submit data, check OCR need.
+
+    Returns the article if it needs OCR (for batch queue), else None.
+    """
+    try:
+        print(f"\n  Processing: {article.title[:60]}...")
+
+        # Extract metrics from title
+        metrics = source.extract_metrics(article)
+
+        if metrics:
+            stats.increment("metrics_extracted", len(metrics))
+            print(f"    Extracted {len(metrics)} metrics from title")
+
+            # Filter out industry-level metrics (they go to dedicated tables now)
+            brand_metrics = [m for m in metrics if m.get("brand") != "INDUSTRY"]
+            industry_metrics = [m for m in metrics if m.get("brand") == "INDUSTRY"]
+
+            if industry_metrics:
+                print(f"    Skipping {len(industry_metrics)} industry metrics (using dedicated tables)")
+
+            # Submit only brand-level metrics to EVMetric API
+            if brand_metrics:
+                submit_metrics_to_api(brand_metrics, dry_run, stats)
+
+        # Also try to extract industry data (dual-write)
+        industry_extracted = process_industry_data(
+            article=article,
+            classifier=classifier,
+            extractor=industry_extractor,
+            api_client=api_client,
+            stats=stats,
+            dry_run=dry_run,
+        )
+
+        # If no metrics or industry data, check if OCR is needed
+        needs_ocr = False
+        if not metrics and not industry_extracted:
+            if article.needs_ocr and enable_ocr and article.preview_image:
+                stats.increment("ocr_needed")
+                needs_ocr = True
+                print(f"    Queued for OCR batch processing")
+            else:
+                print(f"    No data extracted (needs_ocr={article.needs_ocr})")
+
+        stats.increment("articles_processed")
+        return article if needs_ocr else None
+
+    except Exception as e:
+        stats.add_error(f"Article {article.url}: {str(e)[:50]}")
+        print(f"    Error processing {article.title[:40]}: {str(e)[:50]}")
+        return None
 
 
 def backfill_pages(
@@ -367,6 +446,7 @@ def backfill_pages(
     dry_run: bool = False,
     enable_ocr: bool = False,
     stats: BackfillStats = None,
+    concurrency: int = None,
 ) -> list[str]:
     """Backfill articles from specified page range.
 
@@ -377,6 +457,7 @@ def backfill_pages(
         dry_run: If True, don't submit to API
         enable_ocr: If True, process images with OCR
         stats: Stats tracker
+        concurrency: Number of parallel article processing workers
 
     Returns:
         List of processed URLs
@@ -384,14 +465,18 @@ def backfill_pages(
     if stats is None:
         stats = BackfillStats()
 
+    if concurrency is None:
+        concurrency = BACKFILL_CONFIG.get("article_concurrency", 10)
+
     source = CnEVDataSource()
-    processed_urls = []
+    processed_set = set()
 
     # Initialize industry data components
     classifier = ArticleClassifier()
     industry_extractor = IndustryDataExtractor()
     api_client = EVPlatformAPI(API_BASE_URL)
     print(f"Industry data API initialized: {API_BASE_URL}")
+    print(f"Article processing concurrency: {concurrency}")
 
     # Initialize OCR if enabled
     ocr = None
@@ -413,60 +498,45 @@ def backfill_pages(
 
             try:
                 articles = source.fetch_article_list(page)
-                stats.articles_found += len(articles)
-                stats.pages_processed += 1
+                stats.increment("articles_found", len(articles))
+                stats.increment("pages_processed")
 
-                for article in articles:
-                    # Skip if already processed
-                    if article.url in processed_urls:
-                        continue
+                # Deduplicate against already-processed URLs
+                new_articles = [a for a in articles if a.url not in processed_set]
 
-                    print(f"\n  Processing: {article.title[:60]}...")
-
-                    # Extract metrics from title
-                    metrics = source.extract_metrics(article)
-
-                    if metrics:
-                        stats.metrics_extracted += len(metrics)
-                        print(f"    Extracted {len(metrics)} metrics from title")
-
-                        # Filter out industry-level metrics (they go to dedicated tables now)
-                        brand_metrics = [m for m in metrics if m.get("brand") != "INDUSTRY"]
-                        industry_metrics = [m for m in metrics if m.get("brand") == "INDUSTRY"]
-
-                        if industry_metrics:
-                            print(f"    Skipping {len(industry_metrics)} industry metrics (using dedicated tables)")
-
-                        # Submit only brand-level metrics to EVMetric API
-                        if brand_metrics:
-                            submit_metrics_to_api(brand_metrics, dry_run, stats)
-
-                    # Also try to extract industry data (dual-write)
-                    industry_extracted = process_industry_data(
-                        article=article,
-                        classifier=classifier,
-                        extractor=industry_extractor,
-                        api_client=api_client,
-                        stats=stats,
-                        dry_run=dry_run,
-                    )
-
-                    # If no metrics or industry data, check if OCR is needed
-                    if not metrics and not industry_extracted:
-                        if article.needs_ocr and enable_ocr and ocr and article.preview_image:
-                            # Queue for batch OCR processing
-                            stats.ocr_needed += 1
-                            ocr_queue.append(article)
-                            print(f"    Queued for OCR batch processing")
-                        else:
-                            print(f"    No data extracted (needs_ocr={article.needs_ocr})")
-
-                    processed_urls.append(article.url)
-                    stats.articles_processed += 1
-
-                    # Delay between articles
-                    delay = random.uniform(*BACKFILL_CONFIG["article_delay"])
-                    time.sleep(delay)
+                if not new_articles:
+                    print(f"  All {len(articles)} articles already processed, skipping")
+                elif concurrency <= 1:
+                    # Sequential fallback
+                    for article in new_articles:
+                        result = process_single_article(
+                            article, source, classifier, industry_extractor,
+                            api_client, stats, dry_run, enable_ocr,
+                        )
+                        if result:
+                            ocr_queue.append(result)
+                        processed_set.add(article.url)
+                else:
+                    # Parallel article processing
+                    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+                        futures = {
+                            executor.submit(
+                                process_single_article,
+                                article, source, classifier, industry_extractor,
+                                api_client, stats, dry_run, enable_ocr,
+                            ): article
+                            for article in new_articles
+                        }
+                        for future in as_completed(futures):
+                            article = futures[future]
+                            try:
+                                result = future.result()
+                                if result:
+                                    ocr_queue.append(result)
+                            except Exception as e:
+                                stats.add_error(f"Article {article.url}: {str(e)[:50]}")
+                                print(f"    Error processing {article.title[:40]}: {str(e)[:50]}")
+                            processed_set.add(article.url)
 
                 # Process OCR batch after each page if queue has items
                 if ocr_queue:
@@ -475,7 +545,7 @@ def backfill_pages(
 
             except Exception as e:
                 print(f"  Error on page {page}: {e}")
-                stats.errors.append(f"Page {page}: {str(e)[:50]}")
+                stats.add_error(f"Page {page}: {str(e)[:50]}")
 
             current_batch.append(page)
 
@@ -485,7 +555,7 @@ def backfill_pages(
                 print(f"\n=== Batch {batch_num} complete (pages {current_batch[0]}-{current_batch[-1]}) ===")
 
                 # Save checkpoint
-                save_checkpoint(page, processed_urls)
+                save_checkpoint(page, list(processed_set))
 
                 # Delay between batches
                 if page < end_page:
@@ -502,9 +572,9 @@ def backfill_pages(
 
     finally:
         source.close()
-        save_checkpoint(end_page, processed_urls)
+        save_checkpoint(end_page, list(processed_set))
 
-    return processed_urls
+    return list(processed_set)
 
 
 def main():
@@ -540,6 +610,13 @@ def main():
     )
 
     parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=BACKFILL_CONFIG.get("article_concurrency", 10),
+        help=f"Parallel article processing workers. Default: {BACKFILL_CONFIG.get('article_concurrency', 10)}",
+    )
+
+    parser.add_argument(
         "--resume",
         action="store_true",
         help="Resume from last checkpoint",
@@ -571,6 +648,7 @@ def main():
     print(f"# CnEVData Backfill")
     print(f"# Pages: {start_page} to {end_page}")
     print(f"# Batch size: {args.batch_size}")
+    print(f"# Concurrency: {args.concurrency}")
     print(f"# Dry run: {args.dry_run}")
     print(f"# OCR enabled: {args.enable_ocr}")
     print(f"{'#'*50}\n")
@@ -585,6 +663,7 @@ def main():
             dry_run=args.dry_run,
             enable_ocr=args.enable_ocr,
             stats=stats,
+            concurrency=args.concurrency,
         )
 
         print(f"\nProcessed {len(processed)} articles")
