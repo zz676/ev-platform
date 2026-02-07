@@ -1,8 +1,9 @@
 """Tests for Weibo scraper: date parsing, text cleaning, time filtering,
-sourceId stability, article parsing, and webhook batching."""
+sourceId stability, article parsing, webhook batching, and parallel AI."""
 
 import hashlib
 import json
+import time
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
@@ -637,3 +638,109 @@ class TestWebhookBatching:
             assert result is True
             assert mock_post.call_count == 0
             assert stats["webhook"]["status"] == "SKIPPED"
+
+
+class TestParallelAIProcessing:
+    """Test that process_articles runs AI calls concurrently."""
+
+    @staticmethod
+    def _import_process_articles():
+        """Import process_articles with heavy dependencies mocked."""
+        import sys
+        stubs = {}
+        for mod in ["openai", "processors", "processors.ai_service"]:
+            if mod not in sys.modules:
+                stubs[mod] = MagicMock()
+                sys.modules[mod] = stubs[mod]
+        try:
+            import importlib
+            import main as main_mod
+            importlib.reload(main_mod)
+            return main_mod.process_articles, main_mod
+        finally:
+            for mod in stubs:
+                sys.modules.pop(mod, None)
+
+    def test_processes_all_articles(self):
+        """All articles should be processed and returned."""
+        process_articles, main_mod = self._import_process_articles()
+
+        mock_ai = MagicMock()
+        articles = []
+        for i in range(6):
+            art = MagicMock()
+            art.original_title = f"Title {i}"
+            art.original_content = f"Content {i}"
+            art.source_author = "Test"
+            art.to_dict.return_value = {"sourceId": f"id_{i}"}
+            articles.append(art)
+
+        # Mock process_article to return the article itself
+        with patch.object(main_mod, "process_article", side_effect=lambda a, s: a):
+            stats = _make_stats()
+            result = process_articles(articles, mock_ai, "test_source", stats)
+
+        assert len(result) == 6
+        assert stats["total_processed"] == 6
+
+    def test_handles_errors_without_crashing(self):
+        """Errors in individual articles shouldn't break the batch."""
+        process_articles, main_mod = self._import_process_articles()
+
+        mock_ai = MagicMock()
+        articles = []
+        for i in range(4):
+            art = MagicMock()
+            art.original_title = f"Title {i}"
+            art.original_content = f"Content {i}"
+            art.source_author = "Test"
+            art.to_dict.return_value = {"sourceId": f"id_{i}"}
+            articles.append(art)
+
+        def side_effect(article, ai_service):
+            if article.original_title == "Title 1":
+                raise ValueError("AI failed")
+            return article
+
+        with patch.object(main_mod, "process_article", side_effect=side_effect):
+            stats = _make_stats()
+            stats["sources"]["test_source"] = {"fetched": 4, "processed": 0, "errors": 0, "error_msg": None}
+            result = process_articles(articles, mock_ai, "test_source", stats)
+
+        assert len(result) == 3  # 4 - 1 error
+        assert stats["sources"]["test_source"]["errors"] == 1
+
+    def test_runs_concurrently(self):
+        """Articles should be processed in parallel, not sequentially."""
+        process_articles, main_mod = self._import_process_articles()
+
+        mock_ai = MagicMock()
+        articles = []
+        for i in range(4):
+            art = MagicMock()
+            art.original_title = f"Title {i}"
+            art.original_content = f"Content {i}"
+            art.source_author = "Test"
+            art.to_dict.return_value = {"sourceId": f"id_{i}"}
+            articles.append(art)
+
+        def slow_process(article, ai_service):
+            time.sleep(0.5)  # Simulate API latency
+            return article
+
+        with patch.object(main_mod, "process_article", side_effect=slow_process):
+            with patch.object(main_mod, "AI_CONCURRENCY", 4):
+                start = time.time()
+                result = process_articles(articles, mock_ai)
+                elapsed = time.time() - start
+
+        assert len(result) == 4
+        # Sequential would take ~2s (4 x 0.5s). Parallel should be ~0.5-1s.
+        assert elapsed < 1.5, f"Expected parallel execution but took {elapsed:.1f}s"
+
+    def test_empty_input_returns_empty(self):
+        """Empty article list should return empty without errors."""
+        process_articles, _ = self._import_process_articles()
+        mock_ai = MagicMock()
+        result = process_articles([], mock_ai)
+        assert result == []

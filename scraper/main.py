@@ -7,6 +7,7 @@ import hmac
 import json
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any
 
@@ -243,25 +244,49 @@ def scrape_source(source_name: str, limit: int = 10, stats: dict = None) -> list
         return []
 
 
+def _process_single_article(article, ai_service: AIService) -> tuple:
+    """Process a single article through AI. Returns (result_dict, error_bool).
+
+    Designed to run in a thread pool — each call is independent.
+    """
+    try:
+        result = process_article(article, ai_service)
+        if result:
+            return (result.to_dict(), False)
+        return (None, False)
+    except Exception as e:
+        print(f"Error processing article: {e}")
+        return (None, True)
+
+
+AI_CONCURRENCY = int(os.getenv("AI_CONCURRENCY", "4"))
+
+
 def process_articles(
     articles: list,
     ai_service: AIService,
     source_name: str = None,
     stats: dict = None,
 ) -> list[dict]:
-    """Process articles through AI and return ready-to-submit dicts."""
+    """Process articles through AI concurrently and return ready-to-submit dicts."""
+    if not articles:
+        return []
+
     processed = []
     errors = 0
 
-    for article in articles:
-        try:
-            result = process_article(article, ai_service)
-            if result:
-                processed.append(result.to_dict())
-        except Exception as e:
-            print(f"Error processing article: {e}")
-            errors += 1
-            continue
+    with ThreadPoolExecutor(max_workers=AI_CONCURRENCY) as executor:
+        future_to_article = {
+            executor.submit(_process_single_article, article, ai_service): article
+            for article in articles
+        }
+
+        for future in as_completed(future_to_article):
+            result_dict, had_error = future.result()
+            if had_error:
+                errors += 1
+            elif result_dict:
+                processed.append(result_dict)
 
     # Update stats
     if stats is not None:

@@ -154,6 +154,7 @@ A fully automated platform that aggregates Chinese EV industry content from offi
 │  │  (Score)    │  │  (CN → EN)  │  │ (X Post)    │                        │
 │  └─────────────┘  └─────────────┘  └─────────────┘                        │
 │                                                                             │
+│  Parallel processing via ThreadPoolExecutor (4 workers)                     │
 │  Using Function Calling for structured output                               │
 │                                                                             │
 └─────────────────────────────────┬───────────────────────────────────────────┘
@@ -232,7 +233,7 @@ A fully automated platform that aggregates Chinese EV industry content from offi
 | Component | Technology | Rationale |
 |-----------|------------|-----------|
 | **Website** | Vercel | Optimized for Next.js, free tier |
-| **Scraper Pipelines** | GitHub Actions | Free for public repos, scheduled workflows |
+| **Scraper Pipelines** | GitHub Actions | Free for public repos, split into independent workflows |
 | **Cron Jobs** | Vercel Cron | Free, simple configuration |
 
 ---
@@ -690,6 +691,36 @@ This helps identify sources that need selector updates without breaking the scra
 | `scraper/sources/xpeng.py` | XPeng IR (nir-widget) selectors |
 | `scraper/sources/li_auto.py` | Li Auto IR (nir-widget) selectors |
 | `scraper/sources/weibo.py` | Weibo relative date parsing |
+
+---
+
+## Scraper Pipeline Architecture
+
+### Split Pipeline Design
+
+The scraper runs as two independent GitHub Actions workflows to minimize Weibo session/cookie expiry risk and isolate failures:
+
+| Workflow | File | Schedule | Sources | Needs Playwright? | Expected Duration |
+|----------|------|----------|---------|-------------------|-------------------|
+| Official Sites | `scraper.yml` | `:00` every 6h | NIO, XPeng, Li Auto | No | ~2-3 min |
+| Weibo | `scraper-weibo.yml` | `:10` every 6h | Weibo (20 accounts) | Yes | ~3-4 min |
+
+**Why split?** Running everything in one pipeline took ~10 minutes. The Weibo browser session sat idle for 4-5 minutes while official sites scraped + AI processed, causing stale visitor cookies and "Found 0 recent posts" failures. Splitting ensures Weibo's browser launches, scrapes, and closes within ~3-4 minutes.
+
+Both workflows use `python scraper/main.py --sources <list>` — the CLI's `--sources` flag makes the split transparent to the codebase.
+
+### Parallel AI Processing
+
+AI article processing uses `ThreadPoolExecutor` with configurable concurrency (default 4 workers, override via `AI_CONCURRENCY` env var). Each article's DeepSeek/OpenAI API call runs in a separate thread:
+
+```
+Sequential (before):  29 articles × ~3s = ~90s
+Parallel (after):     29 articles ÷ 4 workers × ~3s = ~25s
+```
+
+### Webhook Batching
+
+Articles are submitted to the Vercel webhook in batches of 5 to avoid the 60-second serverless function timeout. Each batch gets its own HMAC signature and batch ID. Stats (created/updated/skipped/errors) accumulate across batches. Submission stops on first failure.
 
 ### Phase 4: X Publishing
 14. Configure X API developer account

@@ -1,8 +1,8 @@
-name: EV News Scraper - Official Sites
+name: EV News Scraper - Weibo
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours (0, 6, 12, 18 UTC)
+    - cron: '10 */6 * * *'  # Every 6 hours, offset 10 min from official sites
   workflow_dispatch:  # Manual trigger
 
 jobs:
@@ -14,11 +14,11 @@ jobs:
       - name: Log workflow start
         run: |
           echo "=========================================="
-          echo "EV News Scraper - Official Sites"
+          echo "EV News Scraper - Weibo"
           echo "=========================================="
           echo "Triggered by: ${{ github.event_name }}"
           echo "Run ID: ${{ github.run_id }}"
-          echo "Sources: nio, xpeng, li_auto"
+          echo "Sources: weibo"
           echo "Start time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo "=========================================="
 
@@ -35,6 +35,12 @@ jobs:
         run: |
           cd scraper
           pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: |
+          echo "Installing Playwright Chromium..."
+          playwright install chromium
+          echo "Playwright installed successfully"
 
       - name: Validate secrets
         run: |
@@ -65,13 +71,13 @@ jobs:
             exit 1
           fi
 
-      - name: Run scraper (official sites only)
+      - name: Run scraper (Weibo only)
         run: |
           echo "=========================================="
-          echo "Starting scraper for official sites..."
+          echo "Starting scraper for Weibo..."
           echo "=========================================="
 
-          python scraper/main.py --sources nio xpeng li_auto
+          python scraper/main.py --sources weibo
           exit_code=$?
 
           echo "=========================================="
@@ -92,7 +98,11 @@ jobs:
         if: failure()
         run: |
           echo "=========================================="
-          echo "SCRAPER FAILED (official sites)"
+          echo "SCRAPER FAILED (Weibo)"
           echo "=========================================="
           echo "Check the logs above for error details"
+          echo "Common Weibo-specific issues:"
+          echo "  - Visitor cookie/session expired"
+          echo "  - Rate limited by Weibo anti-bot"
+          echo "  - Playwright browser launch failure"
           echo "=========================================="
