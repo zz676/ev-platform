@@ -228,7 +228,7 @@ The scraper routes articles to specialized **industry data tables** via title pa
 | File | Purpose |
 |------|---------|
 | `extractors/industry_extractor.py` | Extract structured data for 12 table types |
-| `api_client.py` | HTTP client for submitting to industry table APIs |
+| `api_client.py` | HTTP client for submitting to industry table APIs (with pre-submission validation) |
 | `config.py` | Added `API_BASE_URL` configuration |
 | `main.py` | Added `process_industry_data()` function |
 
@@ -263,6 +263,12 @@ Each table has a POST endpoint for data submission:
 | PlantExports | `/api/plant-exports` | plant, brand, year, month, value |
 | AutomakerRankings | `/api/automaker-rankings` | year, month, ranking, automaker, value |
 | BatteryMakerRankings | `/api/battery-maker-rankings` | year, month, ranking, maker, value, scope |
+
+### Pre-Submission Validation
+
+The `EVPlatformAPI` client validates required fields before making HTTP calls. A `REQUIRED_FIELDS` dict maps each industry table to its mandatory fields (matching server-side API endpoint checks). If any required field is missing or `None`, the client returns an error immediately without making the HTTP request, saving a round-trip and producing a clear error message listing the specific missing fields.
+
+Tables not in `REQUIRED_FIELDS` (e.g., `EVMetric`, `VehicleSpec`, or future tables) skip validation for forward-compatibility.
 
 ### Pipeline Stats
 

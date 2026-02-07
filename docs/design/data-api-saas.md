@@ -81,13 +81,13 @@ The database schema is well-designed but severely under-populated:
 | Industry tables | 12 specialized tables | 10 completely empty | ~5% |
 | Historical depth | 10+ years supported | 2-3 months actual | ~2% |
 | Vehicle specs | Full spec sheet | 30-50 models | Partial |
-| Data validation | None implemented | N/A | 0% |
+| Data validation | Client-side required-field checks | N/A | ~20% |
 
 ### Critical Gaps
 1. **BYD missing** - Largest China EV brand, no scraper (Vue.js client-side rendering requires Playwright)
 2. **10 empty industry tables** - CaamNevSales, CpcaNevRetail, CpcaNevProduction, ChinaBatteryInstallation, ChinaPassengerInventory, ChinaDealerInventoryFactor, ChinaViaIndex, NevSalesSummary, AutomakerRankings, BatteryMakerRankings
 3. **No historical backfill** - 2-3 months is insufficient for any analytical use case; investors need 2-3 years minimum
-4. **No data validation** - Data inserted directly without outlier detection, temporal consistency checks, or bounds validation
+4. **Limited data validation** - Client-side required-field validation is implemented in `api_client.py` (catches missing/null fields before HTTP calls), but no outlier detection, temporal consistency checks, or bounds validation yet
 5. **Weibo date inaccuracy** - ~40% of Weibo-sourced posts may have fallback dates; `backfill_dates.py` exists but never executed
 6. **Confidence scores not populated** - Nearly all records default to 1.0 regardless of extraction method
 
@@ -132,7 +132,7 @@ The database schema is well-designed but severely under-populated:
 - Production >= sales check (per brand, per month)
 - Outlier detection (values > 3x standard deviation from trailing average)
 - Temporal continuity (no impossible month-to-month jumps)
-- Required field validation (no null values in critical columns)
+- ~~Required field validation (no null values in critical columns)~~ ✓ Implemented in `api_client.py` — client-side validation catches missing/null required fields before HTTP calls
 
 #### 2.2 Confidence Score Implementation
 - OCR-extracted data: confidence = 0.8-0.9
