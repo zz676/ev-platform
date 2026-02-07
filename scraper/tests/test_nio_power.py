@@ -13,8 +13,22 @@ from sources.nio_power import (
 )
 
 
-# Sample page text that mimics what document.body.innerText returns
+# Sample text matching the structured JS extraction (separate labels per metric)
 SAMPLE_PAGE_TEXT = """
+蔚来能源充换电站总数 8,627
+蔚来能源换电站 3,729
+其中高速公路换电站 1,020
+蔚来能源充电站 4,898
+蔚来能源充电桩 28,035
+接入第三方充电桩 1,557,463
+实时累计换电次数 100,016,310
+实时累计充电次数 81,009,854
+蔚来能源充电桩电量第三方用户占比 85.85%
+截至 2026.02.06 15:29:51
+"""
+
+# Legacy format with slash-separated charging stations / piles
+SAMPLE_PAGE_TEXT_LEGACY = """
 蔚来能源充换电站总数
 8,627
 实时累计换电次数
@@ -143,19 +157,23 @@ class TestNioPowerTextParsing:
         result = parse_metrics_from_text(text)
         assert result is None
 
+    def test_legacy_slash_format(self):
+        """Old page layout uses slash-separated charging stations / piles."""
+        result = parse_metrics_from_text(SAMPLE_PAGE_TEXT_LEGACY)
+        assert result is not None
+        assert result.charging_stations == 4898
+        assert result.charging_piles == 28035
+        assert result.cumulative_swaps == 100016310
+
     def test_partial_data_above_threshold(self):
         # 4 out of 7 required fields present (3 missing = threshold)
         text = """截至 2026.02.06 15:29:51
-蔚来能源充换电站总数
-8,627
-蔚来能源换电站
-3,729
-其中高速公路换电站
-1,020
-实时累计换电次数
-100,016,310
-蔚来能源充电站 / 充电桩
-4,898 / 28,035
+蔚来能源充换电站总数 8,627
+蔚来能源换电站 3,729
+其中高速公路换电站 1,020
+实时累计换电次数 100,016,310
+蔚来能源充电站 4,898
+蔚来能源充电桩 28,035
 """
         result = parse_metrics_from_text(text)
         assert result is not None
