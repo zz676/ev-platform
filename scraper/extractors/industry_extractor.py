@@ -557,15 +557,18 @@ class IndustryDataExtractor:
         start_date = f"{month:02d}-{start_day:02d}"
         end_date = f"{month:02d}-{end_day:02d}"
 
+        # retailSales is required by the API — skip if no value in title
+        if value is None:
+            return None
+
         data = {
             "dataSource": "CPCA",
             "year": year,
             "startDate": start_date,
             "endDate": end_date,
+            "retailSales": value,
             "unit": "vehicles",
         }
-        if value is not None:
-            data["retailSales"] = value
         if yoy is not None:
             data["retailYoy"] = yoy
         if mom is not None:
