@@ -7,24 +7,22 @@ import { MoreNewsSection } from "@/components/sections/MoreNewsSection";
 import { StockTicker } from "@/components/ui/StockTicker";
 import Link from "next/link";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 1800;
 
 type Post = {
   id: string;
-  source: string;
-  sourceUrl: string;
   sourceAuthor: string;
   sourceDate: Date;
   originalTitle: string | null;
   translatedTitle: string | null;
-  originalContent: string | null;
-  translatedContent: string | null;
   translatedSummary: string | null;
   originalMediaUrls: string[];
   cardImageUrl: string | null;
   categories: string[];
   relevanceScore: number;
   createdAt: Date;
+  originalContent?: string | null;
+  translatedContent?: string | null;
 };
 
 export default async function Home({
@@ -43,14 +41,10 @@ export default async function Home({
 
   const postSelect = {
     id: true,
-    source: true,
-    sourceUrl: true,
     sourceAuthor: true,
     sourceDate: true,
     originalTitle: true,
     translatedTitle: true,
-    originalContent: true,
-    translatedContent: true,
     translatedSummary: true,
     originalMediaUrls: true,
     cardImageUrl: true,
@@ -62,12 +56,10 @@ export default async function Home({
   // Fetch posts from database with error handling
   let featuredPost: Post | null = null;
   let poolPosts: Post[] = [];
-  let totalPosts = 0;
+  let hasMore = false;
 
   try {
-    // Fetch candidates for featured post selection
-    const [recentHighQuality, recentBest, weekBest, count] = await Promise.all([
-      // Posts from last 48h with score >= 90
+    const [recentHighQuality, initialPool] = await Promise.all([
       prisma.post.findFirst({
         where: {
           status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
@@ -77,38 +69,38 @@ export default async function Home({
         orderBy: { relevanceScore: "desc" },
         select: postSelect,
       }),
-      // Best from last 48h (any score)
-      prisma.post.findFirst({
-        where: {
-          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
-          createdAt: { gte: fortyEightHoursAgo },
-        },
-        orderBy: { relevanceScore: "desc" },
-        select: postSelect,
-      }),
-      // Best from last 7 days
-      prisma.post.findFirst({
+      prisma.post.findMany({
         where: {
           status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
           createdAt: { gte: sevenDaysAgo },
         },
         orderBy: { relevanceScore: "desc" },
+        take: 35,
         select: postSelect,
-      }),
-      prisma.post.count({
-        where: {
-          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
-        },
       }),
     ]);
 
-    totalPosts = count;
+    let poolCandidates = initialPool;
+    if (poolCandidates.length < 10) {
+      poolCandidates = await prisma.post.findMany({
+        where: {
+          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
+          createdAt: { gte: oneMonthAgo },
+        },
+        orderBy: { relevanceScore: "desc" },
+        take: 35,
+        select: postSelect,
+      });
+    }
 
-    // Select featured post using smart selection logic
-    // Priority: fresh high-quality (score >= 90 from last 48h)
+    hasMore = poolCandidates.length > 34;
+
+    const weekBest = poolCandidates[0] ?? null;
+    const recentBest =
+      poolCandidates.find((post) => post.createdAt >= fortyEightHoursAgo) ?? null;
+
     featuredPost = recentHighQuality;
     if (!featuredPost) {
-      // Fallback: compare 48h best vs 7d best, pick higher score
       if (recentBest && weekBest) {
         featuredPost =
           recentBest.relevanceScore >= weekBest.relevanceScore
@@ -119,31 +111,10 @@ export default async function Home({
       }
     }
 
-    // Fetch pool for other sections (excluding featured), sorted by score
-    poolPosts = await prisma.post.findMany({
-      where: {
-        status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
-        createdAt: { gte: sevenDaysAgo },
-        ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
-      },
-      orderBy: { relevanceScore: "desc" },
-      take: 34,
-      select: postSelect,
-    });
-
-    // Fallback to 1 month if not enough posts
-    if (poolPosts.length < 10) {
-      poolPosts = await prisma.post.findMany({
-        where: {
-          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
-          createdAt: { gte: oneMonthAgo },
-          ...(featuredPost ? { id: { not: featuredPost.id } } : {}),
-        },
-        orderBy: { relevanceScore: "desc" },
-        take: 34,
-        select: postSelect,
-      });
-    }
+    const poolWithoutFeatured = featuredPost
+      ? poolCandidates.filter((post) => post.id !== featuredPost.id)
+      : poolCandidates;
+    poolPosts = poolWithoutFeatured.slice(0, 34);
 
     // Deduplicate posts by title (keep first occurrence which has highest score)
     const seenTitles = new Set<string>();
@@ -159,6 +130,34 @@ export default async function Home({
       seenTitles.add(normalizedTitle);
       return true;
     });
+
+    const leftColumnIds = poolPosts.slice(0, 2).map((post) => post.id);
+    const needsSummaryIds = poolPosts
+      .filter(
+        (post) =>
+          leftColumnIds.includes(post.id) && !post.translatedSummary
+      )
+      .map((post) => post.id);
+
+    if (needsSummaryIds.length > 0) {
+      const contentFallbacks = await prisma.post.findMany({
+        where: { id: { in: needsSummaryIds } },
+        select: { id: true, originalContent: true, translatedContent: true },
+      });
+      const contentById = new Map(
+        contentFallbacks.map((post) => [post.id, post])
+      );
+
+      poolPosts = poolPosts.map((post) => {
+        const content = contentById.get(post.id);
+        if (!content) return post;
+        return {
+          ...post,
+          originalContent: content.originalContent,
+          translatedContent: content.translatedContent,
+        };
+      });
+    }
   } catch {
     // Database unavailable - show empty state
     console.error("Failed to fetch posts from database");
@@ -275,17 +274,14 @@ export default async function Home({
               initialPosts={moreNews.map((post) => ({
                 id: post.id,
                 title: getTitle(post) || "Untitled",
-                summary: getSummary(post) || "",
                 category: post.categories[0] || "News",
-                source: post.sourceAuthor,
-                sourceUrl: post.sourceUrl,
                 timestamp: post.sourceDate,
                 imageUrl: getImage(post),
                 relevanceScore: post.relevanceScore,
               }))}
               locale={locale}
               totalInitialPosts={poolPosts.length + (featuredPost ? 1 : 0)}
-              initialHasMore={totalPosts > 26}
+              initialHasMore={hasMore}
             />
           )}
         </div>

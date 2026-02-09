@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get("source") as Source | null;
     const category = searchParams.get("category");
     const lang = searchParams.get("lang") || "en";
+    const compact = searchParams.get("compact") === "1";
 
     // Build where clause
     const where: Record<string, unknown> = {};
@@ -37,38 +38,90 @@ export async function GET(request: NextRequest) {
       where.categories = { has: category };
     }
 
-    // Fetch posts
+    const compactSelect = {
+      id: true,
+      sourceAuthor: true,
+      sourceDate: true,
+      originalTitle: true,
+      translatedTitle: true,
+      originalMediaUrls: true,
+      cardImageUrl: true,
+      categories: true,
+      relevanceScore: true,
+    };
+
+    const fullSelect = {
+      id: true,
+      sourceId: true,
+      source: true,
+      sourceUrl: true,
+      sourceAuthor: true,
+      sourceDate: true,
+      originalTitle: lang === "zh" ? true : false,
+      originalContent: lang === "zh" ? true : false,
+      translatedTitle: true,
+      translatedContent: lang === "en" ? true : false,
+      translatedSummary: true,
+      originalMediaUrls: true,
+      categories: true,
+      relevanceScore: true,
+      status: true,
+      publishedToX: true,
+      xPostId: true,
+      createdAt: true,
+    };
+
+    if (compact) {
+      const [posts, total] = await Promise.all([
+        prisma.post.findMany({
+          where,
+          orderBy: { relevanceScore: "desc" },
+          skip,
+          take: limit,
+          select: compactSelect,
+        }),
+        prisma.post.count({ where }),
+      ]);
+
+      const transformedPosts = posts.map((post) => {
+        const title =
+          lang === "zh"
+            ? post.originalTitle ?? post.translatedTitle
+            : post.translatedTitle ?? post.originalTitle;
+        return {
+          id: post.id,
+          title,
+          categories: post.categories,
+          author: post.sourceAuthor,
+          date: post.sourceDate,
+          imageUrl: post.cardImageUrl || post.originalMediaUrls?.[0] || null,
+          relevanceScore: post.relevanceScore,
+        };
+      });
+
+      return NextResponse.json({
+        posts: transformedPosts,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasMore: skip + posts.length < total,
+        },
+      });
+    }
+
     const [posts, total] = await Promise.all([
       prisma.post.findMany({
         where,
         orderBy: { relevanceScore: "desc" },
         skip,
         take: limit,
-        select: {
-          id: true,
-          sourceId: true,
-          source: true,
-          sourceUrl: true,
-          sourceAuthor: true,
-          sourceDate: true,
-          originalTitle: lang === "zh" ? true : false,
-          originalContent: lang === "zh" ? true : false,
-          translatedTitle: true,
-          translatedContent: lang === "en" ? true : false,
-          translatedSummary: true,
-          originalMediaUrls: true,
-          categories: true,
-          relevanceScore: true,
-          status: true,
-          publishedToX: true,
-          xPostId: true,
-          createdAt: true,
-        },
+        select: fullSelect,
       }),
       prisma.post.count({ where }),
     ]);
 
-    // Transform posts based on language
     const transformedPosts = posts.map((post) => ({
       id: post.id,
       sourceId: post.sourceId,

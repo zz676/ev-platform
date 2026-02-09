@@ -7,10 +7,7 @@ import { NewsCard } from "@/components/cards/NewsCard";
 type Post = {
   id: string;
   title: string;
-  summary: string;
   category: string;
-  source: string;
-  sourceUrl: string;
   timestamp: Date;
   imageUrl?: string;
   relevanceScore: number;
@@ -41,7 +38,7 @@ export function MoreNewsSection({
     setLoading(true);
     try {
       // Use skip-based pagination directly
-      const url = `/api/posts?skip=${skip}&limit=${limit}&lang=${locale}`;
+      const url = `/api/posts?skip=${skip}&limit=${limit}&lang=${locale}&compact=1`;
       console.log("[MoreNews] Fetching:", url);
       const res = await fetch(url);
       const data = await res.json();
@@ -52,22 +49,16 @@ export function MoreNewsSection({
           (post: {
             id: string;
             title: string;
-            summary: string;
             categories: string[];
-            author: string;
-            sourceUrl: string;
             date: string;
-            mediaUrls: string[];
+            imageUrl?: string | null;
             relevanceScore: number;
           }) => ({
             id: post.id,
             title: post.title || "Untitled",
-            summary: post.summary || "",
             category: post.categories?.[0] || "News",
-            source: post.author,
-            sourceUrl: post.sourceUrl,
             timestamp: new Date(post.date),
-            imageUrl: post.mediaUrls?.[0],
+            imageUrl: post.imageUrl || undefined,
             relevanceScore: post.relevanceScore,
           })
         );
@@ -101,10 +92,7 @@ export function MoreNewsSection({
             key={post.id}
             id={post.id}
             title={post.title}
-            summary={post.summary}
             category={post.category}
-            source={post.source}
-            sourceUrl={post.sourceUrl}
             timestamp={post.timestamp}
             imageUrl={post.imageUrl}
             relevanceScore={post.relevanceScore}

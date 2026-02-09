@@ -9,16 +9,9 @@ export const dynamic = "force-dynamic";
 
 type Post = {
   id: string;
-  source: string;
-  sourceUrl: string;
-  sourceAuthor: string;
   sourceDate: Date;
   originalTitle: string | null;
   translatedTitle: string | null;
-  originalContent: string | null;
-  translatedContent: string | null;
-  translatedSummary: string | null;
-  originalMediaUrls: string[];
   cardImageUrl: string | null;
   categories: string[];
   relevanceScore: number;
@@ -59,16 +52,9 @@ export default async function SearchPage({
         take: 50,
         select: {
           id: true,
-          source: true,
-          sourceUrl: true,
-          sourceAuthor: true,
           sourceDate: true,
           originalTitle: true,
           translatedTitle: true,
-          originalContent: true,
-          translatedContent: true,
-          translatedSummary: true,
-          originalMediaUrls: true,
           cardImageUrl: true,
           categories: true,
           relevanceScore: true,
@@ -85,13 +71,6 @@ export default async function SearchPage({
     locale === "zh"
       ? post.originalTitle || post.translatedTitle
       : post.translatedTitle || post.originalTitle;
-
-  // Helper to get summary
-  const getSummary = (post: Post) =>
-    post.translatedSummary ||
-    (locale === "zh"
-      ? post.originalContent?.slice(0, 150)
-      : post.translatedContent?.slice(0, 150));
 
   // Helper to get image for cards (uses cardImageUrl, falls back to placeholder)
   const getImage = (post: Post) => post.cardImageUrl || undefined;
@@ -130,10 +109,7 @@ export default async function SearchPage({
               key={post.id}
               id={post.id}
               title={getTitle(post) || "Untitled"}
-              summary={getSummary(post) || ""}
               category={post.categories[0] || "News"}
-              source={post.sourceAuthor}
-              sourceUrl={post.sourceUrl}
               timestamp={post.sourceDate}
               imageUrl={getImage(post)}
               relevanceScore={post.relevanceScore}

@@ -23,10 +23,7 @@ function getBrandLogo(category: string): string | null {
 interface NewsCardProps {
   id: string;
   title: string;
-  summary: string;
   category: string;
-  source: string;
-  sourceUrl: string;
   timestamp: Date;
   imageUrl?: string;
   relevanceScore?: number;
@@ -49,10 +46,7 @@ function formatRelativeTime(date: Date): string {
 export function NewsCard({
   id,
   title,
-  summary,
   category,
-  source,
-  sourceUrl,
   timestamp,
   imageUrl,
   relevanceScore,
