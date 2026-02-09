@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 }
 
 // GET: Get AI usage statistics
-export async function GET() {
+export async function GET(request: NextRequest) {
   // Require admin authentication
   const authResult = await requireApiAdmin();
   if ("error" in authResult) {
@@ -72,6 +72,14 @@ export async function GET() {
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
+    const limit = Math.min(
+      Math.max(parseInt(searchParams.get("limit") || "20", 10), 1),
+      100
+    );
+    const skip = (page - 1) * limit;
+
     // Get total stats
     const totalStats = await prisma.aIUsage.aggregate({
       _sum: { cost: true },
@@ -111,26 +119,29 @@ export async function GET() {
       ORDER BY date DESC
     `;
 
-    // Get recent usage records
-    const recentUsage = await prisma.aIUsage.findMany({
-      take: 50,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        type: true,
-        model: true,
-        size: true,
-        cost: true,
-        success: true,
-        errorMsg: true,
-        postId: true,
-        source: true,
-        createdAt: true,
-        inputTokens: true,
-        outputTokens: true,
-        durationMs: true,
-      },
-    });
+    const [recentUsage, totalRecent] = await Promise.all([
+      prisma.aIUsage.findMany({
+        take: limit,
+        skip,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          type: true,
+          model: true,
+          size: true,
+          cost: true,
+          success: true,
+          errorMsg: true,
+          postId: true,
+          source: true,
+          createdAt: true,
+          inputTokens: true,
+          outputTokens: true,
+          durationMs: true,
+        },
+      }),
+      prisma.aIUsage.count(),
+    ]);
 
     return NextResponse.json({
       summary: {
@@ -152,6 +163,13 @@ export async function GET() {
         cost: d.cost || 0,
       })),
       recentUsage,
+      recentUsagePagination: {
+        page,
+        limit,
+        total: totalRecent,
+        totalPages: Math.ceil(totalRecent / limit),
+        hasMore: skip + recentUsage.length < totalRecent,
+      },
     });
   } catch (error) {
     console.error("Error fetching AI usage:", error);

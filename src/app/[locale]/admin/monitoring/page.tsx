@@ -44,18 +44,29 @@ interface AIUsageData {
   bySource: SourceStats[];
   dailyUsage: DailyUsage[];
   recentUsage: RecentUsage[];
+  recentUsagePagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
 }
 
 export default function MonitoringPage() {
   const [data, setData] = useState<AIUsageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
 
-  const fetchData = async () => {
+  const fetchData = async (page: number = currentPage) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/admin/ai-usage");
+      const response = await fetch(
+        `/api/admin/ai-usage?page=${page}&limit=${pageSize}`
+      );
       if (!response.ok) {
         throw new Error("Failed to fetch AI usage data");
       }
@@ -69,8 +80,8 @@ export default function MonitoringPage() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(currentPage);
+  }, [currentPage]);
 
   const successRate = data?.summary
     ? data.summary.totalCalls > 0
@@ -325,6 +336,36 @@ export default function MonitoringPage() {
                 </tbody>
               </table>
             </div>
+            {data.recentUsagePagination && data.recentUsagePagination.total > 0 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+                <div className="text-sm text-gray-500">
+                  Page {data.recentUsagePagination.page} of {data.recentUsagePagination.totalPages} ·{" "}
+                  {data.recentUsagePagination.total.toLocaleString()} records
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={isLoading || data.recentUsagePagination.page <= 1}
+                    className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) =>
+                        Math.min(prev + 1, data.recentUsagePagination!.totalPages)
+                      )
+                    }
+                    disabled={
+                      isLoading || !data.recentUsagePagination.hasMore
+                    }
+                    className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       ) : null}
