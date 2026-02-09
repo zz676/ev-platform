@@ -63,7 +63,8 @@ export function generateOAuthHeader(
     apiSecret: string;
     accessToken: string;
     accessTokenSecret: string;
-  }
+  },
+  requestParams?: Record<string, string>
 ): string {
   const creds = credentials || getCredentials();
 
@@ -76,10 +77,14 @@ export function generateOAuthHeader(
     oauth_version: "1.0",
   };
 
+  const signatureParams = requestParams
+    ? { ...oauthParams, ...requestParams }
+    : oauthParams;
+
   const signature = generateOAuthSignature(
     method,
     url,
-    oauthParams,
+    signatureParams,
     creds.apiSecret,
     creds.accessTokenSecret
   );
@@ -133,12 +138,6 @@ function isLikelyImageContentType(contentType: string | null): boolean {
   if (!contentType) return false;
   if (contentType.startsWith("image/")) return true;
   return X_GENERIC_BINARY_TYPES.has(contentType);
-}
-
-function getImageFileExtension(contentType: string): string {
-  if (contentType === "image/png") return "png";
-  if (contentType === "image/gif") return "gif";
-  return "jpg";
 }
 
 async function downloadImageBuffer(imageUrl: string): Promise<DownloadedImage> {
@@ -319,15 +318,11 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
     throw new Error(errorMsg);
   }
 
-  // Step 1: Download image
+  // Step 1: Download and normalize image
   console.log("[Twitter] Step 1: Downloading image...");
-  let preparedImage: PreparedImage | null = null;
+  let base64Data: string;
   try {
-    const downloaded = await downloadImageBuffer(imageUrl);
-    preparedImage = await normalizeImageForX(downloaded);
-    console.log(
-      `[Twitter] Image prepared for upload: normalized=${preparedImage.normalized}, type=${preparedImage.contentType}, bytes=${preparedImage.buffer.byteLength}`
-    );
+    base64Data = await downloadImageAsBase64(imageUrl);
   } catch (downloadError) {
     const errorMsg = downloadError instanceof Error ? downloadError.message : String(downloadError);
     console.error(`[Twitter] Image download failed: ${errorMsg}`);
@@ -336,27 +331,21 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
 
   // Step 2: Upload to X API
   console.log("[Twitter] Step 2: Uploading to X API...");
-  if (!preparedImage) {
-    throw new Error("Image preparation failed: no image buffer available");
-  }
-  const formBody = new FormData();
-  const contentType = preparedImage?.contentType || "image/jpeg";
-  const extension = getImageFileExtension(contentType);
-  formBody.append(
-    "media",
-    new Blob([preparedImage.buffer], { type: contentType }),
-    `upload.${extension}`
-  );
-  formBody.append("media_category", "tweet_image");
+  const requestParams = {
+    media_data: base64Data,
+    media_category: "tweet_image",
+  };
+  const formBody = new URLSearchParams(requestParams);
 
   let response: Response;
   try {
     response = await fetch(MEDIA_UPLOAD_URL, {
       method: "POST",
       headers: {
-        Authorization: generateOAuthHeader("POST", MEDIA_UPLOAD_URL),
+        Authorization: generateOAuthHeader("POST", MEDIA_UPLOAD_URL, undefined, requestParams),
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: formBody,
+      body: formBody.toString(),
     });
   } catch (fetchError) {
     const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
