@@ -21,6 +21,7 @@ export function LoginModal() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const isSignUp = activeTab === "signup";
 
   const resetForm = () => {
     setEmail("");
@@ -142,14 +143,16 @@ export function LoginModal() {
 
           {/* Header */}
           <div className="p-6 pb-0">
-            <h2 className="text-2xl font-bold text-gray-900 text-center">
-              {t("welcome")}
-            </h2>
-            <p className="text-gray-500 text-center mt-1">
-              {activeTab === "signin"
-                ? "Sign in to your account"
-                : "Create a new account"}
-            </p>
+            <div className="rounded-xl bg-gradient-to-br from-ev-green-500/10 via-white to-white px-4 py-5">
+              <h2 className="text-2xl font-bold text-gray-900 text-center">
+                {t("welcome")}
+              </h2>
+              <p className="text-gray-600 text-center mt-1">
+                {isSignUp
+                  ? "Create your EV Juice account in seconds"
+                  : "Sign in to your account"}
+              </p>
+            </div>
           </div>
 
           {/* Tabs */}
@@ -221,7 +224,7 @@ export function LoginModal() {
                 />
               </svg>
               <span className="font-medium text-gray-700">
-                Continue with Google
+                {isSignUp ? "Sign up with Google" : "Continue with Google"}
               </span>
             </button>
 
@@ -235,9 +238,15 @@ export function LoginModal() {
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
               <span className="font-medium text-gray-700">
-                {t("continueWithX")}
+                {isSignUp ? "Sign up with X" : t("continueWithX")}
               </span>
             </button>
+
+            <p className="mt-3 text-xs text-gray-500 text-center">
+              {isSignUp
+                ? "We’ll create an account for you if you’re new."
+                : "No password needed for Google or X."}
+            </p>
 
             {/* Divider */}
             <div className="relative my-6">
@@ -336,8 +345,14 @@ export function LoginModal() {
                 className="w-full py-2.5 bg-ev-green-500 text-white font-medium rounded-lg hover:bg-ev-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {activeTab === "signin" ? "Sign In" : "Create Account"}
+                {isSignUp ? "Create Account" : "Sign In"}
               </button>
+
+              {isSignUp && (
+                <p className="text-xs text-gray-500 text-center">
+                  By creating an account, you agree to our Terms and Privacy Policy.
+                </p>
+              )}
             </form>
           </div>
         </div>
