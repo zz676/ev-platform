@@ -67,7 +67,7 @@ export function HeroCard({
           src={imageUrl || PLACEHOLDER_IMAGE}
           alt={title}
           fill
-          className="object-contain transition-transform duration-300 group-hover:scale-105"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
           sizes={isLarge ? "(max-width: 768px) 100vw, 50vw" : "25vw"}
           priority={isLarge}
         />
