@@ -79,15 +79,9 @@ export default async function Home({
 
     featuredPost = recentBest || weekBest;
 
-<<<<<<< Updated upstream
-    const featuredId = featuredPost?.id;
-    const poolWithoutFeatured = featuredId
-      ? poolCandidates.filter((post) => post.id !== featuredId)
-=======
     const featuredPostId = featuredPost?.id;
     const poolWithoutFeatured = featuredPostId
       ? poolCandidates.filter((post) => post.id !== featuredPostId)
->>>>>>> Stashed changes
       : poolCandidates;
     poolPosts = poolWithoutFeatured.slice(0, 34);
 
