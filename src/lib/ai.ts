@@ -336,8 +336,8 @@ async function generateWithTogetherAI(
     throw new Error("TOGETHER_API_KEY not configured");
   }
 
-  const model = "black-forest-labs/FLUX.1-schnell";
-  const cost = IMAGE_GEN_COST["FLUX.1-schnell"];
+  const model = "black-forest-labs/FLUX.1-dev";
+  const cost = IMAGE_GEN_COST["FLUX.1-dev"];
 
   const response = await fetch("https://api.together.xyz/v1/images/generations", {
     method: "POST",
@@ -370,7 +370,7 @@ async function generateWithTogetherAI(
   // Track successful generation
   await trackAIUsage({
     type: "image_generation",
-    model: "FLUX.1-schnell",
+    model: "FLUX.1-dev",
     size: "1792x1024",
     cost,
     success: true,
@@ -471,7 +471,7 @@ Style requirements:
       // Track the failure (after all retries exhausted)
       await trackAIUsage({
         type: "image_generation",
-        model: "FLUX.1-schnell",
+        model: "FLUX.1-dev",
         size: "1792x1024",
         cost: 0,
         success: false,
