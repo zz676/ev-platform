@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const lang = searchParams.get("lang") || "en";
     const compact = searchParams.get("compact") === "1";
+    const includeTotal = searchParams.get("includeTotal") === "1";
 
     // Build where clause
     const where: Record<string, unknown> = {};
@@ -72,16 +73,19 @@ export async function GET(request: NextRequest) {
     };
 
     if (compact) {
-      const [posts, total] = await Promise.all([
-        prisma.post.findMany({
-          where,
-          orderBy: { relevanceScore: "desc" },
-          skip,
-          take: limit,
-          select: compactSelect,
-        }),
-        prisma.post.count({ where }),
-      ]);
+      const posts = await prisma.post.findMany({
+        where,
+        orderBy: { relevanceScore: "desc" },
+        skip,
+        take: limit,
+        select: compactSelect,
+      });
+
+      const total = includeTotal ? await prisma.post.count({ where }) : null;
+      const totalPages = includeTotal && total !== null ? Math.ceil(total / limit) : null;
+      const hasMore = includeTotal && total !== null
+        ? skip + posts.length < total
+        : posts.length === limit;
 
       const transformedPosts = posts.map((post) => {
         const title =
@@ -99,16 +103,23 @@ export async function GET(request: NextRequest) {
         };
       });
 
-      return NextResponse.json({
-        posts: transformedPosts,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-          hasMore: skip + posts.length < total,
+      return NextResponse.json(
+        {
+          posts: transformedPosts,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+            hasMore,
+          },
         },
-      });
+        {
+          headers: {
+            "Cache-Control": "s-maxage=300, stale-while-revalidate=600",
+          },
+        }
+      );
     }
 
     const [posts, total] = await Promise.all([
@@ -142,16 +153,23 @@ export async function GET(request: NextRequest) {
       createdAt: post.createdAt,
     }));
 
-    return NextResponse.json({
-      posts: transformedPosts,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-        hasMore: skip + posts.length < total,
+    return NextResponse.json(
+      {
+        posts: transformedPosts,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasMore: skip + posts.length < total,
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "s-maxage=300, stale-while-revalidate=600",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching posts:", error);
     return NextResponse.json(

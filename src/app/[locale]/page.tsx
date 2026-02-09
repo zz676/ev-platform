@@ -59,61 +59,35 @@ export default async function Home({
   let hasMore = false;
 
   try {
-    const [recentHighQuality, initialPool] = await Promise.all([
-      prisma.post.findFirst({
-        where: {
-          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
-          createdAt: { gte: fortyEightHoursAgo },
-          relevanceScore: { gte: 90 },
-        },
-        orderBy: { relevanceScore: "desc" },
-        select: postSelect,
-      }),
-      prisma.post.findMany({
-        where: {
-          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
-          createdAt: { gte: sevenDaysAgo },
-        },
-        orderBy: { relevanceScore: "desc" },
-        take: 35,
-        select: postSelect,
-      }),
-    ]);
+    const poolCandidates = await prisma.post.findMany({
+      where: {
+        status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
+        createdAt: { gte: oneMonthAgo },
+      },
+      orderBy: [{ relevanceScore: "desc" }, { createdAt: "desc" }],
+      take: 35,
+      select: postSelect,
+    });
 
-    let poolCandidates = initialPool;
-    if (poolCandidates.length < 10) {
-      poolCandidates = await prisma.post.findMany({
-        where: {
-          status: { in: [PostStatus.APPROVED, PostStatus.PUBLISHED] },
-          createdAt: { gte: oneMonthAgo },
-        },
-        orderBy: { relevanceScore: "desc" },
-        take: 35,
-        select: postSelect,
-      });
-    }
+    hasMore = poolCandidates.length === 35;
 
-    hasMore = poolCandidates.length > 34;
-
+    const recentCandidates = poolCandidates.filter(
+      (post) => post.createdAt >= fortyEightHoursAgo
+    );
+    const recentBest = recentCandidates[0] ?? null;
     const weekBest = poolCandidates[0] ?? null;
-    const recentBest =
-      poolCandidates.find((post) => post.createdAt >= fortyEightHoursAgo) ?? null;
 
-    featuredPost = recentHighQuality;
-    if (!featuredPost) {
-      if (recentBest && weekBest) {
-        featuredPost =
-          recentBest.relevanceScore >= weekBest.relevanceScore
-            ? recentBest
-            : weekBest;
-      } else {
-        featuredPost = recentBest || weekBest;
-      }
-    }
+    featuredPost = recentBest || weekBest;
 
+<<<<<<< Updated upstream
     const featuredId = featuredPost?.id;
     const poolWithoutFeatured = featuredId
       ? poolCandidates.filter((post) => post.id !== featuredId)
+=======
+    const featuredPostId = featuredPost?.id;
+    const poolWithoutFeatured = featuredPostId
+      ? poolCandidates.filter((post) => post.id !== featuredPostId)
+>>>>>>> Stashed changes
       : poolCandidates;
     poolPosts = poolWithoutFeatured.slice(0, 34);
 
