@@ -32,7 +32,7 @@ Tracks **GPT-4o Vision** calls from the scraper pipeline for extracting data fro
 
 ## Solution
 
-1. **Primary**: Together AI (FLUX.1-schnell) - $0.003/image
+1. **Primary**: Together AI (FLUX.1-dev) - $0.01/image
 2. **Fallback**: DALL-E 3 - $0.08/image (if Together AI fails or not configured)
 3. `AIUsage` database table to persist every API call
 4. Track success/failure with error messages for debugging
@@ -42,7 +42,7 @@ Tracks **GPT-4o Vision** calls from the scraper pipeline for extracting data fro
 
 | Provider | Model | Cost/Image | Monthly (50 images/day) |
 |----------|-------|------------|-------------------------|
-| Together AI | FLUX.1-schnell | $0.003 | **$4.50** |
+| Together AI | FLUX.1-dev | $0.010 | **$15.00** |
 | OpenAI | DALL-E 3 | $0.080 | $120.00 |
 
 **Savings: 96% ($115.50/month)**
@@ -67,7 +67,7 @@ If only `OPENAI_API_KEY` is set, DALL-E 3 will be used. If both are set, Togethe
 model AIUsage {
   id           String   @id @default(cuid())
   type         String   // "image_generation", "text_completion"
-  model        String   // "FLUX.1-schnell", "dall-e-3", "deepseek-chat", "gpt-4o-mini"
+  model        String   // "FLUX.1-dev", "dall-e-3", "deepseek-chat", "gpt-4o-mini"
   size         String?  // "1792x1024" (for images)
   cost         Float    // estimated cost in USD
   success      Boolean
@@ -165,9 +165,9 @@ OCR usage is tracked via `EVPlatformAPI.track_ocr_usage()` in `scraper/api_clien
 
 | Scenario | Model | cost | success |
 |----------|-------|------|---------|
-| Together AI success | FLUX.1-schnell | $0.003 | true |
+| Together AI success | FLUX.1-dev | $0.01 | true |
 | Together AI fails, DALL-E success | dall-e-3 | $0.08 | true |
-| Together AI fails (tracked) | FLUX.1-schnell | $0.00 | false |
+| Together AI fails (tracked) | FLUX.1-dev | $0.00 | false |
 | DALL-E fails | dall-e-3 | $0.00 | false |
 | No API keys | none | $0.00 | false |
 
@@ -256,7 +256,7 @@ Returns comprehensive usage statistics. Requires admin authentication.
     {
       "id": "clx123...",
       "type": "image_generation",
-      "model": "FLUX.1-schnell",
+      "model": "FLUX.1-dev",
       "size": "1792x1024",
       "cost": 0.003,
       "success": true,
