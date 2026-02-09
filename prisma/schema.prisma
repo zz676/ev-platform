@@ -53,6 +53,7 @@ model DigestContent {
   content      String
   postIds      String[]
   topPostId    String
+  digestImageUrl String?
   status       String    @default("PENDING")
   postedAt     DateTime?
   tweetId      String?

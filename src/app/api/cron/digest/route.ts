@@ -15,6 +15,20 @@ const CRON_SECRET = process.env.CRON_SECRET;
 
 // Check if X posting is disabled via env var
 const SKIP_X_PUBLISH = process.env.SKIP_X_PUBLISH === "true";
+const BLOCKED_IMAGE_HOSTS = new Set(["sinaimg.cn"]);
+
+function isBlockedImageUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    if (BLOCKED_IMAGE_HOSTS.has(hostname)) return true;
+    for (const host of BLOCKED_IMAGE_HOSTS) {
+      if (hostname.endsWith(`.${host}`)) return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
 
 /**
  * Get the current digest slot time (13:00 or 22:00 UTC)
@@ -132,8 +146,13 @@ export async function GET(request: NextRequest) {
       where: { id: { in: digestContent.postIds } },
     });
 
-    // Get top post for image
-    const topPost = posts.find((p) => p.id === digestContent!.topPostId);
+    const postsById = new Map(posts.map((post) => [post.id, post]));
+    const orderedPosts = digestContent.postIds
+      .map((id) => postsById.get(id))
+      .filter((post): post is (typeof posts)[number] => Boolean(post));
+
+    // Get top post for image (fallback to first available post)
+    const topPost = postsById.get(digestContent.topPostId) || orderedPosts[0];
 
     // Use stored content directly (already includes title + bullets + link + hashtags)
     const tweetText = digestContent.content;
@@ -144,52 +163,121 @@ export async function GET(request: NextRequest) {
     let imageUrl: string | undefined;
     let imageError: string | undefined;
 
-    if (POSTING_CONFIG.DIGEST_INCLUDE_IMAGE && topPost) {
-      console.log(`[Digest] Image processing enabled for top post: ${topPost.id}`);
-      console.log(`[Digest] Top post cardImageUrl: ${topPost.cardImageUrl || "none"}`);
-      console.log(`[Digest] Top post originalMediaUrls: ${JSON.stringify(topPost.originalMediaUrls || [])}`);
+    if (POSTING_CONFIG.DIGEST_INCLUDE_IMAGE && orderedPosts.length > 0) {
+      console.log(
+        `[Digest] Image processing enabled for ${orderedPosts.length} digest posts`
+      );
+
+      const triedUrls = new Set<string>();
+      let lastImageError: string | undefined;
+      let selectedImageUrl: string | undefined;
+      let selectedImageSource: "scraped" | "ai-generated" | "none" = "none";
+
+      const tryUploadCandidate = async (
+        candidateUrl: string,
+        source: "scraped" | "ai-generated"
+      ) => {
+        console.log(`[Digest] Checking image accessibility: ${candidateUrl}`);
+        const isAccessible = await isImageUrlAccessible(candidateUrl);
+        if (!isAccessible) {
+          console.log(`[Digest] Image not accessible: ${candidateUrl}`);
+          return null;
+        }
+
+        try {
+          console.log(`[Digest] Attempting to upload image to X: ${candidateUrl}`);
+          const mediaId = await uploadMedia(candidateUrl);
+          console.log(`[Digest] Image upload successful, media_id: ${mediaId}`);
+          return { mediaId, imageUrl: candidateUrl, imageSource: source };
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[Digest] Image upload failed: ${errorMsg}`);
+          lastImageError = errorMsg;
+          return null;
+        }
+      };
 
       try {
-        // Priority 1: Use cardImageUrl (AI-generated or good-ratio original) - but validate accessibility first
-        if (topPost.cardImageUrl) {
-          const isOriginal = topPost.originalMediaUrls?.includes(topPost.cardImageUrl);
-          const potentialSource = isOriginal ? "scraped" : "ai-generated";
-          console.log(`[Digest] Checking cardImageUrl accessibility: ${topPost.cardImageUrl}`);
-          
-          // Validate that the image URL is actually accessible (especially for scraped Weibo images)
-          const isAccessible = await isImageUrlAccessible(topPost.cardImageUrl);
-          
-          if (isAccessible) {
-            imageUrl = topPost.cardImageUrl;
-            imageSource = potentialSource;
-            console.log(`[Digest] Using existing cardImageUrl: ${imageUrl}`);
-            console.log(`[Digest] Image source determined as: ${imageSource}`);
-          } else {
-            console.log(`[Digest] cardImageUrl is not accessible (likely blocked Weibo image), falling back to AI generation`);
+        for (const post of orderedPosts) {
+          const candidates: string[] = [];
+          if (post.cardImageUrl) candidates.push(post.cardImageUrl);
+          if (post.originalMediaUrls?.length) {
+            for (const url of post.originalMediaUrls) {
+              if (url && url !== post.cardImageUrl) candidates.push(url);
+            }
           }
-        }
-        
-        // Priority 2: Generate AI image (also used as fallback when cardImageUrl is inaccessible)
-        if (!imageUrl) {
-          console.log("[Digest] Generating AI image...");
-          imageUrl = await generatePostImage(
-            topPost.translatedTitle || topPost.originalTitle || "EV Juice Digest",
-            topPost.translatedSummary || "",
-            { source: "cron_digest", postId: topPost.id }
-          );
-          imageSource = "ai-generated";
-          console.log(`[Digest] AI image generated: ${imageUrl}`);
+
+          if (candidates.length === 0) {
+            console.log(`[Digest] No image candidates for post ${post.id}`);
+            continue;
+          }
+
+          for (const candidateUrl of candidates) {
+            if (!candidateUrl || triedUrls.has(candidateUrl)) continue;
+            if (isBlockedImageUrl(candidateUrl)) {
+              console.log(`[Digest] Skipping blocked image host: ${candidateUrl}`);
+              continue;
+            }
+            triedUrls.add(candidateUrl);
+
+            const isOriginal = post.originalMediaUrls?.includes(candidateUrl);
+            const source = isOriginal ? "scraped" : "ai-generated";
+            const uploadResult = await tryUploadCandidate(candidateUrl, source);
+            if (uploadResult) {
+              mediaIds = [uploadResult.mediaId];
+              selectedImageUrl = uploadResult.imageUrl;
+              selectedImageSource = uploadResult.imageSource;
+              break;
+            }
+          }
+
+          if (mediaIds) break;
         }
 
-        // Upload image to X
-        if (imageUrl) {
-          console.log(`[Digest] Attempting to upload image to X: ${imageUrl}`);
-          const mediaId = await uploadMedia(imageUrl);
-          mediaIds = [mediaId];
-          console.log(`[Digest] Image upload successful, media_id: ${mediaId}`);
+        if (!mediaIds && topPost) {
+          console.log(
+            "[Digest] No usable scraped images found, generating AI image..."
+          );
+          let generatedUrl: string | undefined;
+          try {
+            generatedUrl = await generatePostImage(
+              topPost.translatedTitle || topPost.originalTitle || "EV Juice Digest",
+              topPost.translatedSummary || "",
+              { source: "cron_digest", postId: topPost.id }
+            );
+          } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error(`[Digest] AI image generation failed: ${errorMsg}`);
+            lastImageError = errorMsg;
+          }
+
+          if (generatedUrl) {
+            const uploadResult = await tryUploadCandidate(
+              generatedUrl,
+              "ai-generated"
+            );
+            if (uploadResult) {
+              mediaIds = [uploadResult.mediaId];
+              selectedImageUrl = uploadResult.imageUrl;
+              selectedImageSource = uploadResult.imageSource;
+            }
+          }
+        }
+
+        if (mediaIds && selectedImageUrl) {
+          imageUrl = selectedImageUrl;
+          imageSource = selectedImageSource;
+
+          await prisma.digestContent.update({
+            where: { id: digestContent.id },
+            data: { digestImageUrl: selectedImageUrl },
+          });
         } else {
-          console.log("[Digest] No imageUrl available after processing");
+          console.log("[Digest] No image uploaded for digest");
           imageSource = "none";
+          if (lastImageError) {
+            imageError = lastImageError;
+          }
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
@@ -202,8 +290,8 @@ export async function GET(request: NextRequest) {
       if (!POSTING_CONFIG.DIGEST_INCLUDE_IMAGE) {
         console.log("[Digest] Image processing disabled in config");
       }
-      if (!topPost) {
-        console.log("[Digest] No top post available for image");
+      if (orderedPosts.length === 0) {
+        console.log("[Digest] No posts available for image selection");
       }
     }
 
