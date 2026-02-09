@@ -129,7 +129,7 @@ export default function MonitoringPage() {
             </div>
           </div>
           <button
-            onClick={fetchData}
+            onClick={() => void fetchData()}
             disabled={isLoading}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
           >

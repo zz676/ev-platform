@@ -1,4 +1,3 @@
-import { ChartJSNodeCanvas } from "chartjs-node-canvas";
 import type { ChartConfiguration, ChartTypeRegistry } from "chart.js";
 import {
   BrandTrendData,
@@ -50,15 +49,27 @@ const BRAND_COLORS: Record<string, string> = {
   OTHER_BRAND: "rgba(107, 114, 128, 0.9)", // gray-500
 };
 
-// Create chart canvas with plugin registration
-const chartJSNodeCanvas = new ChartJSNodeCanvas({
-  width: CHART_WIDTH,
-  height: CHART_HEIGHT,
-  backgroundColour: "white",
-  plugins: {
-    modern: ["chartjs-plugin-datalabels"],
-  },
-});
+type ChartJSNodeCanvasType = import("chartjs-node-canvas").ChartJSNodeCanvas;
+
+let chartCanvasPromise: Promise<ChartJSNodeCanvasType> | null = null;
+
+async function getChartCanvas(): Promise<ChartJSNodeCanvasType> {
+  if (!chartCanvasPromise) {
+    chartCanvasPromise = (async () => {
+      const { ChartJSNodeCanvas } = await import("chartjs-node-canvas");
+      return new ChartJSNodeCanvas({
+        width: CHART_WIDTH,
+        height: CHART_HEIGHT,
+        backgroundColour: "white",
+        plugins: {
+          modern: ["chartjs-plugin-datalabels"],
+        },
+      });
+    })();
+  }
+
+  return chartCanvasPromise;
+}
 
 // Helper to format numbers (e.g., 210000 -> "210K")
 function formatNumber(value: number): string {
@@ -167,6 +178,7 @@ export async function generateBrandTrendChart(
     ],
   };
 
+  const chartJSNodeCanvas = await getChartCanvas();
   return chartJSNodeCanvas.renderToBuffer(config);
 }
 
@@ -270,6 +282,7 @@ export async function generateAllBrandsChart(
     ],
   };
 
+  const chartJSNodeCanvas = await getChartCanvas();
   return chartJSNodeCanvas.renderToBuffer(config);
 }
 
@@ -355,6 +368,7 @@ export async function generateLineChart(
     ],
   };
 
+  const chartJSNodeCanvas = await getChartCanvas();
   return chartJSNodeCanvas.renderToBuffer(config);
 }
 
@@ -457,6 +471,7 @@ export async function generateBarChart(
     ],
   };
 
+  const chartJSNodeCanvas = await getChartCanvas();
   return chartJSNodeCanvas.renderToBuffer(config);
 }
 
