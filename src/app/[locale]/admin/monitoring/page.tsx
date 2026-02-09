@@ -59,13 +59,17 @@ export default function MonitoringPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const fetchData = async (page: number = currentPage) => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await fetch(
-        `/api/admin/ai-usage?page=${page}&limit=${pageSize}`
+        `/api/admin/ai-usage?page=${page}&limit=${pageSize}&sortBy=${encodeURIComponent(
+          sortBy
+        )}&sortDir=${sortDir}`
       );
       if (!response.ok) {
         throw new Error("Failed to fetch AI usage data");
@@ -81,7 +85,28 @@ export default function MonitoringPage() {
 
   useEffect(() => {
     fetchData(currentPage);
-  }, [currentPage]);
+  }, [currentPage, sortBy, sortDir]);
+
+  const toggleSort = (field: string) => {
+    setCurrentPage(1);
+    setSortBy((prev) => {
+      if (prev === field) {
+        setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
+        return prev;
+      }
+      setSortDir("desc");
+      return field;
+    });
+  };
+
+  const sortIndicator = (field: string) => {
+    if (sortBy !== field) return null;
+    return (
+      <span className="ml-1 text-[0.65rem] text-gray-400">
+        {sortDir === "asc" ? "▲" : "▼"}
+      </span>
+    );
+  };
 
   const successRate = data?.summary
     ? data.summary.totalCalls > 0
@@ -242,25 +267,74 @@ export default function MonitoringPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Time
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("createdAt")}
+                        className="inline-flex items-center hover:text-gray-700"
+                      >
+                        Time
+                        {sortIndicator("createdAt")}
+                      </button>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Model
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("model")}
+                        className="inline-flex items-center hover:text-gray-700"
+                      >
+                        Model
+                        {sortIndicator("model")}
+                      </button>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Source
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("source")}
+                        className="inline-flex items-center hover:text-gray-700"
+                      >
+                        Source
+                        {sortIndicator("source")}
+                      </button>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tokens
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("tokens")}
+                        className="inline-flex items-center hover:text-gray-700"
+                      >
+                        Tokens
+                        {sortIndicator("tokens")}
+                      </button>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cost
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("cost")}
+                        className="inline-flex items-center hover:text-gray-700"
+                      >
+                        Cost
+                        {sortIndicator("cost")}
+                      </button>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Duration
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("durationMs")}
+                        className="inline-flex items-center hover:text-gray-700"
+                      >
+                        Duration
+                        {sortIndicator("durationMs")}
+                      </button>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("success")}
+                        className="inline-flex items-center hover:text-gray-700"
+                      >
+                        Status
+                        {sortIndicator("success")}
+                      </button>
                     </th>
                   </tr>
                 </thead>

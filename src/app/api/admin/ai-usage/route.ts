@@ -79,6 +79,20 @@ export async function GET(request: NextRequest) {
       100
     );
     const skip = (page - 1) * limit;
+    const sortBy = (searchParams.get("sortBy") || "createdAt").toLowerCase();
+    const sortDirParam = (searchParams.get("sortDir") || "desc").toLowerCase();
+    const sortDir = sortDirParam === "asc" ? "asc" : "desc";
+
+    const allowedSorts = new Set([
+      "createdat",
+      "model",
+      "source",
+      "tokens",
+      "cost",
+      "durationms",
+      "success",
+    ]);
+    const effectiveSortBy = allowedSorts.has(sortBy) ? sortBy : "createdat";
 
     // Get total stats
     const totalStats = await prisma.aIUsage.aggregate({
@@ -119,29 +133,85 @@ export async function GET(request: NextRequest) {
       ORDER BY date DESC
     `;
 
-    const [recentUsage, totalRecent] = await Promise.all([
-      prisma.aIUsage.findMany({
+    const selectFields = {
+      id: true,
+      type: true,
+      model: true,
+      size: true,
+      cost: true,
+      success: true,
+      errorMsg: true,
+      postId: true,
+      source: true,
+      createdAt: true,
+      inputTokens: true,
+      outputTokens: true,
+      durationMs: true,
+    };
+
+    let recentUsage: Array<{
+      id: string;
+      type: string;
+      model: string;
+      size: string | null;
+      cost: number;
+      success: boolean;
+      errorMsg: string | null;
+      postId: string | null;
+      source: string;
+      createdAt: Date;
+      inputTokens: number | null;
+      outputTokens: number | null;
+      durationMs: number | null;
+    }> = [];
+
+    const totalRecentPromise = prisma.aIUsage.count();
+
+    if (effectiveSortBy === "tokens") {
+      const direction = sortDir === "asc" ? "ASC" : "DESC";
+      const tokensSql = `
+        SELECT
+          "id",
+          "type",
+          "model",
+          "size",
+          "cost",
+          "success",
+          "errorMsg",
+          "postId",
+          "source",
+          "createdAt",
+          "inputTokens",
+          "outputTokens",
+          "durationMs"
+        FROM "AIUsage"
+        ORDER BY (COALESCE("inputTokens", 0) + COALESCE("outputTokens", 0)) ${direction}, "createdAt" DESC
+        LIMIT $1 OFFSET $2
+      `;
+      recentUsage = await prisma.$queryRawUnsafe(tokensSql, limit, skip);
+    } else {
+      const orderBy =
+        effectiveSortBy === "createdat"
+          ? { createdAt: sortDir }
+          : effectiveSortBy === "durationms"
+            ? { durationMs: sortDir }
+            : effectiveSortBy === "success"
+              ? { success: sortDir }
+              : effectiveSortBy === "cost"
+                ? { cost: sortDir }
+                : effectiveSortBy === "model"
+                  ? { model: sortDir }
+                  : { source: sortDir };
+
+      recentUsage = await prisma.aIUsage.findMany({
         take: limit,
         skip,
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          type: true,
-          model: true,
-          size: true,
-          cost: true,
-          success: true,
-          errorMsg: true,
-          postId: true,
-          source: true,
-          createdAt: true,
-          inputTokens: true,
-          outputTokens: true,
-          durationMs: true,
-        },
-      }),
-      prisma.aIUsage.count(),
-    ]);
+        orderBy: [orderBy, { createdAt: "desc" }],
+        select: selectFields,
+      });
+    }
+
+    const totalRecent = await totalRecentPromise;
 
     return NextResponse.json({
       summary: {
