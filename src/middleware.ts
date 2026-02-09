@@ -5,8 +5,45 @@ import { routing } from "@/i18n/routing";
 
 const intlMiddleware = createIntlMiddleware(routing);
 
+function getSupabaseProjectRef(): string | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) return null;
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname.split(".")[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  const projectRef = getSupabaseProjectRef();
+  const primaryCookie = projectRef ? `sb-${projectRef}-auth-token` : null;
+  return request.cookies.getAll().some((cookie) => {
+    if (primaryCookie && cookie.name === primaryCookie) return true;
+    return cookie.name.startsWith("sb-") && cookie.name.includes("auth-token");
+  });
+}
+
+function isProtectedPath(pathname: string): boolean {
+  return (
+    /^\/(en|zh)\/admin(\/|$)/.test(pathname) ||
+    /^\/(en|zh)\/settings(\/|$)/.test(pathname) ||
+    /^\/admin(\/|$)/.test(pathname) ||
+    /^\/settings(\/|$)/.test(pathname)
+  );
+}
+
 export async function middleware(request: NextRequest) {
-  // First, handle Supabase session refresh
+  const pathname = request.nextUrl.pathname;
+  const shouldRefreshSession =
+    hasSupabaseAuthCookie(request) || isProtectedPath(pathname);
+
+  if (!shouldRefreshSession) {
+    return intlMiddleware(request);
+  }
+
+  // Refresh Supabase session only when needed
   let response = NextResponse.next({
     request,
   });
@@ -34,13 +71,9 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired
   await supabase.auth.getUser();
 
-  // Then apply the intl middleware
   const intlResponse = intlMiddleware(request);
-
-  // Copy Supabase cookies to the intl response
   response.cookies.getAll().forEach((cookie) => {
     intlResponse.cookies.set(cookie.name, cookie.value);
   });

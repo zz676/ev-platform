@@ -116,7 +116,11 @@ async function fetchStockData(): Promise<StockData[]> {
 export async function GET() {
   try {
     const data = await fetchStockData();
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        "Cache-Control": "s-maxage=300, stale-while-revalidate=600",
+      },
+    });
   } catch {
     return NextResponse.json(
       { error: "Failed to fetch stock data" },

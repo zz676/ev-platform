@@ -9,9 +9,7 @@ import { UserPanelProvider } from "@/components/context/UserPanelContext";
 import { LoginModalProvider } from "@/components/context/LoginModalContext";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { UserPanel } from "@/components/layout/UserPanel";
-import { LoginModal } from "@/components/auth/LoginModal";
-import { BackToTop } from "@/components/layout/BackToTop";
+import { ClientOverlays } from "@/components/layout/ClientOverlays";
 import "../globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -55,9 +53,7 @@ export default async function RootLayout({
                     {children}
                   </main>
                   <Footer />
-                  <UserPanel />
-                  <LoginModal />
-                  <BackToTop />
+                  <ClientOverlays />
                 </div>
               </UserPanelProvider>
             </LoginModalProvider>
