@@ -336,8 +336,8 @@ async function generateWithTogetherAI(
     throw new Error("TOGETHER_API_KEY not configured");
   }
 
-  const model = "black-forest-labs/FLUX.1-schnell";
-  const cost = IMAGE_GEN_COST["FLUX.1-schnell"];
+  const model = "black-forest-labs/FLUX.1-dev";
+  const cost = IMAGE_GEN_COST["FLUX.1-dev"];
 
   const response = await fetch("https://api.together.xyz/v1/images/generations", {
     method: "POST",

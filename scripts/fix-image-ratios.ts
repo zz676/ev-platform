@@ -169,7 +169,7 @@ async function generateWithTogetherAI(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "black-forest-labs/FLUX.1-schnell",
+      model: "black-forest-labs/FLUX.1-dev",
       prompt,
       width: 1792,
       height: 1024,
