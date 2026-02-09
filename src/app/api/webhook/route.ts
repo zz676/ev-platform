@@ -180,16 +180,21 @@ export async function POST(request: NextRequest) {
                 postId,
               });
 
-              // Download and upload to Vercel Blob for permanent storage
-              const imageResponse = await fetch(imageUrl);
-              const imageBlob = await imageResponse.blob();
-              const { url: blobUrl } = await put(
-                `posts/${postId}.png`,
-                imageBlob,
-                { access: "public" }
-              );
+              // If the image is already stored in Vercel Blob (branded overlay), reuse it
+              if (imageUrl.includes("public.blob.vercel-storage.com")) {
+                cardImageUrl = imageUrl;
+              } else {
+                // Download and upload to Vercel Blob for permanent storage
+                const imageResponse = await fetch(imageUrl);
+                const imageBlob = await imageResponse.blob();
+                const { url: blobUrl } = await put(
+                  `posts/${postId}.png`,
+                  imageBlob,
+                  { access: "public" }
+                );
 
-              cardImageUrl = blobUrl; // Use AI image for cards
+                cardImageUrl = blobUrl; // Use AI image for cards
+              }
               console.log(`AI image generated and stored for post ${postId}`);
             } catch (imageError) {
               console.error(
