@@ -6,6 +6,19 @@ const MEDIA_UPLOAD_URL = "https://upload.twitter.com/1.1/media/upload.json";
 // Tweets use v2 API
 const TWEETS_URL = "https://api.x.com/2/tweets";
 
+// X image constraints (v1.1 media upload)
+const X_MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+const X_MAX_IMAGE_DIMENSION = 1600; // Keep AI images safely under size limits
+const X_SUPPORTED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+]);
+const X_GENERIC_BINARY_TYPES = new Set([
+  "application/octet-stream",
+  "binary/octet-stream",
+]);
+
 // Credentials from environment
 const getCredentials = () => ({
   apiKey: process.env.X_API_KEY!,
@@ -104,6 +117,139 @@ export interface MediaUploadResponse {
   };
 }
 
+interface DownloadedImage {
+  buffer: Buffer;
+  contentType: string | null;
+  byteLength: number;
+}
+
+interface PreparedImage {
+  buffer: Buffer;
+  contentType: string;
+  normalized: boolean;
+}
+
+function isLikelyImageContentType(contentType: string | null): boolean {
+  if (!contentType) return false;
+  if (contentType.startsWith("image/")) return true;
+  return X_GENERIC_BINARY_TYPES.has(contentType);
+}
+
+function getImageFileExtension(contentType: string): string {
+  if (contentType === "image/png") return "png";
+  if (contentType === "image/gif") return "gif";
+  return "jpg";
+}
+
+async function downloadImageBuffer(imageUrl: string): Promise<DownloadedImage> {
+  console.log(`[Twitter] Downloading image from: ${imageUrl}`);
+
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    const errorMsg = `Failed to download image: HTTP ${response.status} ${response.statusText}`;
+    console.error(`[Twitter] ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+
+  const contentType = response.headers.get("content-type");
+  const contentLength = response.headers.get("content-length");
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  console.log(
+    `[Twitter] Image response: content-type=${contentType}, content-length=${contentLength}, bytes=${buffer.byteLength}`
+  );
+
+  if (buffer.byteLength < 1000) {
+    const errorMsg = `Downloaded content too small to be a valid image (${buffer.byteLength} bytes)`;
+    console.error(`[Twitter] ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+
+  if (contentType && !isLikelyImageContentType(contentType)) {
+    const errorMsg = `URL did not return an image. Content-Type: ${contentType}`;
+    console.error(`[Twitter] ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+
+  if (!contentType) {
+    console.warn("[Twitter] Image response missing content-type header, proceeding cautiously");
+  }
+
+  return { buffer, contentType, byteLength: buffer.byteLength };
+}
+
+async function normalizeImageForX(image: DownloadedImage): Promise<PreparedImage> {
+  const { buffer, contentType, byteLength } = image;
+  const isSupportedType = contentType ? X_SUPPORTED_IMAGE_TYPES.has(contentType) : false;
+  const needsTranscode = !isSupportedType || byteLength > X_MAX_IMAGE_BYTES;
+
+  if (!needsTranscode) {
+    return {
+      buffer,
+      contentType: contentType || "image/jpeg",
+      normalized: false,
+    };
+  }
+
+  try {
+    const { createCanvas, loadImage } = await import("canvas");
+    const imageObj = await loadImage(buffer);
+    const maxDim = Math.max(imageObj.width, imageObj.height);
+    const scale = Math.min(1, X_MAX_IMAGE_DIMENSION / maxDim);
+    const targetWidth = Math.max(1, Math.round(imageObj.width * scale));
+    const targetHeight = Math.max(1, Math.round(imageObj.height * scale));
+
+    const canvas = createCanvas(targetWidth, targetHeight);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(imageObj, 0, 0, targetWidth, targetHeight);
+
+    let quality = 0.86;
+    let outputBuffer = canvas.toBuffer("image/jpeg", {
+      quality,
+      progressive: true,
+    });
+
+    while (outputBuffer.byteLength > X_MAX_IMAGE_BYTES && quality > 0.6) {
+      quality -= 0.08;
+      outputBuffer = canvas.toBuffer("image/jpeg", {
+        quality,
+        progressive: true,
+      });
+    }
+
+    if (outputBuffer.byteLength > X_MAX_IMAGE_BYTES) {
+      const scaleDown = Math.sqrt(X_MAX_IMAGE_BYTES / outputBuffer.byteLength);
+      if (scaleDown < 1) {
+        const scaledWidth = Math.max(1, Math.round(targetWidth * scaleDown));
+        const scaledHeight = Math.max(1, Math.round(targetHeight * scaleDown));
+        const scaledCanvas = createCanvas(scaledWidth, scaledHeight);
+        const scaledCtx = scaledCanvas.getContext("2d");
+        scaledCtx.drawImage(imageObj, 0, 0, scaledWidth, scaledHeight);
+        outputBuffer = scaledCanvas.toBuffer("image/jpeg", {
+          quality: Math.max(0.6, quality - 0.1),
+          progressive: true,
+        });
+      }
+    }
+
+    if (outputBuffer.byteLength > X_MAX_IMAGE_BYTES) {
+      throw new Error(
+        `Transcoded image still too large (${outputBuffer.byteLength} bytes)`
+      );
+    }
+
+    return {
+      buffer: outputBuffer,
+      contentType: "image/jpeg",
+      normalized: true,
+    };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to normalize image for X upload: ${errorMsg}`);
+  }
+}
+
 // Validate that an image URL is accessible and returns actual image data
 export async function isImageUrlAccessible(imageUrl: string): Promise<boolean> {
   try {
@@ -122,9 +268,24 @@ export async function isImageUrlAccessible(imageUrl: string): Promise<boolean> {
     const contentType = response.headers.get("content-type");
     
     // Check if content-type indicates an image
-    if (!contentType || !contentType.startsWith("image/")) {
+    if (!contentType || (!contentType.startsWith("image/") && !X_GENERIC_BINARY_TYPES.has(contentType))) {
       console.log(`[Twitter] Image URL returned non-image content-type: ${contentType}`);
-      return false;
+      // Some CDNs block HEAD; try a ranged GET before failing
+      const fallback = await fetch(imageUrl, {
+        method: "GET",
+        headers: { Range: "bytes=0-1023" },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!fallback.ok) {
+        console.log(`[Twitter] Fallback GET failed: HTTP ${fallback.status}`);
+        return false;
+      }
+      const fallbackType = fallback.headers.get("content-type");
+      if (!fallbackType || (!fallbackType.startsWith("image/") && !X_GENERIC_BINARY_TYPES.has(fallbackType))) {
+        console.log(`[Twitter] Fallback GET returned non-image content-type: ${fallbackType}`);
+        return false;
+      }
+      return true;
     }
     
     console.log(`[Twitter] Image URL is accessible: content-type=${contentType}`);
@@ -138,38 +299,12 @@ export async function isImageUrlAccessible(imageUrl: string): Promise<boolean> {
 
 // Download image from URL and return as base64
 export async function downloadImageAsBase64(imageUrl: string): Promise<string> {
-  console.log(`[Twitter] Downloading image from: ${imageUrl}`);
-
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    const errorMsg = `Failed to download image: HTTP ${response.status} ${response.statusText}`;
-    console.error(`[Twitter] ${errorMsg}`);
-    throw new Error(errorMsg);
-  }
-
-  const contentType = response.headers.get("content-type");
-  const contentLength = response.headers.get("content-length");
-  console.log(`[Twitter] Image response: content-type=${contentType}, content-length=${contentLength}`);
-
-  // Verify content-type is actually an image
-  if (!contentType || !contentType.startsWith("image/")) {
-    const errorMsg = `URL did not return an image. Content-Type: ${contentType}`;
-    console.error(`[Twitter] ${errorMsg}`);
-    throw new Error(errorMsg);
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  
-  // Additional check: verify the response is large enough to be a real image
-  if (arrayBuffer.byteLength < 1000) {
-    const errorMsg = `Downloaded content too small to be a valid image (${arrayBuffer.byteLength} bytes)`;
-    console.error(`[Twitter] ${errorMsg}`);
-    throw new Error(errorMsg);
-  }
-  
-  const base64 = Buffer.from(arrayBuffer).toString("base64");
-  console.log(`[Twitter] Image downloaded: ${arrayBuffer.byteLength} bytes, base64 length: ${base64.length}`);
-
+  const downloaded = await downloadImageBuffer(imageUrl);
+  const prepared = await normalizeImageForX(downloaded);
+  const base64 = prepared.buffer.toString("base64");
+  console.log(
+    `[Twitter] Image prepared: normalized=${prepared.normalized}, type=${prepared.contentType}, bytes=${prepared.buffer.byteLength}, base64 length=${base64.length}`
+  );
   return base64;
 }
 
@@ -186,9 +321,13 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
 
   // Step 1: Download image
   console.log("[Twitter] Step 1: Downloading image...");
-  let base64Data: string;
+  let preparedImage: PreparedImage | null = null;
   try {
-    base64Data = await downloadImageAsBase64(imageUrl);
+    const downloaded = await downloadImageBuffer(imageUrl);
+    preparedImage = await normalizeImageForX(downloaded);
+    console.log(
+      `[Twitter] Image prepared for upload: normalized=${preparedImage.normalized}, type=${preparedImage.contentType}, bytes=${preparedImage.buffer.byteLength}`
+    );
   } catch (downloadError) {
     const errorMsg = downloadError instanceof Error ? downloadError.message : String(downloadError);
     console.error(`[Twitter] Image download failed: ${errorMsg}`);
@@ -197,8 +336,18 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
 
   // Step 2: Upload to X API
   console.log("[Twitter] Step 2: Uploading to X API...");
-  const formBody = new URLSearchParams();
-  formBody.append("media_data", base64Data);
+  if (!preparedImage) {
+    throw new Error("Image preparation failed: no image buffer available");
+  }
+  const formBody = new FormData();
+  const contentType = preparedImage?.contentType || "image/jpeg";
+  const extension = getImageFileExtension(contentType);
+  formBody.append(
+    "media",
+    new Blob([preparedImage.buffer], { type: contentType }),
+    `upload.${extension}`
+  );
+  formBody.append("media_category", "tweet_image");
 
   let response: Response;
   try {
@@ -206,9 +355,8 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
       method: "POST",
       headers: {
         Authorization: generateOAuthHeader("POST", MEDIA_UPLOAD_URL),
-        "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: formBody.toString(),
+      body: formBody,
     });
   } catch (fetchError) {
     const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
