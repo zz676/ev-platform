@@ -111,8 +111,9 @@ export default async function Home({
       }
     }
 
-    const poolWithoutFeatured = featuredPost
-      ? poolCandidates.filter((post) => post.id !== featuredPost.id)
+    const featuredId = featuredPost?.id;
+    const poolWithoutFeatured = featuredId
+      ? poolCandidates.filter((post) => post.id !== featuredId)
       : poolCandidates;
     poolPosts = poolWithoutFeatured.slice(0, 34);
 
