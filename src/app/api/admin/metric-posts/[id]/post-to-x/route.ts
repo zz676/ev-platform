@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { MetricPostStatus } from "@prisma/client";
-import { postTweet, uploadMedia, downloadImageAsBase64 } from "@/lib/twitter";
+import { postTweet, uploadMedia } from "@/lib/twitter";
 import { requireApiAdmin } from "@/lib/auth/api-auth";
 import { put } from "@vercel/blob";
 
