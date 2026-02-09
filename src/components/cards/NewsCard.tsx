@@ -58,6 +58,11 @@ export function NewsCard({
     <article className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
       {/* Image */}
       <div className="relative h-[146px] bg-gradient-to-br from-gray-100 to-gray-200">
+        <Link
+          href={`/${locale}/post/${id}`}
+          className="absolute inset-0 z-10"
+          aria-label={`Open article: ${title}`}
+        />
         <Image
           src={imageUrl || PLACEHOLDER_IMAGE}
           alt={title}
@@ -66,7 +71,7 @@ export function NewsCard({
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         {isImportant && (
-          <div className="absolute top-2 right-2 p-1 bg-lime-100/60 rounded-full">
+          <div className="absolute top-2 right-2 z-20 p-1 bg-lime-100/60 rounded-full">
             <Sparkles className="h-3 w-3 text-lime-500" strokeWidth={3} />
           </div>
         )}

@@ -1,4 +1,7 @@
 import OpenAI from "openai";
+import crypto from "crypto";
+import path from "path";
+import { put } from "@vercel/blob";
 import prisma from "@/lib/prisma";
 
 // Image generation pricing (as of 2024)
@@ -78,6 +81,75 @@ async function retryWithBackoff<T>(
   }
 
   throw lastError;
+}
+
+function normalizeSiteUrl(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
+async function applyBrandingOverlay(imageUrl: string): Promise<string> {
+  const siteUrl = normalizeSiteUrl(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://evjuice.net"
+  );
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!blobToken) {
+    console.warn("[AI] BLOB_READ_WRITE_TOKEN missing; skipping branded overlay");
+    return imageUrl;
+  }
+
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download image for branding: HTTP ${response.status}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const imageBuffer = Buffer.from(arrayBuffer);
+
+  const { createCanvas, loadImage } = await import("canvas");
+  const baseImage = await loadImage(imageBuffer);
+  const width = baseImage.width;
+  const height = baseImage.height;
+
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(baseImage, 0, 0, width, height);
+
+  const bannerHeight = Math.max(Math.round(height * 0.12), 90);
+  const bannerY = height - bannerHeight;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+  ctx.fillRect(0, bannerY, width, bannerHeight);
+
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  let logoImage;
+  try {
+    const logoBuffer = await import("fs/promises").then((fs) => fs.readFile(logoPath));
+    logoImage = await loadImage(logoBuffer);
+  } catch (error) {
+    console.warn("[AI] Failed to load logo for branding overlay:", error);
+  }
+
+  const paddingX = Math.round(width * 0.04);
+  const logoSize = Math.round(bannerHeight * 0.55);
+  const logoY = bannerY + Math.round((bannerHeight - logoSize) / 2);
+
+  if (logoImage) {
+    ctx.drawImage(logoImage, paddingX, logoY, logoSize, logoSize);
+  }
+
+  const textX = logoImage ? paddingX + logoSize + Math.round(bannerHeight * 0.3) : paddingX;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.font = `600 ${Math.round(bannerHeight * 0.32)}px sans-serif`;
+  ctx.textBaseline = "middle";
+  ctx.fillText(siteUrl, textX, bannerY + bannerHeight / 2);
+
+  const outputBuffer = canvas.toBuffer("image/png");
+  const fileName = `generated/brand-${Date.now()}-${crypto.randomBytes(6).toString("hex")}.png`;
+  const blob = await put(fileName, outputBuffer, {
+    access: "public",
+    contentType: "image/png",
+  });
+
+  return blob.url;
 }
 
 // AI Provider configuration
@@ -377,14 +449,17 @@ Style requirements:
 - Feature electric vehicles, charging infrastructure, or EV technology
 - Modern urban or tech environment
 - Vibrant but realistic colors
-- No text or logos in the image
+- No embedded text or logos in the scene
+- Leave a clean, low-detail area near the bottom for branding overlay
 - High quality, suitable for social media`;
+
+  let imageUrl: string | null = null;
 
   // Try Together AI (FLUX.1) first - 96% cheaper
   // Uses retry with exponential backoff (1s, 2s, 4s) for transient errors like HTTP 500
   if (process.env.TOGETHER_API_KEY) {
     try {
-      return await retryWithBackoff(
+      imageUrl = await retryWithBackoff(
         () => generateWithTogetherAI(imagePrompt, { source, postId }),
         3,    // maxRetries
         1000  // baseDelayMs
@@ -408,9 +483,9 @@ Style requirements:
   }
 
   // Fallback to DALL-E 3
-  if (process.env.OPENAI_API_KEY) {
+  if (!imageUrl && process.env.OPENAI_API_KEY) {
     try {
-      return await generateWithDALLE(imagePrompt, { source, postId });
+      imageUrl = await generateWithDALLE(imagePrompt, { source, postId });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
 
@@ -430,16 +505,25 @@ Style requirements:
     }
   }
 
-  // No API keys configured
-  const error = "No image generation API configured (need TOGETHER_API_KEY or OPENAI_API_KEY)";
-  await trackAIUsage({
-    type: "image_generation",
-    model: "none",
-    cost: 0,
-    success: false,
-    errorMsg: error,
-    postId,
-    source,
-  });
-  throw new Error(error);
+  if (!imageUrl) {
+    // No API keys configured
+    const error = "No image generation API configured (need TOGETHER_API_KEY or OPENAI_API_KEY)";
+    await trackAIUsage({
+      type: "image_generation",
+      model: "none",
+      cost: 0,
+      success: false,
+      errorMsg: error,
+      postId,
+      source,
+    });
+    throw new Error(error);
+  }
+
+  try {
+    return await applyBrandingOverlay(imageUrl);
+  } catch (error) {
+    console.warn("[AI] Branding overlay failed, using original image:", error);
+    return imageUrl;
+  }
 }
