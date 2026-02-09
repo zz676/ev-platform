@@ -52,7 +52,7 @@ The system uses Together AI as the primary provider with DALL-E as a fallback:
 
 | Provider | Model | Size | Cost per Image | Priority |
 |----------|-------|------|----------------|----------|
-| Together AI | FLUX.1-schnell | 1792x1024 | $0.003 | Primary |
+| Together AI | FLUX.1-dev | 1792x1024 | $0.010 | Primary |
 | OpenAI | DALL-E 3 | 1792x1024 | $0.080 | Fallback |
 
 **Cost Savings**: FLUX.1 is ~96% cheaper than DALL-E 3.
@@ -223,7 +223,7 @@ const { url } = await put(`posts/${postId}.png`, blob, {
 model AIUsage {
   id        String   @id @default(cuid())
   type      String   // "image_generation"
-  model     String   // "FLUX.1-schnell", "dall-e-3"
+  model     String   // "FLUX.1-dev", "dall-e-3"
   size      String?  // "1792x1024"
   cost      Float    // USD
   success   Boolean
@@ -273,7 +273,7 @@ async function trackAIUsage(params: {
 
 | Model | Size | Quality | Cost |
 |-------|------|---------|------|
-| FLUX.1-schnell | 1792x1024 | - | $0.003 |
+| FLUX.1-dev | 1792x1024 | - | $0.010 |
 | dall-e-3 | 1792x1024 | standard | $0.080 |
 | dall-e-3 | 1792x1024 | hd | $0.120 |
 | dall-e-3 | 1024x1024 | standard | $0.040 |
@@ -301,7 +301,7 @@ Location: `/admin/monitoring`
 | Column | Description |
 |--------|-------------|
 | Time | Generation timestamp |
-| Model | FLUX.1-schnell or dall-e-3 |
+| Model | FLUX.1-dev or dall-e-3 |
 | Source | Trigger source |
 | Cost | USD amount |
 | Status | Success/Failed with error tooltip |
@@ -332,7 +332,7 @@ Response:
   "recentUsage": [
     {
       "id": "...",
-      "model": "FLUX.1-schnell",
+      "model": "FLUX.1-dev",
       "source": "webhook",
       "cost": 0.003,
       "success": true,

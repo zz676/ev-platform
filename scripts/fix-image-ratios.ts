@@ -26,7 +26,7 @@ import OpenAI from "openai";
 const prisma = new PrismaClient();
 
 // Image generation costs
-const FLUX_COST = 0.003; // Together AI FLUX.1-schnell
+const FLUX_COST = 0.01; // Together AI FLUX.1-dev
 const DALLE_COST = 0.08; // DALL-E 3 1792x1024 standard
 
 // Minimum acceptable aspect ratio (width/height) - 0.75 allows 4:3 portrait images
@@ -193,7 +193,7 @@ async function generateWithTogetherAI(
   // Track successful generation
   await trackAIUsage({
     type: "image_generation",
-    model: "FLUX.1-schnell",
+    model: "FLUX.1-dev",
     size: "1792x1024",
     cost: FLUX_COST,
     success: true,
@@ -277,7 +277,7 @@ Style requirements:
 
       await trackAIUsage({
         type: "image_generation",
-        model: "FLUX.1-schnell",
+        model: "FLUX.1-dev",
         size: "1792x1024",
         cost: 0,
         success: false,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireApiAdmin } from "@/lib/auth/api-auth";
 
@@ -81,7 +82,8 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
     const sortBy = (searchParams.get("sortBy") || "createdAt").toLowerCase();
     const sortDirParam = (searchParams.get("sortDir") || "desc").toLowerCase();
-    const sortDir = sortDirParam === "asc" ? "asc" : "desc";
+    const sortDir: Prisma.SortOrder =
+      sortDirParam === "asc" ? "asc" : "desc";
 
     const allowedSorts = new Set([
       "createdat",

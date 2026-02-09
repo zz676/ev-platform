@@ -370,7 +370,7 @@ async function generateWithTogetherAI(
   // Track successful generation
   await trackAIUsage({
     type: "image_generation",
-    model: "FLUX.1-schnell",
+    model: "FLUX.1-dev",
     size: "1792x1024",
     cost,
     success: true,
@@ -471,7 +471,7 @@ Style requirements:
       // Track the failure (after all retries exhausted)
       await trackAIUsage({
         type: "image_generation",
-        model: "FLUX.1-schnell",
+        model: "FLUX.1-dev",
         size: "1792x1024",
         cost: 0,
         success: false,
