@@ -79,11 +79,14 @@ async function findLatestCompleteDeliveryMonth(): Promise<
 async function uploadChartBufferToBlob(params: {
   keyPrefix: string;
   buffer: Buffer;
-}): Promise<string> {
+}): Promise<string | null> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) return null;
+
   const blob = await put(
     `metric-charts/${params.keyPrefix}-${Date.now()}.png`,
     params.buffer,
-    { access: "public", contentType: "image/png" }
+    { access: "public", contentType: "image/png", token }
   );
   return blob.url;
 }
