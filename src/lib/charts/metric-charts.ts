@@ -1,9 +1,12 @@
-import type { ChartConfiguration } from "chart.js";
+import type { ChartConfiguration, Plugin } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import {
   BrandTrendData,
   AllBrandsData,
 } from "@/lib/metrics/delivery-data";
+
+const CHART_SOURCE_TEXT =
+  process.env.CHART_SOURCE_TEXT || "Source: evjuice.net";
 
 // Chart dimensions (16:9 aspect ratio, good for X)
 const CHART_WIDTH = 1200;
@@ -37,6 +40,22 @@ const BRAND_COLORS: Record<string, string> = {
 type ChartJSNodeCanvasType = import("chartjs-node-canvas").ChartJSNodeCanvas;
 
 let chartCanvasPromise: Promise<ChartJSNodeCanvasType> | null = null;
+
+const sourceAttributionPlugin: Plugin = {
+  id: "sourceAttribution",
+  afterDraw: (chart) => {
+    if (!CHART_SOURCE_TEXT) return;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = "12px Arial";
+    ctx.fillStyle = "rgba(17, 24, 39, 0.70)";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    const padding = 12;
+    ctx.fillText(CHART_SOURCE_TEXT, chart.width - padding, chart.height - padding);
+    ctx.restore();
+  },
+};
 
 async function getChartCanvas(): Promise<ChartJSNodeCanvasType> {
   if (!chartCanvasPromise) {
@@ -150,6 +169,9 @@ export async function generateBrandTrendChart(
           },
         },
       },
+      layout: {
+        padding: { bottom: 28 },
+      },
     },
     plugins: [
       {
@@ -162,6 +184,7 @@ export async function generateBrandTrendChart(
           ctx.restore();
         },
       },
+      sourceAttributionPlugin,
     ],
   };
 
@@ -252,7 +275,7 @@ export async function generateAllBrandsChart(
         },
       },
       layout: {
-        padding: { right: 80 }, // Space for data labels
+        padding: { right: 80, bottom: 28 }, // Space for data labels + source line
       },
     },
     plugins: [
@@ -266,6 +289,7 @@ export async function generateAllBrandsChart(
           ctx.restore();
         },
       },
+      sourceAttributionPlugin,
     ],
   };
 
@@ -340,6 +364,9 @@ export async function generateLineChart(
           },
         },
       },
+      layout: {
+        padding: { bottom: 28 },
+      },
     },
     plugins: [
       {
@@ -352,6 +379,7 @@ export async function generateLineChart(
           ctx.restore();
         },
       },
+      sourceAttributionPlugin,
     ],
   };
 
@@ -442,7 +470,9 @@ export async function generateBarChart(
           },
         },
       },
-      layout: isHorizontal ? { padding: { right: 80 } } : undefined,
+      layout: isHorizontal
+        ? { padding: { right: 80, bottom: 28 } }
+        : { padding: { bottom: 28 } },
     },
     plugins: [
       {
@@ -455,6 +485,7 @@ export async function generateBarChart(
           ctx.restore();
         },
       },
+      sourceAttributionPlugin,
     ],
   };
 
