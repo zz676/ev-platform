@@ -1,6 +1,5 @@
 import type { ChartConfiguration, Plugin, ChartType } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
-import { registerFont } from "canvas";
 import nodeFs from "node:fs";
 import path from "path";
 import {
@@ -29,10 +28,21 @@ const PAD_X_SCALE = 0.736;
 const padx = (n: number) => Math.max(0, Math.round(n * PAD_X_SCALE));
 
 let fontsRegistered = false;
+let registerFontFn: null | ((
+  fontPath: string,
+  fontFace: { family: string; weight?: string }
+) => void) = null;
 
-function ensureChartFontsRegistered() {
+async function ensureChartFontsRegistered() {
   if (fontsRegistered) return;
   try {
+    // Avoid loading native `canvas` during `next build` collection.
+    // Only load it when we actually render a chart at runtime.
+    if (!registerFontFn) {
+      const canvasMod = await import("canvas");
+      registerFontFn = canvasMod.registerFont;
+    }
+
     // In Vercel serverless, there may be *zero* system fonts available.
     // If we don't ship a font, even ASCII digits can render as tofu squares.
     //
@@ -43,13 +53,13 @@ function ensureChartFontsRegistered() {
     const boldPath = path.join(fontDir, "NotoSansSC-Bold.otf");
 
     if (nodeFs.existsSync(regularPath)) {
-      registerFont(regularPath, {
+      registerFontFn(regularPath, {
         family: CHART_FONT_FAMILY,
         weight: "normal",
       });
     }
     if (nodeFs.existsSync(boldPath)) {
-      registerFont(boldPath, {
+      registerFontFn(boldPath, {
         family: CHART_FONT_FAMILY,
         weight: "bold",
       });
@@ -78,6 +88,9 @@ const COLORS = {
   white: "rgba(255, 255, 255, 1)",
 };
 
+const DEFAULT_PAGE_BACKGROUND = "rgba(249, 250, 251, 1)"; // gray-50
+const DEFAULT_CARD_BACKGROUND = "rgba(255, 255, 255, 1)";
+
 // Brand-specific colors for variety
 const BRAND_COLORS: Record<string, string> = {
   BYD: "rgba(220, 38, 38, 0.9)", // red-600
@@ -94,9 +107,6 @@ const BRAND_COLORS: Record<string, string> = {
 
 type ChartJSNodeCanvasType = import("chartjs-node-canvas").ChartJSNodeCanvas;
 
-<<<<<<< Updated upstream
-let chartCanvasPromise: Promise<ChartJSNodeCanvasType> | null = null;
-=======
 declare module "chart.js" {
   interface PluginOptionsByType<TType extends ChartType> {
     sourceAttribution?: {
@@ -106,7 +116,6 @@ declare module "chart.js" {
     };
   }
 }
-
 type ChartPadding = {
   top?: number;
   right?: number;
@@ -132,22 +141,29 @@ type BarChartStyleOptions = {
 };
 
 const chartCanvasPromises = new Map<string, Promise<ChartJSNodeCanvasType>>();
->>>>>>> Stashed changes
 
 const sourceAttributionPlugin: Plugin = {
   id: "sourceAttribution",
-  afterDraw: (chart) => {
-    if (!CHART_SOURCE_TEXT) return;
+  afterDraw: (chart, _args, options) => {
+    const pluginOptions = options as
+      | { text?: string; color?: string; fontSize?: number }
+      | undefined;
+    const rawText = pluginOptions?.text ?? CHART_SOURCE_TEXT;
+    if (!rawText) return;
+    const text = rawText.toString().trim();
+    if (!text) return;
+
     const ctx = chart.ctx;
-    const text = CHART_SOURCE_TEXT.replace(/^source:/i, "source:");
+    const fontSize = pluginOptions?.fontSize ?? px(12);
+    const color = pluginOptions?.color || "#3eb265";
     ctx.save();
-    ctx.font = `italic ${px(12)}px ${CHART_FONT_CSS_FAMILY}`;
-    ctx.fillStyle = "#3eb265";
+    ctx.font = `italic ${fontSize}px ${CHART_FONT_CSS_FAMILY}`;
+    ctx.fillStyle = color;
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
     const padding = px(12);
     ctx.fillText(
-      text,
+      text.replace(/^source:/i, "source:"),
       chart.width - OUTER_PAD - padding - px(16),
       chart.height - OUTER_PAD - padding
     );
@@ -173,66 +189,89 @@ function roundedRect(
   ctx.closePath();
 }
 
-const cardBackgroundPlugin: Plugin = {
-  id: "cardBackground",
-  beforeDraw: (chart) => {
-    const ctx = chart.ctx;
-    ctx.save();
+function createCardBackgroundPlugin(options?: {
+  backgroundColor?: string;
+  cardColor?: string;
+  borderColor?: string;
+}): Plugin {
+  const backgroundColor = options?.backgroundColor || DEFAULT_PAGE_BACKGROUND;
+  const cardColor = options?.cardColor || DEFAULT_CARD_BACKGROUND;
+  const borderColor =
+    options?.borderColor || "rgba(17, 24, 39, 0.08)";
 
-    // Light page background
-    ctx.fillStyle = "rgba(249, 250, 251, 1)"; // gray-50
-    ctx.fillRect(0, 0, chart.width, chart.height);
+  return {
+    id: "cardBackground",
+    beforeDraw: (chart) => {
+      const ctx = chart.ctx;
+      ctx.save();
 
-    // White card with subtle shadow + border
-    const x = OUTER_PAD;
-    const y = OUTER_PAD;
-    const w = chart.width - OUTER_PAD * 2;
-    const h = chart.height - OUTER_PAD * 2;
+      // Page background
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, chart.width, chart.height);
 
-    ctx.shadowColor = "rgba(0, 0, 0, 0.14)";
-    ctx.shadowBlur = px(28);
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = px(12);
+      // Card with subtle shadow + border
+      const x = OUTER_PAD;
+      const y = OUTER_PAD;
+      const w = chart.width - OUTER_PAD * 2;
+      const h = chart.height - OUTER_PAD * 2;
 
-    ctx.fillStyle = "rgba(255, 255, 255, 1)";
-    roundedRect(ctx, x, y, w, h, CARD_RADIUS);
-    ctx.fill();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.14)";
+      ctx.shadowBlur = px(28);
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = px(12);
 
-    // Reset shadow before stroke
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
+      ctx.fillStyle = cardColor;
+      roundedRect(ctx, x, y, w, h, CARD_RADIUS);
+      ctx.fill();
 
-    ctx.lineWidth = px(1);
-    ctx.strokeStyle = "rgba(17, 24, 39, 0.08)";
-    roundedRect(ctx, x, y, w, h, CARD_RADIUS);
-    ctx.stroke();
+      // Reset shadow before stroke
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
 
-    ctx.restore();
-  },
-};
+      ctx.lineWidth = px(1);
+      ctx.strokeStyle = borderColor;
+      roundedRect(ctx, x, y, w, h, CARD_RADIUS);
+      ctx.stroke();
 
-async function getChartCanvas(): Promise<ChartJSNodeCanvasType> {
-  if (!chartCanvasPromise) {
-    chartCanvasPromise = (async () => {
-      const { ChartJSNodeCanvas } = await import("chartjs-node-canvas");
-      ensureChartFontsRegistered();
-      return new ChartJSNodeCanvas({
-        width: CHART_WIDTH,
-        height: CHART_HEIGHT,
-        backgroundColour: "white",
-        // NOTE: We register plugins via chartCallback instead of `plugins.modern = ["..."]`
-        // because Vercel output tracing can miss dynamically required modules.
-        chartCallback: (ChartJS) => {
-          ChartJS.register(ChartDataLabels);
-          ChartJS.defaults.font.family = CHART_FONT_CSS_FAMILY;
-        },
-      });
-    })();
+      ctx.restore();
+    },
+  };
+}
+
+async function getChartCanvas(options?: {
+  width?: number;
+  height?: number;
+  backgroundColour?: string;
+}): Promise<ChartJSNodeCanvasType> {
+  const width = options?.width ?? CHART_WIDTH;
+  const height = options?.height ?? CHART_HEIGHT;
+  const backgroundColour = options?.backgroundColour ?? "white";
+  const key = `${width}x${height}:${backgroundColour}`;
+
+  if (!chartCanvasPromises.has(key)) {
+    chartCanvasPromises.set(
+      key,
+      (async () => {
+        const { ChartJSNodeCanvas } = await import("chartjs-node-canvas");
+        await ensureChartFontsRegistered();
+        return new ChartJSNodeCanvas({
+          width,
+          height,
+          backgroundColour,
+          // NOTE: We register plugins via chartCallback instead of `plugins.modern = ["..."]`
+          // because Vercel output tracing can miss dynamically required modules.
+          chartCallback: (ChartJS) => {
+            ChartJS.register(ChartDataLabels);
+            ChartJS.defaults.font.family = CHART_FONT_CSS_FAMILY;
+          },
+        });
+      })()
+    );
   }
 
-  return chartCanvasPromise;
+  return chartCanvasPromises.get(key)!;
 }
 
 // Helper to format numbers (e.g., 210000 -> "210K")
@@ -337,13 +376,13 @@ export async function generateBrandTrendChart(
       },
     },
     plugins: [
-      cardBackgroundPlugin,
+      createCardBackgroundPlugin(),
       sourceAttributionPlugin,
     ],
   };
 
   const chartJSNodeCanvas = await getChartCanvas();
-  return chartJSNodeCanvas.renderToBuffer(config);
+  return chartJSNodeCanvas.renderToBufferSync(config);
 }
 
 /**
@@ -438,13 +477,13 @@ export async function generateAllBrandsChart(
       },
     },
     plugins: [
-      cardBackgroundPlugin,
+      createCardBackgroundPlugin(),
       sourceAttributionPlugin,
     ],
   };
 
   const chartJSNodeCanvas = await getChartCanvas();
-  return chartJSNodeCanvas.renderToBuffer(config);
+  return chartJSNodeCanvas.renderToBufferSync(config);
 }
 
 /**
@@ -457,8 +496,16 @@ export async function generateLineChart(
     label: string;
     data: number[];
     color?: string;
-  }>
+  }>,
+  options?: {
+    xAxisFontSize?: number;
+    yAxisFontSize?: number;
+    backgroundColor?: string;
+  }
 ): Promise<Buffer> {
+  const xTickSize = px(options?.xAxisFontSize ?? 12);
+  const yTickSize = px(options?.yAxisFontSize ?? 12);
+
   const config: ChartConfiguration = {
     type: "line",
     data: {
@@ -502,13 +549,13 @@ export async function generateLineChart(
       scales: {
         x: {
           grid: { display: false },
-          ticks: { font: { size: px(12) }, color: COLORS.text },
+          ticks: { font: { size: xTickSize }, color: COLORS.text },
         },
         y: {
           beginAtZero: true,
           grid: { color: COLORS.gridLine },
           ticks: {
-            font: { size: px(12) },
+            font: { size: yTickSize },
             color: COLORS.text,
             callback: (value) => formatNumber(value as number),
           },
@@ -524,13 +571,13 @@ export async function generateLineChart(
       },
     },
     plugins: [
-      cardBackgroundPlugin,
+      createCardBackgroundPlugin({ backgroundColor: options?.backgroundColor }),
       sourceAttributionPlugin,
     ],
   };
 
   const chartJSNodeCanvas = await getChartCanvas();
-  return chartJSNodeCanvas.renderToBuffer(config);
+  return chartJSNodeCanvas.renderToBufferSync(config);
 }
 
 /**
@@ -544,10 +591,25 @@ export async function generateBarChart(
     horizontal?: boolean;
     showYoY?: number[]; // YoY changes to show on bars
     colors?: string[];
+    style?: BarChartStyleOptions;
   }
 ): Promise<Buffer> {
   const isHorizontal = options?.horizontal ?? false;
   const showYoY = options?.showYoY;
+  const style = options?.style;
+
+  const textColor = style?.fontColor || COLORS.text;
+  const titleColor = style?.titleColor || textColor;
+  const titleSize = style?.titleSize ?? tfs(24);
+  const cardColor = style?.backgroundColor || DEFAULT_CARD_BACKGROUND;
+  const outerBackgroundColor = style?.backgroundColor;
+  const xTickSize = px(style?.xAxisFontSize ?? 12);
+  const yTickSize = px(style?.yAxisFontSize ?? 12);
+  const xTickColor = style?.xAxisFontColor || textColor;
+  const yTickColor = style?.yAxisFontColor || textColor;
+  const sourceText = style?.sourceText ?? CHART_SOURCE_TEXT;
+  const sourceColor = style?.sourceColor || "#3eb265";
+  const sourceFontSize = style?.sourceFontSize ?? px(12);
 
   const topRightValueLabelsPlugin: Plugin = {
     id: "topRightValueLabels",
@@ -560,8 +622,8 @@ export async function generateBarChart(
 
       ctx.save();
       ctx.font = `${dls(11)}px ${CHART_FONT_CSS_FAMILY}`;
-      ctx.fillStyle = "rgba(17, 24, 39, 0.95)";
-      ctx.textAlign = "right";
+      ctx.fillStyle = textColor;
+      ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
 
       const insetX = px(6);
@@ -570,12 +632,11 @@ export async function generateBarChart(
 
       meta.data.forEach((el, i) => {
         // BarElement exposes x/y and width in Chart.js v4, but the type isn't exported cleanly.
-        const bar = el as unknown as { x?: number; y?: number; width?: number };
+        const bar = el as unknown as { x?: number; y?: number };
         const xCenter = bar.x;
         const yTop = bar.y;
-        const w = bar.width;
         const raw = data[i] ?? 0;
-        if (typeof xCenter !== "number" || typeof yTop !== "number" || typeof w !== "number") return;
+        if (typeof xCenter !== "number" || typeof yTop !== "number") return;
         if (!Number.isFinite(raw) || raw <= 0) return;
 
         const yoy = showYoY?.[i];
@@ -585,7 +646,7 @@ export async function generateBarChart(
             : "";
         const text = `${formatNumber(raw)}${yoyStr}`;
 
-        let x = xCenter + w / 2 - insetX;
+        let x = xCenter;
         let y = yTop - insetY;
 
         // Keep the label inside the chart area
@@ -597,6 +658,35 @@ export async function generateBarChart(
 
       ctx.restore();
     },
+  };
+
+  const minBarWidth = style?.minBarWidth ?? px(28);
+  const maxWidth = style?.maxWidth ?? 2600;
+  const dynamicWidth =
+    OUTER_PAD * 2 + minBarWidth * labels.length + padx(px(120));
+  const chartWidth = isHorizontal
+    ? CHART_WIDTH
+    : Math.min(maxWidth, Math.max(CHART_WIDTH, dynamicWidth));
+
+  const defaultPadding = isHorizontal
+    ? {
+        top: OUTER_PAD,
+        left: OUTER_PAD + padx(px(28)),
+        right: OUTER_PAD + padx(px(80)),
+        bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
+      }
+    : {
+        top: OUTER_PAD,
+        left: OUTER_PAD + padx(px(48)),
+        right: OUTER_PAD + padx(px(48)),
+        bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
+      };
+
+  const resolvedPadding = {
+    top: style?.padding?.top ?? defaultPadding.top,
+    right: style?.padding?.right ?? defaultPadding.right,
+    bottom: style?.padding?.bottom ?? defaultPadding.bottom,
+    left: style?.padding?.left ?? defaultPadding.left,
   };
 
   const config: ChartConfiguration = {
@@ -622,8 +712,8 @@ export async function generateBarChart(
         title: {
           display: true,
           text: title,
-          font: { size: tfs(24), weight: "bold" },
-          color: COLORS.text,
+          font: { size: titleSize, weight: "bold" },
+          color: titleColor,
           padding: { top: px(20), bottom: px(20) },
         },
         legend: { display: false },
@@ -642,9 +732,14 @@ export async function generateBarChart(
             return `${formatNumber(value)}${yoyStr}`;
           },
           font: { size: dls(11), weight: "bold" },
-          color: COLORS.text,
+          color: textColor,
           clamp: true,
           clip: false,
+        },
+        sourceAttribution: {
+          text: sourceText,
+          color: sourceColor,
+          fontSize: sourceFontSize,
         },
       },
       scales: {
@@ -652,8 +747,8 @@ export async function generateBarChart(
           beginAtZero: isHorizontal,
           grid: { display: isHorizontal, color: COLORS.gridLine },
           ticks: {
-            font: { size: px(12) },
-            color: COLORS.text,
+            font: { size: xTickSize },
+            color: xTickColor,
             callback: isHorizontal
               ? (value) => formatNumber(value as number)
               : undefined,
@@ -663,41 +758,34 @@ export async function generateBarChart(
           beginAtZero: !isHorizontal,
           grid: { display: !isHorizontal, color: COLORS.gridLine },
           ticks: {
-            font: { size: px(12) },
-            color: COLORS.text,
+            font: { size: yTickSize },
+            color: yTickColor,
             callback: !isHorizontal
               ? (value) => formatNumber(value as number)
               : undefined,
           },
         },
       },
-      layout: isHorizontal
-        ? {
-            padding: {
-              top: OUTER_PAD,
-              left: OUTER_PAD + padx(px(28)),
-              right: OUTER_PAD + padx(px(80)),
-              bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
-            },
-          }
-        : {
-            padding: {
-              top: OUTER_PAD,
-              left: OUTER_PAD + padx(px(48)),
-              right: OUTER_PAD + padx(px(48)),
-              bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
-            },
-          },
+      layout: {
+        padding: resolvedPadding,
+      },
     },
     plugins: [
-      cardBackgroundPlugin,
+      createCardBackgroundPlugin({
+        backgroundColor: outerBackgroundColor,
+        cardColor,
+      }),
       topRightValueLabelsPlugin,
       sourceAttributionPlugin,
     ],
   };
 
-  const chartJSNodeCanvas = await getChartCanvas();
-  return chartJSNodeCanvas.renderToBuffer(config);
+  const chartJSNodeCanvas = await getChartCanvas({
+    width: chartWidth,
+    height: CHART_HEIGHT,
+    backgroundColour: cardColor,
+  });
+  return chartJSNodeCanvas.renderToBufferSync(config);
 }
 
 // Export colors and utilities for use in other modules

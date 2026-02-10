@@ -25,7 +25,7 @@ const nextConfig = {
     ],
   },
   // Externalize canvas for server-side chart rendering
-  serverExternalPackages: ['canvas', 'chartjs-node-canvas'],
+  serverExternalPackages: ['canvas', '@napi-rs/canvas', 'chartjs-node-canvas'],
   // Ensure server-side chart rendering has access to a real font (Vercel serverless
   // can have zero system fonts installed, which causes tofu squares for any text).
   outputFileTracingIncludes: {
