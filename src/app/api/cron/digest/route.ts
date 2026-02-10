@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { PostStatus } from "@prisma/client";
+import { PostStatus, Prisma } from "@prisma/client";
 import { postTweet, uploadMedia, isImageUrlAccessible } from "@/lib/twitter";
 import { generatePostImage } from "@/lib/ai";
 import { POSTING_CONFIG } from "@/lib/config/posting";
@@ -84,12 +84,22 @@ export async function GET(request: NextRequest) {
     const digestSlot = getCurrentDigestSlot();
     const slotTimeStr = digestSlot.toISOString();
 
+    const digestSelect = {
+      id: true,
+      scheduledFor: true,
+      content: true,
+      postIds: true,
+      topPostId: true,
+      status: true,
+    } as const;
+
     // Fetch pre-generated content from DigestContent table
     let digestContent = await prisma.digestContent.findFirst({
       where: {
         scheduledFor: digestSlot,
         status: "PENDING",
       },
+      select: digestSelect,
     });
 
     // If no pre-generated content, try to generate inline as fallback
@@ -138,6 +148,7 @@ export async function GET(request: NextRequest) {
           topPostId: topPost.id,
           status: "PENDING",
         },
+        select: digestSelect,
       });
     }
 
@@ -268,10 +279,24 @@ export async function GET(request: NextRequest) {
           imageUrl = selectedImageUrl;
           imageSource = selectedImageSource;
 
-          await prisma.digestContent.update({
-            where: { id: digestContent.id },
-            data: { digestImageUrl: selectedImageUrl },
-          });
+          try {
+            await prisma.digestContent.update({
+              where: { id: digestContent.id },
+              data: { digestImageUrl: selectedImageUrl },
+              select: { id: true },
+            });
+          } catch (err) {
+            if (
+              err instanceof Prisma.PrismaClientKnownRequestError &&
+              err.code === "P2022"
+            ) {
+              console.warn(
+                "[Digest] digestImageUrl column missing; skipping write"
+              );
+            } else {
+              throw err;
+            }
+          }
         } else {
           console.log("[Digest] No image uploaded for digest");
           imageSource = "none";
@@ -307,6 +332,7 @@ export async function GET(request: NextRequest) {
       await prisma.digestContent.update({
         where: { id: digestContent.id },
         data: { status: "FAILED" },
+        select: { id: true },
       });
 
       await alertDigestPostingFailed(slotTimeStr, errorMessage);
@@ -328,6 +354,7 @@ export async function GET(request: NextRequest) {
         postedAt: new Date(),
         tweetId: tweetResponse.data.id,
       },
+      select: { id: true },
     });
 
     // Mark posts as included in digest
