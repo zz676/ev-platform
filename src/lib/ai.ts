@@ -50,6 +50,11 @@ async function trackAIUsage(params: {
   inputTokens?: number;
   outputTokens?: number;
 }): Promise<void> {
+  // Tests should not attempt to connect to a real database.
+  if (process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID) {
+    return;
+  }
+
   try {
     await prisma.aIUsage.create({ data: params });
   } catch (error) {

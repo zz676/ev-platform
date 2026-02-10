@@ -1,24 +1,9 @@
-import type { ChartConfiguration, ChartTypeRegistry } from "chart.js";
+import type { ChartConfiguration } from "chart.js";
+import ChartDataLabels from "chartjs-plugin-datalabels";
 import {
   BrandTrendData,
   AllBrandsData,
-  BRAND_DISPLAY_NAMES,
 } from "@/lib/metrics/delivery-data";
-
-// Register datalabels plugin types
-declare module "chart.js" {
-  interface PluginOptionsByType<TType extends keyof ChartTypeRegistry> {
-    datalabels?: {
-      display?: boolean;
-      anchor?: "start" | "center" | "end";
-      align?: "start" | "center" | "end" | "top" | "bottom" | "left" | "right";
-      formatter?: (value: number, context: { dataIndex: number }) => string;
-      font?: { size?: number; weight?: string };
-      color?: string;
-      padding?: { left?: number };
-    };
-  }
-}
 
 // Chart dimensions (16:9 aspect ratio, good for X)
 const CHART_WIDTH = 1200;
@@ -61,8 +46,10 @@ async function getChartCanvas(): Promise<ChartJSNodeCanvasType> {
         width: CHART_WIDTH,
         height: CHART_HEIGHT,
         backgroundColour: "white",
-        plugins: {
-          modern: ["chartjs-plugin-datalabels"],
+        // NOTE: We register plugins via chartCallback instead of `plugins.modern = ["..."]`
+        // because Vercel output tracing can miss dynamically required modules.
+        chartCallback: (ChartJS) => {
+          ChartJS.register(ChartDataLabels);
         },
       });
     })();

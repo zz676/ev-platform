@@ -108,48 +108,48 @@ Convert natural language questions into Prisma queries.
 
 AVAILABLE TABLES:
 
-1. EVMetric - Brand delivery/sales data
+1. eVMetric - Brand delivery/sales data
    Fields: brand (BYD|NIO|XPENG|LI_AUTO|ZEEKR|XIAOMI|TESLA_CHINA|LEAPMOTOR|GEELY|OTHER_BRAND|INDUSTRY),
            metric (DELIVERY|SALES|WHOLESALE|PRODUCTION|BATTERY_INSTALL|MARKET_SHARE|RANKING),
            periodType (MONTHLY|QUARTERLY|YEARLY), year, period, value, yoyChange, momChange, marketShare, ranking
 
-2. AutomakerRankings - Monthly automaker sales rankings
+2. automakerRankings - Monthly automaker sales rankings
    Fields: dataSource, year, month, ranking, automaker, value, yoyChange, momChange, marketShare
 
-3. CaamNevSales - CAAM official NEV sales (includes exports)
+3. caamNevSales - CAAM official NEV sales (includes exports)
    Fields: year, month, value, yoyChange, momChange, unit (vehicles)
 
-4. CpcaNevRetail - CPCA NEV retail sales (consumer registrations)
+4. cpcaNevRetail - CPCA NEV retail sales (consumer registrations)
    Fields: year, month, value, yoyChange, momChange, unit (vehicles)
 
-5. CpcaNevProduction - CPCA NEV production volume
+5. cpcaNevProduction - CPCA NEV production volume
    Fields: year, month, value, yoyChange, momChange, unit (vehicles)
 
-6. ChinaPassengerInventory - Dealer + factory inventory levels
+6. chinaPassengerInventory - Dealer + factory inventory levels
    Fields: year, month, value, unit (million_units)
 
-7. ChinaDealerInventoryFactor - Dealer inventory coefficient (库存系数)
+7. chinaDealerInventoryFactor - Dealer inventory coefficient (库存系数)
    Fields: year, month, value (ratio: >1.5=oversupply, <0.8=shortage)
 
-8. ChinaViaIndex - Vehicle Inventory Alert Index
+8. chinaViaIndex - Vehicle Inventory Alert Index
    Fields: year, month, value (percent: >50%=contraction, <50%=healthy)
 
-9. ChinaBatteryInstallation - Total battery installation & production
+9. chinaBatteryInstallation - Total battery installation & production
    Fields: year, month, installation, production, unit (GWh)
 
-10. BatteryMakerMonthly - Battery maker performance by company
+10. batteryMakerMonthly - Battery maker performance by company
     Fields: maker (CATL|BYD|CALB|Gotion|EVE|Sunwoda|LG|SK|Panasonic), year, month, installation, production, yoyChange
 
-11. BatteryMakerRankings - Battery maker market share rankings
+11. batteryMakerRankings - Battery maker market share rankings
     Fields: dataSource, scope (CHINA|GLOBAL), periodType, year, month, ranking, maker, value, marketShare
 
-12. PlantExports - Exports by manufacturing plant
+12. plantExports - Exports by manufacturing plant
     Fields: plant (TESLA_SHANGHAI|BYD_SHENZHEN|etc), brand, year, month, value, yoyChange
 
-13. NevSalesSummary - Weekly/bi-weekly sales flash reports
+13. nevSalesSummary - Weekly/bi-weekly sales flash reports
     Fields: dataSource, year, startDate, endDate, retailSales, retailYoy, wholesaleSales, wholesaleYoy
 
-14. VehicleSpec - Vehicle specifications
+14. vehicleSpec - Vehicle specifications
     Fields: brand, model, variant, startingPrice, currentPrice, rangeCltc, acceleration, batteryCapacity, vehicleType (BEV|EREV|PHEV)
 
 QUERY ROUTING:

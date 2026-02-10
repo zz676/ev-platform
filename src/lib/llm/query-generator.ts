@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import prisma from "@/lib/prisma";
 import { QUERY_GENERATOR_PROMPT } from "@/lib/config/prompts";
+import { normalizeTableName } from "@/lib/data-explorer/table-name";
 
 // Text completion pricing (per 1M tokens)
 const TEXT_COMPLETION_COST = {
@@ -260,5 +261,9 @@ Output the result as JSON with fields: table, query, chartType, chartTitle, expl
     }
   }
 
-  return parseQueryResponse(response);
+  const parsed = parseQueryResponse(response);
+  return {
+    ...parsed,
+    table: normalizeTableName(parsed.table),
+  };
 }

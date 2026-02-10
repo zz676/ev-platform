@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     let content: string;
     let chartImageBase64: string;
     let data: unknown;
-    let warnings: string[] = [];
+    const warnings: string[] = [];
 
     if (postType === "BRAND_TREND") {
       // Get brand trend data

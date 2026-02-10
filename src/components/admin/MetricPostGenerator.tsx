@@ -170,9 +170,20 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
     setError(null);
 
     try {
+      const asOfMonth =
+        postType === "BRAND_TREND"
+          ? Math.max(
+              ...(((preview.data as { months?: Array<{ month: number }> })
+                .months || []
+              ).map((m) => m.month)),
+              1
+            )
+          : month;
+
       const body: Record<string, unknown> = {
         postType,
         year,
+        period: asOfMonth,
         content: editedContent,
         chartImageUrl: null, // Will be set when posting
         dataSnapshot: preview.data,
@@ -212,10 +223,21 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
     setSuccess(null);
 
     try {
+      const asOfMonth =
+        postType === "BRAND_TREND"
+          ? Math.max(
+              ...(((preview.data as { months?: Array<{ month: number }> })
+                .months || []
+              ).map((m) => m.month)),
+              1
+            )
+          : month;
+
       // First save the post
       const saveBody: Record<string, unknown> = {
         postType,
         year,
+        period: asOfMonth,
         content: editedContent,
         dataSnapshot: preview.data,
       };
