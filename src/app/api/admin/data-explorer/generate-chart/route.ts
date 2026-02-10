@@ -8,6 +8,25 @@ interface ChartDataset {
   color?: string;
 }
 
+interface BarChartStyleOptions {
+  padding?: {
+    top?: number;
+    right?: number;
+    bottom?: number;
+    left?: number;
+  };
+  fontColor?: string;
+  titleSize?: number;
+  titleColor?: string;
+  backgroundColor?: string;
+  xAxisFontSize?: number;
+  yAxisFontSize?: number;
+  xAxisFontColor?: string;
+  yAxisFontColor?: string;
+  minBarWidth?: number;
+  maxWidth?: number;
+}
+
 // POST: Generate chart from query results
 export async function POST(request: Request) {
   const authResult = await requireApiAdmin();
@@ -17,7 +36,23 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { data, chartType, title, xField, yField, groupField } = body;
+    const {
+      data,
+      chartType,
+      title,
+      xField,
+      yField,
+      groupField,
+      chartOptions,
+    }: {
+      data: Record<string, unknown>[];
+      chartType: string;
+      title?: string;
+      xField?: string;
+      yField?: string;
+      groupField?: string;
+      chartOptions?: BarChartStyleOptions;
+    } = body;
 
     if (!data || !Array.isArray(data) || data.length === 0) {
       return NextResponse.json(
@@ -147,6 +182,7 @@ export async function POST(request: Request) {
       chartBuffer = await generateBarChart(chartTitle, labels, values, {
         horizontal: isHorizontal,
         showYoY: yoyChanges.length === values.length ? yoyChanges : undefined,
+        style: chartOptions,
       });
     }
 

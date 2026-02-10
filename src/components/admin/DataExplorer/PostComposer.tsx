@@ -127,6 +127,15 @@ export function PostComposer({
     setSuccess(null);
 
     try {
+      const now = new Date();
+      const basePeriod = now.getMonth() + 1;
+      const maxPeriod = 2147483647;
+      const buildUniquePeriod = (attempt: number) => {
+        const epochSeconds = Math.floor(Date.now() / 1000);
+        const jitter = Math.floor(Math.random() * 30);
+        return Math.min(maxPeriod, epochSeconds + attempt + jitter);
+      };
+
       // Build final content
       let finalContent = content;
 
@@ -138,24 +147,40 @@ export function PostComposer({
         finalContent += "\n\n🍋 evjuice.net";
       }
 
-      // Save as metric post and post to X
-      const saveRes = await fetch("/api/admin/metric-posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          postType: "ALL_BRANDS_COMPARISON",
-          year: new Date().getFullYear(),
-          period: new Date().getMonth() + 1,
-          content: finalContent,
-          dataSnapshot: { source: "data-explorer" },
-        }),
-      });
+      // Save as metric post and post to X (use unique period to avoid conflicts)
+      let post: { id: string } | null = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const saveRes = await fetch("/api/admin/metric-posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postType: "ALL_BRANDS_COMPARISON",
+            year: now.getFullYear(),
+            period: buildUniquePeriod(attempt),
+            content: finalContent,
+            dataSnapshot: {
+              source: "data-explorer",
+              basePeriod,
+              createdAt: now.toISOString(),
+            },
+          }),
+        });
 
-      if (!saveRes.ok) {
-        throw new Error("Failed to save post");
+        if (saveRes.ok) {
+          const saved = await saveRes.json();
+          post = saved.post;
+          break;
+        }
+
+        if (saveRes.status !== 409) {
+          const errData = await saveRes.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to save post");
+        }
       }
 
-      const { post } = await saveRes.json();
+      if (!post) {
+        throw new Error("Failed to save post (conflict). Try again.");
+      }
 
       // Post to X
       const postRes = await fetch(`/api/admin/metric-posts/${post.id}/post-to-x`, {

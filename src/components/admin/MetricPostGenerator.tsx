@@ -84,6 +84,11 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
   // Error/success states
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [postStatus, setPostStatus] = useState<{
+    type: "success" | "error" | "info";
+    message: string;
+    link?: string;
+  } | null>(null);
 
   // Fetch available options
   useEffect(() => {
@@ -132,6 +137,7 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
     setError(null);
     setSuccess(null);
     setPreview(null);
+    setPostStatus(null);
 
     try {
       const body: Record<string, unknown> = { postType, year };
@@ -168,6 +174,7 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
 
     setSaving(true);
     setError(null);
+    setPostStatus(null);
 
     try {
       const asOfMonth =
@@ -221,6 +228,7 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
     setPosting(true);
     setError(null);
     setSuccess(null);
+    setPostStatus({ type: "info", message: "Posting to X..." });
 
     try {
       const asOfMonth =
@@ -277,12 +285,24 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
       }
 
       const result = await postRes.json();
-      setSuccess(`Posted to X successfully! Tweet ID: ${result.tweetId}`);
+      const tweetUrl = result.tweetUrl as string | undefined;
+      setSuccess(
+        tweetUrl
+          ? `Posted to X successfully. Tweet: ${tweetUrl}`
+          : `Posted to X successfully! Tweet ID: ${result.tweetId}`
+      );
+      setPostStatus({
+        type: "success",
+        message: "Posted to X successfully. Tweet:",
+        link: tweetUrl,
+      });
       setPreview(null);
       setEditedContent("");
       onPostSaved?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Post failed");
+      const errorMessage = err instanceof Error ? err.message : "Post failed";
+      setError(errorMessage);
+      setPostStatus({ type: "error", message: errorMessage });
     } finally {
       setPosting(false);
     }
@@ -484,6 +504,29 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
 
               {/* Action Buttons */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                {postStatus && (
+                  <div
+                    className={`mr-auto text-xs font-medium ${
+                      postStatus.type === "success"
+                        ? "text-ev-green-700"
+                        : postStatus.type === "error"
+                          ? "text-red-600"
+                          : "text-gray-500"
+                    }`}
+                  >
+                    {postStatus.message}{" "}
+                    {postStatus.link ? (
+                      <a
+                        href={postStatus.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline underline-offset-2"
+                      >
+                        link
+                      </a>
+                    ) : null}
+                  </div>
+                )}
                 <button
                   onClick={handleSave}
                   disabled={saving || !editedContent.trim()}
