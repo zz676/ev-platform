@@ -20,6 +20,55 @@ This design is implemented in the repo under `src/app/api/*`, `src/lib/*`, and `
 2. No fully generic "template engine" for every possible chart/query (this is a Phase 2 follow-up).
 3. No "perfect" metric completeness detection. We use a pragmatic completeness threshold.
 
+## Key Decisions and Tradeoffs
+
+### Event-driven drafts vs scheduled “daily draft generation”
+
+Decision:
+
+1. Draft generation is triggered by the metric ingestion workflow (GitHub Action), not by a daily cron.
+2. The generator endpoint is idempotent and only creates drafts when a new “complete month” appears.
+
+Tradeoffs:
+
+1. Pros: drafts appear soon after new data lands; fewer no-op cron runs; less DB pressure.
+2. Cons: relies on the ingestion workflow to call the trigger reliably; if ingestion is paused, no new drafts appear until it resumes.
+
+### Approve-to-publish (immediate) plus cron backstop (retries)
+
+Decision:
+
+1. Admin approval triggers an immediate publish attempt (fast feedback loop).
+2. A scheduled backstop retries transient failures and keeps the system “hands-off”.
+
+Tradeoffs:
+
+1. Pros: reduces manual retries; handles flaky X/media upload/network failures common in serverless.
+2. Cons: slightly more moving parts (an hourly job and a cron endpoint).
+
+### No queue system in Phase 1
+
+Decision:
+
+1. Use DB state transitions + a lightweight “lock” (atomic update) for concurrency control.
+2. Use a scheduled retry job rather than a dedicated queue.
+
+Tradeoffs:
+
+1. Pros: simpler ops; fewer services; faster iteration.
+2. Cons: less precise retry scheduling and throughput control than a real job queue.
+
+### “Latest complete month” detection
+
+Decision:
+
+1. Use a pragmatic completeness threshold (`METRIC_COMPLETE_MIN_BRANDS`, default `8` brands) for `DELIVERY/MONTHLY`.
+
+Tradeoffs:
+
+1. Pros: robust enough for early automation; easy to reason about.
+2. Cons: may mis-detect completeness if data is delayed for multiple major brands; does not validate per-brand integrity.
+
 ## High-Level Overview
 
 The system has 2 main loops:
@@ -109,6 +158,8 @@ Chart rendering is server-side:
 1. Chart generation via `chartjs-node-canvas` and `chart.js`.
 2. `chartjs-plugin-datalabels` is statically imported and registered via `chartCallback` to ensure Vercel output tracing includes it.
 3. The generated PNG buffer is uploaded to Vercel Blob as a public asset.
+4. Charts include a “card” background with shadow, consistent padding, and a watermark `source: evjuice.net` to improve readability when posted to X.
+5. Vertical bar charts draw value labels using a custom plugin to place labels at the top-right of each bar (better than default placements for your use case).
 
 Implementation:
 
@@ -405,6 +456,10 @@ unsafe use of new value "DRAFT" of enum type "MetricPostStatus"
 
 It means you tried to use the new enum value in the same transaction. Run the `ALTER TYPE ... ADD VALUE` statements alone first, then run dependent statements in a separate run.
 
+### Local development notes (charts)
+
+Chart rendering uses the native `canvas` module. If chart generation fails locally with an “incompatible architecture” error, it usually means your installed native binary doesn’t match your CPU/Node runtime. The fix is typically to reinstall dependencies (or rebuild `canvas`) on the same machine/architecture you are running on. Production (Vercel) is the source of truth for the deployment runtime.
+
 ### Verification checklist
 
 1. Admin UI loads Metric Posts without 500s.
@@ -435,3 +490,26 @@ Unit tests added:
 3. Queue-based reliability:
    - Optional introduction of a job queue for media upload and posting retries.
 
+## Failure Modes and How We Handle Them
+
+1. LLM provider outage:
+   - The code uses provider fallback in `src/lib/llm/*`.
+   - If all providers fail, the post remains `DRAFT`/`APPROVED` with a `lastError` (no partial publish).
+2. X API transient failures (media upload/post):
+   - On failure, `publishMetricPost()` writes `lastError` and returns the post to `APPROVED` for retry (until `METRIC_MAX_ATTEMPTS`).
+3. Blob token missing:
+   - Publishing can proceed without Blob in some flows (depending on whether the chart URL already exists and whether you upload media by URL vs buffer).
+   - For consistent behavior across environments, configure `BLOB_READ_WRITE_TOKEN` in production.
+4. Serverless concurrency (double publish risk):
+   - Mitigated by the `POSTING` lock acquired via atomic `updateMany` with expected statuses.
+5. Database pool exhaustion:
+   - Avoid long transactions; keep Prisma queries lean; prefer pooler URL in serverless.
+
+## Observability
+
+1. Primary signals:
+   - `MetricPost.status`, `attempts`, `lastAttemptAt`, `lastError`, `tweetId`, `postedAt`
+2. Logs:
+   - Vercel function logs for the cron/admin routes
+3. Operational checks:
+   - If `APPROVED` posts are stuck, run the backstop endpoint and inspect `lastError`.
