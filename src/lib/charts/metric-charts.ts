@@ -1,5 +1,8 @@
 import type { ChartConfiguration, Plugin } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
+import { registerFont } from "canvas";
+import nodeFs from "node:fs";
+import path from "path";
 import {
   BrandTrendData,
   AllBrandsData,
@@ -8,7 +11,9 @@ import {
 const CHART_SOURCE_TEXT =
   process.env.CHART_SOURCE_TEXT || "source: evjuice.net";
 const CHART_FONT_SCALE = parseFloat(process.env.CHART_FONT_SCALE || "2");
-const fs = (n: number) => Math.max(1, Math.round(n * CHART_FONT_SCALE));
+const CHART_FONT_FAMILY = process.env.CHART_FONT_FAMILY || "Noto Sans SC";
+const CHART_FONT_CSS_FAMILY = `"${CHART_FONT_FAMILY}", Arial, sans-serif`;
+const px = (n: number) => Math.max(1, Math.round(n * CHART_FONT_SCALE));
 // Titles read a bit too loud when CHART_FONT_SCALE is high. Reduce by 30%.
 const tfs = (n: number) =>
   Math.max(1, Math.round(n * CHART_FONT_SCALE * 0.7));
@@ -16,12 +21,47 @@ const tfs = (n: number) =>
 // "Reduce by 40%" => multiply by 0.6.
 const dls = (n: number) =>
   Math.max(1, Math.round(n * CHART_FONT_SCALE * 0.6));
-const ATTRIBUTION_BOTTOM_PADDING = fs(12) + fs(12) + 6;
-const OUTER_PAD = fs(22);
-const CARD_RADIUS = fs(18);
+const ATTRIBUTION_BOTTOM_PADDING = px(12) + px(12) + 6;
+const OUTER_PAD = px(22);
+const CARD_RADIUS = px(18);
 // Reduce left/right padding by an additional ~8% from the previous setting.
 const PAD_X_SCALE = 0.736;
 const padx = (n: number) => Math.max(0, Math.round(n * PAD_X_SCALE));
+
+let fontsRegistered = false;
+
+function ensureChartFontsRegistered() {
+  if (fontsRegistered) return;
+  try {
+    // In Vercel serverless, there may be *zero* system fonts available.
+    // If we don't ship a font, even ASCII digits can render as tofu squares.
+    //
+    // We include these .otf files in the serverless bundle via
+    // `outputFileTracingIncludes` in `next.config.mjs`.
+    const fontDir = path.join(process.cwd(), "src/lib/charts/fonts");
+    const regularPath = path.join(fontDir, "NotoSansSC-Regular.otf");
+    const boldPath = path.join(fontDir, "NotoSansSC-Bold.otf");
+
+    if (nodeFs.existsSync(regularPath)) {
+      registerFont(regularPath, {
+        family: CHART_FONT_FAMILY,
+        weight: "normal",
+      });
+    }
+    if (nodeFs.existsSync(boldPath)) {
+      registerFont(boldPath, {
+        family: CHART_FONT_FAMILY,
+        weight: "bold",
+      });
+    }
+
+    fontsRegistered = true;
+  } catch (err) {
+    // If the fonts can't be registered (missing file, runtime differences),
+    // we still render with system fonts. This avoids hard-failing chart generation.
+    console.warn("[Charts] Failed to register CJK fonts; falling back to system fonts.", err);
+  }
+}
 
 // Chart dimensions (16:9 aspect ratio, good for X)
 const CHART_WIDTH = 1200;
@@ -63,14 +103,14 @@ const sourceAttributionPlugin: Plugin = {
     const ctx = chart.ctx;
     const text = CHART_SOURCE_TEXT.replace(/^source:/i, "source:");
     ctx.save();
-    ctx.font = `italic ${fs(12)}px Arial`;
+    ctx.font = `italic ${px(12)}px ${CHART_FONT_CSS_FAMILY}`;
     ctx.fillStyle = "#3eb265";
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
-    const padding = fs(12);
+    const padding = px(12);
     ctx.fillText(
       text,
-      chart.width - OUTER_PAD - padding - fs(16),
+      chart.width - OUTER_PAD - padding - px(16),
       chart.height - OUTER_PAD - padding
     );
     ctx.restore();
@@ -112,9 +152,9 @@ const cardBackgroundPlugin: Plugin = {
     const h = chart.height - OUTER_PAD * 2;
 
     ctx.shadowColor = "rgba(0, 0, 0, 0.14)";
-    ctx.shadowBlur = fs(28);
+    ctx.shadowBlur = px(28);
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = fs(12);
+    ctx.shadowOffsetY = px(12);
 
     ctx.fillStyle = "rgba(255, 255, 255, 1)";
     roundedRect(ctx, x, y, w, h, CARD_RADIUS);
@@ -126,7 +166,7 @@ const cardBackgroundPlugin: Plugin = {
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
 
-    ctx.lineWidth = fs(1);
+    ctx.lineWidth = px(1);
     ctx.strokeStyle = "rgba(17, 24, 39, 0.08)";
     roundedRect(ctx, x, y, w, h, CARD_RADIUS);
     ctx.stroke();
@@ -139,6 +179,7 @@ async function getChartCanvas(): Promise<ChartJSNodeCanvasType> {
   if (!chartCanvasPromise) {
     chartCanvasPromise = (async () => {
       const { ChartJSNodeCanvas } = await import("chartjs-node-canvas");
+      ensureChartFontsRegistered();
       return new ChartJSNodeCanvas({
         width: CHART_WIDTH,
         height: CHART_HEIGHT,
@@ -147,6 +188,7 @@ async function getChartCanvas(): Promise<ChartJSNodeCanvasType> {
         // because Vercel output tracing can miss dynamically required modules.
         chartCallback: (ChartJS) => {
           ChartJS.register(ChartDataLabels);
+          ChartJS.defaults.font.family = CHART_FONT_CSS_FAMILY;
         },
       });
     })();
@@ -206,15 +248,15 @@ export async function generateBrandTrendChart(
           text: `${data.brandName} Monthly Deliveries: ${data.year - 1} vs ${data.year}`,
           font: { size: tfs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: fs(20), bottom: fs(20) },
+          padding: { top: px(20), bottom: px(20) },
         },
         legend: {
           display: true,
           position: "bottom",
           labels: {
-            font: { size: fs(14) },
+            font: { size: px(14) },
             color: COLORS.text,
-            padding: fs(20),
+            padding: px(20),
           },
         },
         datalabels: {
@@ -229,20 +271,20 @@ export async function generateBrandTrendChart(
       scales: {
         x: {
           grid: { display: false },
-          ticks: { font: { size: fs(12) }, color: COLORS.text },
+          ticks: { font: { size: px(12) }, color: COLORS.text },
         },
         y: {
           beginAtZero: true,
           grid: { color: COLORS.gridLine },
           ticks: {
-            font: { size: fs(12) },
+            font: { size: px(12) },
             color: COLORS.text,
             callback: (value) => formatNumber(value as number),
           },
           title: {
             display: true,
             text: "Deliveries",
-            font: { size: fs(14) },
+            font: { size: px(14) },
             color: COLORS.text,
           },
         },
@@ -250,8 +292,8 @@ export async function generateBrandTrendChart(
       layout: {
         padding: {
           top: OUTER_PAD,
-          left: OUTER_PAD + padx(fs(28)),
-          right: OUTER_PAD + padx(fs(28)),
+          left: OUTER_PAD + padx(px(28)),
+          right: OUTER_PAD + padx(px(28)),
           bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
         },
       },
@@ -307,7 +349,7 @@ export async function generateAllBrandsChart(
           text: `${data.monthName} ${data.year} China EV Deliveries`,
           font: { size: tfs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: fs(20), bottom: fs(20) },
+          padding: { top: px(20), bottom: px(20) },
         },
         legend: { display: false },
         datalabels: {
@@ -332,27 +374,27 @@ export async function generateAllBrandsChart(
           beginAtZero: true,
           grid: { color: COLORS.gridLine },
           ticks: {
-            font: { size: fs(12) },
+            font: { size: px(12) },
             color: COLORS.text,
             callback: (value) => formatNumber(value as number),
           },
           title: {
             display: true,
             text: "Deliveries",
-            font: { size: fs(14) },
+            font: { size: px(14) },
             color: COLORS.text,
           },
         },
         y: {
           grid: { display: false },
-          ticks: { font: { size: fs(13), weight: "bold" }, color: COLORS.text },
+          ticks: { font: { size: px(13), weight: "bold" }, color: COLORS.text },
         },
       },
       layout: {
         padding: {
           top: OUTER_PAD,
-          left: OUTER_PAD + padx(fs(28)),
-          right: OUTER_PAD + padx(fs(80)), // Space for data labels + source line
+          left: OUTER_PAD + padx(px(28)),
+          right: OUTER_PAD + padx(px(80)), // Space for data labels + source line
           bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
         },
       },
@@ -404,15 +446,15 @@ export async function generateLineChart(
           text: title,
           font: { size: tfs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: fs(20), bottom: fs(20) },
+          padding: { top: px(20), bottom: px(20) },
         },
         legend: {
           display: datasets.length > 1,
           position: "bottom",
           labels: {
-            font: { size: fs(14) },
+            font: { size: px(14) },
             color: COLORS.text,
-            padding: fs(20),
+            padding: px(20),
           },
         },
         datalabels: {
@@ -422,13 +464,13 @@ export async function generateLineChart(
       scales: {
         x: {
           grid: { display: false },
-          ticks: { font: { size: fs(12) }, color: COLORS.text },
+          ticks: { font: { size: px(12) }, color: COLORS.text },
         },
         y: {
           beginAtZero: true,
           grid: { color: COLORS.gridLine },
           ticks: {
-            font: { size: fs(12) },
+            font: { size: px(12) },
             color: COLORS.text,
             callback: (value) => formatNumber(value as number),
           },
@@ -437,8 +479,8 @@ export async function generateLineChart(
       layout: {
         padding: {
           top: OUTER_PAD,
-          left: OUTER_PAD + padx(fs(28)),
-          right: OUTER_PAD + padx(fs(28)),
+          left: OUTER_PAD + padx(px(28)),
+          right: OUTER_PAD + padx(px(28)),
           bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
         },
       },
@@ -479,14 +521,14 @@ export async function generateBarChart(
       if (!meta?.data?.length) return;
 
       ctx.save();
-      ctx.font = `${dls(11)}px Arial`;
+      ctx.font = `${dls(11)}px ${CHART_FONT_CSS_FAMILY}`;
       ctx.fillStyle = "rgba(17, 24, 39, 0.95)";
       ctx.textAlign = "right";
       ctx.textBaseline = "bottom";
 
-      const insetX = fs(6);
-      const insetY = fs(6);
-      const minY = chartArea.top + dls(11) + fs(2);
+      const insetX = px(6);
+      const insetY = px(6);
+      const minY = chartArea.top + dls(11) + px(2);
 
       meta.data.forEach((el, i) => {
         // BarElement exposes x/y and width in Chart.js v4, but the type isn't exported cleanly.
@@ -544,7 +586,7 @@ export async function generateBarChart(
           text: title,
           font: { size: tfs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: fs(20), bottom: fs(20) },
+          padding: { top: px(20), bottom: px(20) },
         },
         legend: { display: false },
         datalabels: {
@@ -572,7 +614,7 @@ export async function generateBarChart(
           beginAtZero: isHorizontal,
           grid: { display: isHorizontal, color: COLORS.gridLine },
           ticks: {
-            font: { size: fs(12) },
+            font: { size: px(12) },
             color: COLORS.text,
             callback: isHorizontal
               ? (value) => formatNumber(value as number)
@@ -583,7 +625,7 @@ export async function generateBarChart(
           beginAtZero: !isHorizontal,
           grid: { display: !isHorizontal, color: COLORS.gridLine },
           ticks: {
-            font: { size: fs(12) },
+            font: { size: px(12) },
             color: COLORS.text,
             callback: !isHorizontal
               ? (value) => formatNumber(value as number)
@@ -595,16 +637,16 @@ export async function generateBarChart(
         ? {
             padding: {
               top: OUTER_PAD,
-              left: OUTER_PAD + padx(fs(28)),
-              right: OUTER_PAD + padx(fs(80)),
+              left: OUTER_PAD + padx(px(28)),
+              right: OUTER_PAD + padx(px(80)),
               bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
             },
           }
         : {
             padding: {
               top: OUTER_PAD,
-              left: OUTER_PAD + padx(fs(48)),
-              right: OUTER_PAD + padx(fs(48)),
+              left: OUTER_PAD + padx(px(48)),
+              right: OUTER_PAD + padx(px(48)),
               bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
             },
           },
