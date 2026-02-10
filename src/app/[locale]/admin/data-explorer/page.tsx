@@ -242,7 +242,7 @@ export default function DataExplorerPage() {
               onChange={setQueryString}
               onExecute={handleExecuteQuery}
               isLoading={isExecuting}
-              error={null}
+              error={error}
               explanation={explanation}
             />
           </div>

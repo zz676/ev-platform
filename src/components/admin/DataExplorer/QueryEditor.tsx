@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Play, RefreshCw, Code, AlertCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Play, RefreshCw, Code, AlertCircle, Copy, Wand2 } from "lucide-react";
 
 interface QueryEditorProps {
   table: string;
@@ -22,7 +22,31 @@ export function QueryEditor({
   error,
   explanation,
 }: QueryEditorProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const effectiveError = error || localError;
+
+  const prettyQuery = useMemo(() => query || "", [query]);
+
+  function handleFormat() {
+    try {
+      const parsed = JSON.parse(query);
+      onChange(JSON.stringify(parsed, null, 2));
+      setLocalError(null);
+    } catch {
+      setLocalError("Query JSON is invalid. Fix it before formatting/executing.");
+    }
+  }
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(prettyQuery);
+      setLocalError(null);
+    } catch {
+      // Clipboard permissions can fail depending on browser context.
+      setLocalError("Failed to copy to clipboard (browser blocked clipboard access).");
+    }
+  }
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -39,10 +63,22 @@ export function QueryEditor({
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsEditing(!isEditing)}
-            className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+            onClick={handleFormat}
+            disabled={!query}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+            title="Format JSON"
           >
-            {isEditing ? "View" : "Edit"}
+            <Wand2 className="h-3.5 w-3.5" />
+            Format
+          </button>
+          <button
+            onClick={handleCopy}
+            disabled={!query}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+            title="Copy query"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copy
           </button>
           <button
             onClick={onExecute}
@@ -73,25 +109,22 @@ export function QueryEditor({
 
       {/* Query Display/Editor */}
       <div className="p-4 bg-gray-900">
-        {isEditing ? (
-          <textarea
-            value={query}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full h-48 p-3 font-mono text-sm bg-gray-800 text-green-400 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-ev-green-500 resize-none"
-            spellCheck={false}
-          />
-        ) : (
-          <pre className="p-3 font-mono text-sm text-green-400 bg-gray-800 rounded overflow-auto max-h-[28rem]">
-            <code>{query || "// No query generated"}</code>
-          </pre>
-        )}
+        <textarea
+          value={prettyQuery}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setLocalError(null);
+          }}
+          className="w-full min-h-[20rem] max-h-[60vh] p-3 font-mono text-sm bg-gray-800 text-green-400 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-ev-green-500 resize-y overflow-auto"
+          spellCheck={false}
+        />
       </div>
 
       {/* Error Display */}
-      {error && (
+      {effectiveError && (
         <div className="px-4 py-3 bg-red-50 border-t border-red-200 flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-          <span className="text-sm text-red-700">{error}</span>
+          <span className="text-sm text-red-700">{effectiveError}</span>
         </div>
       )}
     </div>
