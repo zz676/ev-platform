@@ -66,7 +66,7 @@ export function QueryEditor({
 
       {/* Explanation */}
       {explanation && (
-        <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 text-sm text-blue-700">
+        <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 text-sm text-blue-700 break-words overflow-x-auto">
           {explanation}
         </div>
       )}
@@ -81,7 +81,7 @@ export function QueryEditor({
             spellCheck={false}
           />
         ) : (
-          <pre className="p-3 font-mono text-sm text-green-400 bg-gray-800 rounded overflow-x-auto">
+          <pre className="p-3 font-mono text-sm text-green-400 bg-gray-800 rounded overflow-auto max-h-[28rem]">
             <code>{query || "// No query generated"}</code>
           </pre>
         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Table, Clock, Rows } from "lucide-react";
 
 interface ResultsTableProps {
@@ -20,6 +20,11 @@ export function ResultsTable({
 }: ResultsTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    // Reset paging whenever a new query result set arrives.
+    setCurrentPage(1);
+  }, [data]);
 
   if (data.length === 0) {
     return (

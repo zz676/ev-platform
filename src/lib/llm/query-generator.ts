@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import prisma from "@/lib/prisma";
 import { QUERY_GENERATOR_PROMPT } from "@/lib/config/prompts";
 import { normalizeTableName } from "@/lib/data-explorer/table-name";
+import { Brand, MetricType, PeriodType } from "@prisma/client";
 
 // In serverless, long timeouts + multi-retries can exceed the function time budget.
 const DEFAULT_LLM_TIMEOUT_MS = process.env.VERCEL ? 8000 : 15000;
@@ -15,6 +16,8 @@ const LLM_MAX_RETRIES = parseInt(
   10
 );
 const DISABLE_DEEPSEEK = process.env.DISABLE_DEEPSEEK === "true";
+
+type SuggestedQuestions = Record<string, string[]>;
 
 // Text completion pricing (per 1M tokens)
 const TEXT_COMPLETION_COST = {
@@ -130,14 +133,14 @@ export interface GeneratedQuery {
   explanation?: string;
 }
 
-// Suggested questions for quick access
-export const SUGGESTED_QUESTIONS = {
+// Suggested questions for quick access (fallback when DB is unreachable)
+export const SUGGESTED_QUESTIONS: SuggestedQuestions = {
   "Brand Deliveries": [
-    "BYD monthly deliveries in 2024",
+    "NIO monthly deliveries in 2026",
     "Compare NIO, XPeng, Li Auto last 12 months",
-    "Top 5 brands by deliveries January 2025",
-    "Tesla China vs BYD quarterly trend",
-    "Xiaomi monthly deliveries since launch",
+    "Top brands by deliveries in 2026",
+    "Tesla China sales in 2026",
+    "XPeng deliveries in 2025",
   ],
   "Industry Sales": [
     "Total NEV sales trend 2024",
@@ -168,6 +171,104 @@ export const SUGGESTED_QUESTIONS = {
     "BEV vs EREV price comparison",
   ],
 };
+
+type LiveDbHints = {
+  latestEvMetricYear: number | null;
+  evMetricYears: number[];
+  deliveryMonthlyBrandsLatestYear: Brand[];
+};
+
+let liveHintsCache: { value: LiveDbHints; expiresAtMs: number } | null = null;
+
+async function getLiveDbHints(): Promise<LiveDbHints> {
+  const now = Date.now();
+  if (liveHintsCache && liveHintsCache.expiresAtMs > now) return liveHintsCache.value;
+
+  const yearsRows = await prisma.eVMetric.findMany({
+    distinct: ["year"],
+    select: { year: true },
+    orderBy: [{ year: "desc" }],
+    take: 8,
+  });
+
+  const evMetricYears = yearsRows.map((r) => r.year);
+  const latestEvMetricYear = evMetricYears[0] ?? null;
+
+  let deliveryMonthlyBrandsLatestYear: Brand[] = [];
+  if (latestEvMetricYear !== null) {
+    const brandsRows = await prisma.eVMetric.findMany({
+      where: {
+        metric: MetricType.DELIVERY,
+        periodType: PeriodType.MONTHLY,
+        year: latestEvMetricYear,
+        brand: { not: Brand.INDUSTRY },
+      },
+      distinct: ["brand"],
+      select: { brand: true },
+      orderBy: [{ brand: "asc" }],
+    });
+    deliveryMonthlyBrandsLatestYear = brandsRows.map((r) => r.brand);
+  }
+
+  const value: LiveDbHints = {
+    latestEvMetricYear,
+    evMetricYears,
+    deliveryMonthlyBrandsLatestYear,
+  };
+
+  liveHintsCache = { value, expiresAtMs: now + 5 * 60_000 };
+  return value;
+}
+
+export async function getSuggestedQuestions(): Promise<SuggestedQuestions> {
+  try {
+    const hints = await getLiveDbHints();
+    const year = hints.latestEvMetricYear ?? new Date().getFullYear();
+    const brands = hints.deliveryMonthlyBrandsLatestYear
+      .filter((b) => b !== Brand.OTHER_BRAND && b !== Brand.INDUSTRY)
+      .slice(0, 4);
+
+    const a = brands[0] || Brand.NIO;
+    const b = brands[1] || Brand.XPENG;
+    const c = brands[2] || Brand.LI_AUTO;
+
+    return {
+      "Brand Deliveries": [
+        `${a} monthly deliveries in ${year}`,
+        `Compare ${a}, ${b}, ${c} last 12 months`,
+        `Top brands by deliveries in ${year}`,
+      ],
+      "Industry Sales": SUGGESTED_QUESTIONS["Industry Sales"],
+      "Market Health": SUGGESTED_QUESTIONS["Market Health"],
+      "Battery Industry": SUGGESTED_QUESTIONS["Battery Industry"],
+      Exports: SUGGESTED_QUESTIONS.Exports,
+      "Vehicle Specs": SUGGESTED_QUESTIONS["Vehicle Specs"],
+    };
+  } catch {
+    return SUGGESTED_QUESTIONS;
+  }
+}
+
+function buildPromptWithLiveDbHints(base: string, hints: LiveDbHints): string {
+  const yearText =
+    hints.latestEvMetricYear !== null ? String(hints.latestEvMetricYear) : "unknown";
+  const yearsText = hints.evMetricYears.length ? hints.evMetricYears.join(", ") : "unknown";
+  const brandsText = hints.deliveryMonthlyBrandsLatestYear.length
+    ? hints.deliveryMonthlyBrandsLatestYear.join(", ")
+    : "unknown";
+
+  return `${base}
+
+LIVE DATABASE SNAPSHOT (use this to avoid empty results):
+- eVMetric available years: ${yearsText}
+- eVMetric brands with DELIVERY+MONTHLY in latest year (${yearText}): ${brandsText}
+
+IMPORTANT OVERRIDES:
+- If user doesn't specify a year, default to the latest year in the snapshot (not 2025).
+- For EVMetric deliveries, use periodType=MONTHLY by default. Only use QUARTERLY/YEARLY if the user explicitly asks for it.
+- If the user asks for a brand that has no DELIVERY data in the snapshot year, prefer a closest available brand (or OTHER_BRAND) and mention the limitation in the explanation.
+`.trim();
+}
 
 /**
  * Call DeepSeek API for query generation
@@ -280,11 +381,20 @@ function parseQueryResponse(response: string): GeneratedQuery {
 export async function generateQueryFromQuestion(
   question: string
 ): Promise<GeneratedQuery> {
-  const prompt = `${QUERY_GENERATOR_PROMPT}
+  const hints = await getLiveDbHints().catch(() => ({
+    latestEvMetricYear: null,
+    evMetricYears: [],
+    deliveryMonthlyBrandsLatestYear: [],
+  }));
+
+  const prompt = buildPromptWithLiveDbHints(
+    `${QUERY_GENERATOR_PROMPT}
 
 User question: "${question}"
 
-Output the result as JSON with fields: table, query, chartType, chartTitle, explanation`;
+Output the result as JSON with fields: table, query, chartType, chartTitle, explanation`,
+    hints
+  );
 
   let response: string;
 

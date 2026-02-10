@@ -3,6 +3,7 @@ import { requireApiAdmin } from "@/lib/auth/api-auth";
 import {
   generateQueryFromQuestion,
   LLMUnavailableError,
+  getSuggestedQuestions,
   SUGGESTED_QUESTIONS,
 } from "@/lib/llm/query-generator";
 import { getAllowedTables } from "@/lib/query-executor";
@@ -61,10 +62,13 @@ export async function GET() {
 
   try {
     const tables = getAllowedTables();
+    const suggestedQuestions = await getSuggestedQuestions().catch(
+      () => SUGGESTED_QUESTIONS
+    );
 
     return NextResponse.json({
       tables,
-      suggestedQuestions: SUGGESTED_QUESTIONS,
+      suggestedQuestions,
     });
   } catch (error) {
     console.error("Error fetching options:", error);
