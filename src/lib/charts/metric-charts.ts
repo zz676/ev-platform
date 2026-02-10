@@ -1,4 +1,4 @@
-import type { ChartConfiguration, Plugin } from "chart.js";
+import type { ChartConfiguration, Plugin, ChartType } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { registerFont } from "canvas";
 import nodeFs from "node:fs";
@@ -94,7 +94,45 @@ const BRAND_COLORS: Record<string, string> = {
 
 type ChartJSNodeCanvasType = import("chartjs-node-canvas").ChartJSNodeCanvas;
 
+<<<<<<< Updated upstream
 let chartCanvasPromise: Promise<ChartJSNodeCanvasType> | null = null;
+=======
+declare module "chart.js" {
+  interface PluginOptionsByType<TType extends ChartType> {
+    sourceAttribution?: {
+      text?: string;
+      color?: string;
+      fontSize?: number;
+    };
+  }
+}
+
+type ChartPadding = {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+};
+
+type BarChartStyleOptions = {
+  padding?: ChartPadding;
+  fontColor?: string;
+  titleSize?: number;
+  titleColor?: string;
+  backgroundColor?: string;
+  xAxisFontSize?: number;
+  yAxisFontSize?: number;
+  xAxisFontColor?: string;
+  yAxisFontColor?: string;
+  sourceText?: string;
+  sourceColor?: string;
+  sourceFontSize?: number;
+  minBarWidth?: number;
+  maxWidth?: number;
+};
+
+const chartCanvasPromises = new Map<string, Promise<ChartJSNodeCanvasType>>();
+>>>>>>> Stashed changes
 
 const sourceAttributionPlugin: Plugin = {
   id: "sourceAttribution",
