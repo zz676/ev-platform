@@ -437,22 +437,30 @@ enum MetricPostType {
 }
 
 enum MetricPostStatus {
-  PENDING
+  DRAFT
+  APPROVED
+  POSTING
   POSTED
   FAILED
+  SKIPPED
 }
 
 model MetricPost {
   id            String           @id @default(cuid())
   postType      MetricPostType   // Type of metric post
   year          Int              // Target year for the post
-  period        Int?             // Month 1-12 (for ALL_BRANDS_COMPARISON)
-  brand         Brand?           // Only for BRAND_TREND
+  period        Int              // Month 1-12 (ALL_BRANDS_COMPARISON) or asOfMonth (BRAND_TREND snapshots)
+  brand         Brand            // BRAND_TREND brand, or INDUSTRY sentinel for ALL_BRANDS_COMPARISON
   content       String           // Generated tweet content
   chartImageUrl String?          // URL of the chart image (stored in Vercel Blob)
-  status        MetricPostStatus @default(PENDING)
+  status        MetricPostStatus @default(DRAFT)
   tweetId       String?          // X tweet ID after posting
   postedAt      DateTime?        // When posted to X
+  attempts      Int              @default(0)
+  lastError     String?
+  lastAttemptAt DateTime?
+  approvedAt    DateTime?
+  approvedBy    String?
   dataSnapshot  Json?            // Raw data at generation time
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt

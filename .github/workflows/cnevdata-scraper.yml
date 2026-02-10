@@ -68,6 +68,16 @@ jobs:
             ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }} \
             ${{ github.event.inputs.enable_ocr == 'true' && '--enable-ocr' || '' }}
 
+      - name: Trigger Metric Post Draft Generation
+        if: success() && (github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true')
+        run: |
+          curl -X GET "${{ secrets.VERCEL_URL }}/api/cron/metric-posts" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --fail --silent --show-error
+        env:
+          VERCEL_URL: ${{ secrets.VERCEL_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4

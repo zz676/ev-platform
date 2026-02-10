@@ -45,7 +45,7 @@ describe('ai.ts', () => {
         expect.objectContaining({
           model: 'dall-e-3',
           n: 1,
-          size: '1024x1024',
+          size: '1792x1024',
           quality: 'standard',
         })
       );
@@ -63,7 +63,7 @@ describe('ai.ts', () => {
       const { generatePostImage } = await import('../ai');
 
       await expect(generatePostImage('Test', 'Test summary'))
-        .rejects.toThrow('OpenAI API key required for image generation');
+        .rejects.toThrow('No image generation API configured');
     });
 
     it('should throw error when no data is returned', async () => {
@@ -76,7 +76,7 @@ describe('ai.ts', () => {
       const { generatePostImage } = await import('../ai');
 
       await expect(generatePostImage('Test', 'Test summary'))
-        .rejects.toThrow('Failed to generate image: no data returned');
+        .rejects.toThrow('DALL-E: no image URL returned');
     });
 
     it('should throw error when no URL is returned', async () => {
@@ -89,7 +89,7 @@ describe('ai.ts', () => {
       const { generatePostImage } = await import('../ai');
 
       await expect(generatePostImage('Test', 'Test summary'))
-        .rejects.toThrow('Failed to generate image: no URL returned');
+        .rejects.toThrow('DALL-E: no image URL returned');
     });
 
     it('should truncate long summaries in prompt', async () => {

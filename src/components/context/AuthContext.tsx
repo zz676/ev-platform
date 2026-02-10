@@ -147,7 +147,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithX = useCallback(async () => {
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: "x" as any,
+      // Supabase OAuth provider is still named "twitter" (X rebrand).
+      provider: "twitter",
       options: {
         redirectTo: `${window.location.origin}/api/auth/callback`,
       },

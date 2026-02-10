@@ -12,6 +12,8 @@ import {
   BarChart3,
   Calendar,
   Send,
+  Check,
+  RotateCcw,
 } from "lucide-react";
 import { MetricPostGenerator } from "./MetricPostGenerator";
 
@@ -38,29 +40,39 @@ interface MetricPost {
   id: string;
   postType: "BRAND_TREND" | "ALL_BRANDS_COMPARISON";
   year: number;
-  period: number | null;
-  brand: string | null;
+  period: number;
+  brand: string;
   content: string;
   chartImageUrl: string | null;
-  status: "PENDING" | "POSTED" | "FAILED";
+  status: "DRAFT" | "APPROVED" | "POSTING" | "POSTED" | "FAILED" | "SKIPPED";
   tweetId: string | null;
   postedAt: string | null;
+  attempts: number;
+  lastError: string | null;
+  approvedAt: string | null;
+  approvedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 interface MetricPostsStats {
   total: number;
-  pending: number;
+  draft: number;
+  approved: number;
+  posting: number;
   posted: number;
   failed: number;
+  skipped: number;
 }
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    PENDING: "bg-yellow-100 text-yellow-800",
+    DRAFT: "bg-yellow-100 text-yellow-800",
+    APPROVED: "bg-blue-100 text-blue-800",
+    POSTING: "bg-indigo-100 text-indigo-800",
     POSTED: "bg-green-100 text-green-800",
     FAILED: "bg-red-100 text-red-800",
+    SKIPPED: "bg-gray-100 text-gray-700",
   };
 
   return (
@@ -85,13 +97,12 @@ function formatDateTime(dateStr: string): string {
 
 function getPostTypeLabel(post: MetricPost): string {
   if (post.postType === "ALL_BRANDS_COMPARISON") {
-    const monthName = post.period ? MONTH_NAMES[post.period - 1] : "";
+    const monthName = MONTH_NAMES[post.period - 1] || "";
     return `All Brands ${monthName} ${post.year}`;
   } else {
-    const brandName = post.brand
-      ? BRAND_DISPLAY_NAMES[post.brand] || post.brand
-      : "";
-    return `${brandName} Trend ${post.year}`;
+    const brandName = BRAND_DISPLAY_NAMES[post.brand] || post.brand;
+    const monthName = MONTH_NAMES[post.period - 1] || "";
+    return `${brandName} Trend ${monthName} ${post.year}`;
   }
 }
 
@@ -105,15 +116,20 @@ export function MetricPostsSection() {
   const [posts, setPosts] = useState<MetricPost[]>([]);
   const [stats, setStats] = useState<MetricPostsStats>({
     total: 0,
-    pending: 0,
+    draft: 0,
+    approved: 0,
+    posting: 0,
     posted: 0,
     failed: 0,
+    skipped: 0,
   });
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [postingIds, setPostingIds] = useState<Set<string>>(new Set());
+  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
+  const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
 
   const fetchPosts = useCallback(async (page: number = 1) => {
     setLoading(true);
@@ -156,12 +172,7 @@ export function MetricPostsSection() {
       });
 
       if (!res.ok) throw new Error("Failed to delete");
-      setPosts((prev) => prev.filter((p) => p.id !== id));
-      setStats((prev) => ({
-        ...prev,
-        total: prev.total - 1,
-        pending: Math.max(0, prev.pending - 1),
-      }));
+      await fetchPosts(currentPage);
     } catch (err) {
       console.error("Error deleting:", err);
     } finally {
@@ -188,30 +199,74 @@ export function MetricPostsSection() {
       const result = await res.json();
 
       // Update post in list
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === post.id
-            ? {
-                ...p,
-                status: "POSTED" as const,
-                tweetId: result.tweetId,
-                postedAt: new Date().toISOString(),
-              }
-            : p
-        )
-      );
+      if (!result.success) {
+        throw new Error(result.error || "Failed to post");
+      }
 
-      // Update stats
-      setStats((prev) => ({
-        ...prev,
-        pending: Math.max(0, prev.pending - 1),
-        posted: prev.posted + 1,
-      }));
+      await fetchPosts(currentPage);
     } catch (err) {
       console.error("Error posting to X:", err);
       alert(err instanceof Error ? err.message : "Failed to post to X");
     } finally {
       setPostingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(post.id);
+        return next;
+      });
+    }
+  }
+
+  async function handleApprove(post: MetricPost) {
+    setApprovingIds((prev) => new Set(prev).add(post.id));
+    try {
+      const res = await fetch(`/api/admin/metric-posts/${post.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to approve");
+      }
+
+      if (data.posted === false && data.error) {
+        alert(data.error);
+      }
+
+      await fetchPosts(currentPage);
+    } catch (err) {
+      console.error("Error approving metric post:", err);
+      alert(err instanceof Error ? err.message : "Failed to approve");
+    } finally {
+      setApprovingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(post.id);
+        return next;
+      });
+    }
+  }
+
+  async function handleRetry(post: MetricPost) {
+    setRetryingIds((prev) => new Set(prev).add(post.id));
+    try {
+      const res = await fetch(`/api/admin/metric-posts/${post.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "retry" }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to retry");
+      }
+
+      await fetchPosts(currentPage);
+    } catch (err) {
+      console.error("Error retrying metric post:", err);
+      alert(err instanceof Error ? err.message : "Failed to retry");
+    } finally {
+      setRetryingIds((prev) => {
         const next = new Set(prev);
         next.delete(post.id);
         return next;
@@ -238,9 +293,9 @@ export function MetricPostsSection() {
         )}
         <BarChart3 className="h-5 w-5 text-ev-green-600" />
         Metric Posts
-        {stats.pending > 0 && (
+        {stats.draft > 0 && (
           <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
-            {stats.pending} pending
+            {stats.draft} drafts
           </span>
         )}
       </button>
@@ -308,6 +363,8 @@ export function MetricPostsSection() {
                       const tweetUrl = getTweetUrl(post.tweetId);
                       const isDeleting = deletingIds.has(post.id);
                       const isPosting = postingIds.has(post.id);
+                      const isApproving = approvingIds.has(post.id);
+                      const isRetrying = retryingIds.has(post.id);
 
                       return (
                         <tr key={post.id} className="hover:bg-gray-50">
@@ -346,18 +403,54 @@ export function MetricPostsSection() {
                                   View
                                 </a>
                               ) : (
-                                <button
-                                  onClick={() => handlePostToX(post)}
-                                  disabled={isPosting || post.status === "POSTED"}
-                                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-ev-green-600 hover:text-ev-green-800 hover:bg-ev-green-50 rounded transition-colors disabled:opacity-50"
-                                >
-                                  {isPosting ? (
-                                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Send className="h-3.5 w-3.5" />
+                                <>
+                                  {post.status === "DRAFT" && (
+                                    <button
+                                      onClick={() => handleApprove(post)}
+                                      disabled={isApproving || isPosting}
+                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
+                                      title="Approve and post to X immediately"
+                                    >
+                                      {isApproving ? (
+                                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <Check className="h-3.5 w-3.5" />
+                                      )}
+                                      Approve
+                                    </button>
                                   )}
-                                  Post
-                                </button>
+
+                                  {(post.status === "FAILED" ||
+                                    post.status === "APPROVED") && (
+                                    <button
+                                      onClick={() => handleRetry(post)}
+                                      disabled={isRetrying || isPosting}
+                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 hover:text-amber-900 hover:bg-amber-50 rounded transition-colors disabled:opacity-50"
+                                      title={post.lastError || "Retry publish"}
+                                    >
+                                      {isRetrying ? (
+                                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <RotateCcw className="h-3.5 w-3.5" />
+                                      )}
+                                      Retry
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => handlePostToX(post)}
+                                    disabled={isPosting || post.status === "POSTED"}
+                                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-ev-green-600 hover:text-ev-green-800 hover:bg-ev-green-50 rounded transition-colors disabled:opacity-50"
+                                    title={post.lastError || "Post now"}
+                                  >
+                                    {isPosting ? (
+                                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Send className="h-3.5 w-3.5" />
+                                    )}
+                                    Post
+                                  </button>
+                                </>
                               )}
                               <button
                                 onClick={() => handleDelete(post.id)}

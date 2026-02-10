@@ -1,0 +1,21 @@
+name: Metric Posts Publish Cron
+
+on:
+  schedule:
+    # Backstop: retry posting approved metric posts (hourly)
+    - cron: '5 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  publish_metric_posts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Metric Posts Publish
+        run: |
+          curl -X GET "${{ secrets.VERCEL_URL }}/api/cron/metric-posts-publish" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --fail --silent --show-error
+        env:
+          VERCEL_URL: ${{ secrets.VERCEL_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+

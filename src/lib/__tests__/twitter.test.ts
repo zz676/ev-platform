@@ -6,7 +6,7 @@ global.fetch = mockFetch;
 
 describe('twitter.ts', () => {
   beforeEach(() => {
-    mockFetch.mockClear();
+    mockFetch.mockReset();
   });
 
   describe('generateOAuthSignature', () => {
@@ -263,21 +263,28 @@ describe('twitter.ts', () => {
 
     it('should upload media and return media id', async () => {
       // Mock image download
-      const mockImageBuffer = Buffer.from('fake-image-data');
+      const mockImageBuffer = Buffer.alloc(2048, 1);
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          arrayBuffer: () => Promise.resolve(mockImageBuffer),
+          headers: {
+            get: (key: string) => {
+              if (key.toLowerCase() === "content-type") return "image/jpeg";
+              if (key.toLowerCase() === "content-length") return `${mockImageBuffer.byteLength}`;
+              return null;
+            },
+          },
+          arrayBuffer: () => Promise.resolve(
+            mockImageBuffer.buffer.slice(
+              mockImageBuffer.byteOffset,
+              mockImageBuffer.byteOffset + mockImageBuffer.byteLength
+            )
+          ),
         })
-        // Mock X API media upload response (v2 format)
+        // Mock X API media upload response (v1.1 format)
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({
-            data: {
-              id: '1234567890',
-              media_key: '3_1234567890',
-            },
-          }),
+          json: () => Promise.resolve({ media_id_string: "1234567890" }),
         });
 
       const result = await uploadMedia('https://example.com/image.jpg');
@@ -287,14 +294,14 @@ describe('twitter.ts', () => {
 
       // Verify second call is to X API
       const uploadCall = mockFetch.mock.calls[1];
-      expect(uploadCall[0]).toBe('https://api.x.com/2/media/upload');
+      expect(uploadCall[0]).toBe('https://upload.twitter.com/1.1/media/upload.json');
       expect(uploadCall[1].method).toBe('POST');
-      expect(uploadCall[1].headers['Content-Type']).toBe('application/json');
+      expect(uploadCall[1].headers['Content-Type']).toBe('application/x-www-form-urlencoded');
 
-      // Verify JSON body contains required fields
-      const body = JSON.parse(uploadCall[1].body);
-      expect(body.media).toBeDefined();
-      expect(body.media_category).toBe('tweet_image');
+      // Verify body contains required fields (form-urlencoded)
+      const body = new URLSearchParams(uploadCall[1].body);
+      expect(body.get("media_data")).toBeTruthy();
+      expect(body.get("media_category")).toBe("tweet_image");
     });
 
     it('should throw error when image download fails', async () => {
@@ -304,15 +311,28 @@ describe('twitter.ts', () => {
       });
 
       await expect(uploadMedia('https://example.com/missing.jpg'))
-        .rejects.toThrow('Failed to download image: 404');
+        .rejects.toThrow(/HTTP 404/);
     });
 
     it('should throw error when X API returns error', async () => {
       // Mock successful image download
+      const mockImageBuffer = Buffer.alloc(2048, 1);
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          arrayBuffer: () => Promise.resolve(Buffer.from('fake-image')),
+          headers: {
+            get: (key: string) => {
+              if (key.toLowerCase() === "content-type") return "image/jpeg";
+              if (key.toLowerCase() === "content-length") return `${mockImageBuffer.byteLength}`;
+              return null;
+            },
+          },
+          arrayBuffer: () => Promise.resolve(
+            mockImageBuffer.buffer.slice(
+              mockImageBuffer.byteOffset,
+              mockImageBuffer.byteOffset + mockImageBuffer.byteLength
+            )
+          ),
         })
         // Mock X API error
         .mockResolvedValueOnce({
@@ -322,7 +342,7 @@ describe('twitter.ts', () => {
         });
 
       await expect(uploadMedia('https://example.com/image.jpg'))
-        .rejects.toThrow('X Media Upload error: 403 - Forbidden');
+        .rejects.toThrow('X Media Upload error: HTTP 403 - Forbidden');
     });
   });
 
@@ -443,27 +463,38 @@ describe('twitter.ts', () => {
   });
 
   describe('X API v2 endpoint verification', () => {
-    it('should use api.x.com domain for media upload', async () => {
+    it('should use upload.twitter.com domain for media upload', async () => {
       jest.resetModules();
       const twitter = await import('../twitter');
 
       // Mock successful responses
+      const mockImageBuffer = Buffer.alloc(2048, 1);
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          arrayBuffer: () => Promise.resolve(Buffer.from('fake-image')),
+          headers: {
+            get: (key: string) => {
+              if (key.toLowerCase() === "content-type") return "image/jpeg";
+              if (key.toLowerCase() === "content-length") return `${mockImageBuffer.byteLength}`;
+              return null;
+            },
+          },
+          arrayBuffer: () => Promise.resolve(
+            mockImageBuffer.buffer.slice(
+              mockImageBuffer.byteOffset,
+              mockImageBuffer.byteOffset + mockImageBuffer.byteLength
+            )
+          ),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({
-            data: { id: '123', media_key: '3_123' },
-          }),
+          json: () => Promise.resolve({ media_id_string: "123" }),
         });
 
       await twitter.uploadMedia('https://example.com/image.jpg');
 
       const uploadCall = mockFetch.mock.calls[1];
-      expect(uploadCall[0]).toBe('https://api.x.com/2/media/upload');
+      expect(uploadCall[0]).toBe('https://upload.twitter.com/1.1/media/upload.json');
     });
 
     it('should use api.x.com domain for posting tweets', async () => {

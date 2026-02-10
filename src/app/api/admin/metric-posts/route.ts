@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { MetricPostStatus, MetricPostType, Prisma } from "@prisma/client";
+import { Brand, MetricPostStatus, MetricPostType, Prisma } from "@prisma/client";
 import { requireApiAdmin } from "@/lib/auth/api-auth";
 
 // GET: List metric posts with filters
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     if (status) where.status = status;
     if (postType) where.postType = postType;
     if (year) where.year = parseInt(year);
-    if (brand) where.brand = brand as Prisma.EnumBrandFilter;
+    if (brand) where.brand = brand as Brand;
 
     const [posts, total] = await Promise.all([
       prisma.metricPost.findMany({
@@ -46,23 +46,35 @@ export async function GET(request: Request) {
 
     const statsMap = {
       total: 0,
-      pending: 0,
+      draft: 0,
+      approved: 0,
+      posting: 0,
       posted: 0,
       failed: 0,
+      skipped: 0,
     };
 
     stats.forEach((stat) => {
       const count = stat._count.id;
       statsMap.total += count;
       switch (stat.status) {
-        case "PENDING":
-          statsMap.pending = count;
+        case "DRAFT":
+          statsMap.draft = count;
+          break;
+        case "APPROVED":
+          statsMap.approved = count;
+          break;
+        case "POSTING":
+          statsMap.posting = count;
           break;
         case "POSTED":
           statsMap.posted = count;
           break;
         case "FAILED":
           statsMap.failed = count;
+          break;
+        case "SKIPPED":
+          statsMap.skipped = count;
           break;
       }
     });
@@ -113,14 +125,17 @@ export async function POST(request: Request) {
       );
     }
 
-    if (postType === "ALL_BRANDS_COMPARISON" && !period) {
-      return NextResponse.json(
-        { error: "period is required for ALL_BRANDS_COMPARISON" },
-        { status: 400 }
-      );
+    if (!period) {
+      return NextResponse.json({ error: "period is required" }, { status: 400 });
     }
 
-    if (postType === "BRAND_TREND" && !brand) {
+    // Normalize brand/period requirements so the unique key is always valid.
+    const resolvedBrand: Brand =
+      postType === "ALL_BRANDS_COMPARISON"
+        ? Brand.INDUSTRY
+        : (brand as Brand);
+
+    if (postType === "BRAND_TREND" && !resolvedBrand) {
       return NextResponse.json(
         { error: "brand is required for BRAND_TREND" },
         { status: 400 }
@@ -133,13 +148,27 @@ export async function POST(request: Request) {
         postType_year_period_brand: {
           postType,
           year,
-          period: period || 0,
-          brand: brand || null,
+          period,
+          brand: resolvedBrand,
         },
       },
     });
 
     if (existing) {
+      if (existing.status === "POSTED") {
+        return NextResponse.json(
+          { error: "Cannot edit a post that has already been posted to X" },
+          { status: 409 }
+        );
+      }
+
+      if (existing.status === "POSTING" || existing.status === "APPROVED") {
+        return NextResponse.json(
+          { error: "Cannot edit a post that is approved or currently posting" },
+          { status: 409 }
+        );
+      }
+
       // Update existing post
       const updated = await prisma.metricPost.update({
         where: { id: existing.id },
@@ -147,7 +176,8 @@ export async function POST(request: Request) {
           content,
           chartImageUrl,
           dataSnapshot,
-          status: "PENDING",
+          status: "DRAFT",
+          lastError: null,
           updatedAt: new Date(),
         },
       });
@@ -164,12 +194,12 @@ export async function POST(request: Request) {
       data: {
         postType,
         year,
-        period: period || null,
-        brand: brand || null,
+        period,
+        brand: resolvedBrand,
         content,
         chartImageUrl,
         dataSnapshot,
-        status: "PENDING",
+        status: "DRAFT",
       },
     });
 

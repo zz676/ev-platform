@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma, PrismaClient } from "@prisma/client";
+import { normalizeTableName } from "@/lib/data-explorer/table-name";
 
 // Whitelist of allowed tables (read-only access)
 const ALLOWED_TABLES = [
@@ -111,8 +112,10 @@ export async function executeQuery(request: QueryRequest): Promise<QueryResult> 
   const { table, query } = request;
   const startTime = Date.now();
 
+  const normalizedTable = normalizeTableName(table);
+
   // 1. Validate table is allowed
-  if (!ALLOWED_TABLES.includes(table as AllowedTable)) {
+  if (!ALLOWED_TABLES.includes(normalizedTable as AllowedTable)) {
     throw new Error(
       `Table "${table}" is not allowed. Allowed tables: ${ALLOWED_TABLES.join(", ")}`
     );
@@ -131,9 +134,9 @@ export async function executeQuery(request: QueryRequest): Promise<QueryResult> 
   };
 
   // 4. Execute with timeout
-  const prismaTable = (prisma as unknown as Record<string, { findMany: (query: unknown) => Promise<unknown[]> }>)[table];
+  const prismaTable = (prisma as unknown as Record<string, { findMany: (query: unknown) => Promise<unknown[]> }>)[normalizedTable];
   if (!prismaTable || typeof prismaTable.findMany !== "function") {
-    throw new Error(`Table "${table}" not found in Prisma client`);
+    throw new Error(`Table "${normalizedTable}" not found in Prisma client`);
   }
 
   try {
@@ -145,7 +148,7 @@ export async function executeQuery(request: QueryRequest): Promise<QueryResult> 
     const executionTimeMs = Date.now() - startTime;
 
     return {
-      table,
+      table: normalizedTable,
       data: result as unknown[],
       rowCount: (result as unknown[]).length,
       executionTimeMs,
