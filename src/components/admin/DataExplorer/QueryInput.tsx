@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Search,
+  Sparkles,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+} from "lucide-react";
 
 interface SuggestedQuestions {
   [category: string]: string[];
@@ -55,10 +61,26 @@ export function QueryInput({
           disabled={isLoading || !value.trim()}
           className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-ev-green-500 text-white text-sm font-medium rounded-lg hover:bg-ev-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
         >
-          <Sparkles className="h-4 w-4" />
-          Generate
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Generate
+            </>
+          )}
         </button>
       </div>
+
+      {isLoading && (
+        <div className="text-xs text-gray-500 flex items-center gap-2">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-ev-green-500 animate-pulse" />
+          Generating query (LLM). This can take a few seconds.
+        </div>
+      )}
 
       {/* Suggestions Toggle */}
       {suggestedQuestions && Object.keys(suggestedQuestions).length > 0 && (
