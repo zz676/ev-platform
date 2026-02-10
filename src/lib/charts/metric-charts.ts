@@ -1,4 +1,4 @@
-import type { ChartConfiguration, Plugin } from "chart.js";
+import type { ChartConfiguration, Plugin, ChartType } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import nodeFs from "node:fs";
 import path from "path";
@@ -107,6 +107,15 @@ const BRAND_COLORS: Record<string, string> = {
 
 type ChartJSNodeCanvasType = import("chartjs-node-canvas").ChartJSNodeCanvas;
 
+declare module "chart.js" {
+  interface PluginOptionsByType<TType extends ChartType> {
+    sourceAttribution?: {
+      text?: string;
+      color?: string;
+      fontSize?: number;
+    };
+  }
+}
 type ChartPadding = {
   top?: number;
   right?: number;
