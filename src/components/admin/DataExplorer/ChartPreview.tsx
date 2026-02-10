@@ -9,7 +9,11 @@ interface ChartPreviewProps {
   data: Record<string, unknown>[];
   initialChartType?: ChartType;
   initialTitle?: string;
-  onChartGenerated?: (chartImageBase64: string) => void;
+  onChartGenerated?: (result: {
+    chartImageBase64: string;
+    title: string;
+    chartType: ChartType;
+  }) => void;
 }
 
 export function ChartPreview({
@@ -48,7 +52,11 @@ export function ChartPreview({
 
       const result = await res.json();
       setChartImage(result.chartImageBase64);
-      onChartGenerated?.(result.chartImageBase64);
+      onChartGenerated?.({
+        chartImageBase64: result.chartImageBase64,
+        title,
+        chartType,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Chart generation failed");
     } finally {

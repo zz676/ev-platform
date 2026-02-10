@@ -7,6 +7,9 @@ import {
 
 const CHART_SOURCE_TEXT =
   process.env.CHART_SOURCE_TEXT || "Source: evjuice.net";
+const CHART_FONT_SCALE = parseFloat(process.env.CHART_FONT_SCALE || "2");
+const fs = (n: number) => Math.max(1, Math.round(n * CHART_FONT_SCALE));
+const ATTRIBUTION_BOTTOM_PADDING = fs(12) + fs(12) + 6;
 
 // Chart dimensions (16:9 aspect ratio, good for X)
 const CHART_WIDTH = 1200;
@@ -47,11 +50,11 @@ const sourceAttributionPlugin: Plugin = {
     if (!CHART_SOURCE_TEXT) return;
     const ctx = chart.ctx;
     ctx.save();
-    ctx.font = "12px Arial";
+    ctx.font = `${fs(12)}px Arial`;
     ctx.fillStyle = "rgba(17, 24, 39, 0.70)";
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
-    const padding = 12;
+    const padding = fs(12);
     ctx.fillText(CHART_SOURCE_TEXT, chart.width - padding, chart.height - padding);
     ctx.restore();
   },
@@ -126,17 +129,17 @@ export async function generateBrandTrendChart(
         title: {
           display: true,
           text: `${data.brandName} Monthly Deliveries: ${data.year - 1} vs ${data.year}`,
-          font: { size: 24, weight: "bold" },
+          font: { size: fs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: 20, bottom: 20 },
+          padding: { top: fs(20), bottom: fs(20) },
         },
         legend: {
           display: true,
           position: "bottom",
           labels: {
-            font: { size: 14 },
+            font: { size: fs(14) },
             color: COLORS.text,
-            padding: 20,
+            padding: fs(20),
           },
         },
         datalabels: {
@@ -144,33 +147,33 @@ export async function generateBrandTrendChart(
           anchor: "end",
           align: "top",
           formatter: (value: number) => (value > 0 ? formatNumber(value) : ""),
-          font: { size: 11, weight: "bold" },
+          font: { size: fs(11), weight: "bold" },
           color: COLORS.text,
         },
       },
       scales: {
         x: {
           grid: { display: false },
-          ticks: { font: { size: 12 }, color: COLORS.text },
+          ticks: { font: { size: fs(12) }, color: COLORS.text },
         },
         y: {
           beginAtZero: true,
           grid: { color: COLORS.gridLine },
           ticks: {
-            font: { size: 12 },
+            font: { size: fs(12) },
             color: COLORS.text,
             callback: (value) => formatNumber(value as number),
           },
           title: {
             display: true,
             text: "Deliveries",
-            font: { size: 14 },
+            font: { size: fs(14) },
             color: COLORS.text,
           },
         },
       },
       layout: {
-        padding: { bottom: 28 },
+        padding: { bottom: ATTRIBUTION_BOTTOM_PADDING },
       },
     },
     plugins: [
@@ -231,9 +234,9 @@ export async function generateAllBrandsChart(
         title: {
           display: true,
           text: `${data.monthName} ${data.year} China EV Deliveries`,
-          font: { size: 24, weight: "bold" },
+          font: { size: fs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: 20, bottom: 20 },
+          padding: { top: fs(20), bottom: fs(20) },
         },
         legend: { display: false },
         datalabels: {
@@ -248,7 +251,7 @@ export async function generateAllBrandsChart(
                 : "";
             return `${formatNumber(value)}${yoy}`;
           },
-          font: { size: 12, weight: "bold" },
+          font: { size: fs(12), weight: "bold" },
           color: COLORS.text,
           padding: { left: 8 },
         },
@@ -258,24 +261,24 @@ export async function generateAllBrandsChart(
           beginAtZero: true,
           grid: { color: COLORS.gridLine },
           ticks: {
-            font: { size: 12 },
+            font: { size: fs(12) },
             color: COLORS.text,
             callback: (value) => formatNumber(value as number),
           },
           title: {
             display: true,
             text: "Deliveries",
-            font: { size: 14 },
+            font: { size: fs(14) },
             color: COLORS.text,
           },
         },
         y: {
           grid: { display: false },
-          ticks: { font: { size: 13, weight: "bold" }, color: COLORS.text },
+          ticks: { font: { size: fs(13), weight: "bold" }, color: COLORS.text },
         },
       },
       layout: {
-        padding: { right: 80, bottom: 28 }, // Space for data labels + source line
+        padding: { right: fs(80), bottom: ATTRIBUTION_BOTTOM_PADDING }, // Space for data labels + source line
       },
     },
     plugins: [
@@ -332,17 +335,17 @@ export async function generateLineChart(
         title: {
           display: true,
           text: title,
-          font: { size: 24, weight: "bold" },
+          font: { size: fs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: 20, bottom: 20 },
+          padding: { top: fs(20), bottom: fs(20) },
         },
         legend: {
           display: datasets.length > 1,
           position: "bottom",
           labels: {
-            font: { size: 14 },
+            font: { size: fs(14) },
             color: COLORS.text,
-            padding: 20,
+            padding: fs(20),
           },
         },
         datalabels: {
@@ -352,20 +355,20 @@ export async function generateLineChart(
       scales: {
         x: {
           grid: { display: false },
-          ticks: { font: { size: 12 }, color: COLORS.text },
+          ticks: { font: { size: fs(12) }, color: COLORS.text },
         },
         y: {
           beginAtZero: true,
           grid: { color: COLORS.gridLine },
           ticks: {
-            font: { size: 12 },
+            font: { size: fs(12) },
             color: COLORS.text,
             callback: (value) => formatNumber(value as number),
           },
         },
       },
       layout: {
-        padding: { bottom: 28 },
+        padding: { bottom: ATTRIBUTION_BOTTOM_PADDING },
       },
     },
     plugins: [
@@ -425,9 +428,9 @@ export async function generateBarChart(
         title: {
           display: true,
           text: title,
-          font: { size: 24, weight: "bold" },
+          font: { size: fs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: 20, bottom: 20 },
+          padding: { top: fs(20), bottom: fs(20) },
         },
         legend: { display: false },
         datalabels: {
@@ -442,7 +445,7 @@ export async function generateBarChart(
                 : "";
             return `${formatNumber(value)}${yoyStr}`;
           },
-          font: { size: 11, weight: "bold" },
+          font: { size: fs(11), weight: "bold" },
           color: COLORS.text,
         },
       },
@@ -451,7 +454,7 @@ export async function generateBarChart(
           beginAtZero: isHorizontal,
           grid: { display: isHorizontal, color: COLORS.gridLine },
           ticks: {
-            font: { size: 12 },
+            font: { size: fs(12) },
             color: COLORS.text,
             callback: isHorizontal
               ? (value) => formatNumber(value as number)
@@ -462,7 +465,7 @@ export async function generateBarChart(
           beginAtZero: !isHorizontal,
           grid: { display: !isHorizontal, color: COLORS.gridLine },
           ticks: {
-            font: { size: 12 },
+            font: { size: fs(12) },
             color: COLORS.text,
             callback: !isHorizontal
               ? (value) => formatNumber(value as number)
@@ -471,8 +474,8 @@ export async function generateBarChart(
         },
       },
       layout: isHorizontal
-        ? { padding: { right: 80, bottom: 28 } }
-        : { padding: { bottom: 28 } },
+        ? { padding: { right: fs(80), bottom: ATTRIBUTION_BOTTOM_PADDING } }
+        : { padding: { bottom: ATTRIBUTION_BOTTOM_PADDING } },
     },
     plugins: [
       {
