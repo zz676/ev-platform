@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import { requireApiAdmin } from "@/lib/auth/api-auth";
 import { executeQuery, getTableInfo } from "@/lib/query-executor";
 
+function normalizeOrderBy(orderBy: unknown): unknown {
+  if (!orderBy) return orderBy;
+  if (Array.isArray(orderBy)) return orderBy;
+  if (typeof orderBy === "object") {
+    const entries = Object.entries(orderBy as Record<string, unknown>);
+    if (entries.length === 0) return orderBy;
+    return entries.map(([key, value]) => ({ [key]: value }));
+  }
+  return orderBy;
+}
+
 // POST: Execute a query safely
 export async function POST(request: Request) {
   const authResult = await requireApiAdmin();
@@ -27,7 +38,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await executeQuery({ table, query });
+    const normalizedQuery = {
+      ...query,
+      ...(query?.orderBy !== undefined
+        ? { orderBy: normalizeOrderBy(query.orderBy) }
+        : {}),
+    };
+
+    const result = await executeQuery({ table, query: normalizedQuery });
 
     // Get table info for context
     const tableInfo = getTableInfo(table);

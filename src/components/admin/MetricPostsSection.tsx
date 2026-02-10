@@ -44,6 +44,7 @@ interface MetricPost {
   brand: string;
   content: string;
   chartImageUrl: string | null;
+  dataSnapshot?: { source?: string; basePeriod?: number } | null;
   status: "DRAFT" | "APPROVED" | "POSTING" | "POSTED" | "FAILED" | "SKIPPED";
   tweetId: string | null;
   postedAt: string | null;
@@ -96,6 +97,13 @@ function formatDateTime(dateStr: string): string {
 }
 
 function getPostTypeLabel(post: MetricPost): string {
+  if (post.dataSnapshot?.source === "data-explorer") {
+    const period = post.dataSnapshot.basePeriod ?? post.period;
+    const monthName = MONTH_NAMES[period - 1] || "";
+    const monthLabel = monthName ? `${monthName} ` : "";
+    return `Data Explorer ${monthLabel}${post.year}`;
+  }
+
   if (post.postType === "ALL_BRANDS_COMPARISON") {
     const monthName = MONTH_NAMES[post.period - 1] || "";
     return `All Brands ${monthName} ${post.year}`;

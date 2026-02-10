@@ -49,6 +49,17 @@ const ALLOWED_QUERY_KEYS = [
   "distinct",
 ];
 
+function normalizeOrderBy(orderBy: unknown): unknown {
+  if (!orderBy) return orderBy;
+  if (Array.isArray(orderBy)) return orderBy;
+  if (typeof orderBy === "object") {
+    const entries = Object.entries(orderBy as Record<string, unknown>);
+    if (entries.length === 0) return orderBy;
+    return entries.map(([key, value]) => ({ [key]: value }));
+  }
+  return orderBy;
+}
+
 export interface QueryRequest {
   table: string;
   query: Record<string, unknown>;
@@ -125,12 +136,11 @@ export async function executeQuery(request: QueryRequest): Promise<QueryResult> 
   validateQueryStructure(query);
 
   // 3. Add safety limits
+  const normalizedOrderBy = normalizeOrderBy(query.orderBy);
   const safeQuery = {
     ...query,
-    take: Math.min(
-      (query.take as number) || MAX_RESULTS,
-      MAX_RESULTS
-    ),
+    ...(normalizedOrderBy !== undefined ? { orderBy: normalizedOrderBy } : {}),
+    take: Math.min((query.take as number) || MAX_RESULTS, MAX_RESULTS),
   };
 
   // 4. Execute with timeout
