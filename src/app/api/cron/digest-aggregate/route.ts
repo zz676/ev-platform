@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
         scheduledFor,
         status: { in: ["PENDING", "POSTED"] },
       },
+      select: { id: true },
     });
 
     if (existing) {
@@ -128,6 +129,7 @@ export async function GET(request: NextRequest) {
         topPostId: topPost.id,
         status: "PENDING",
       },
+      select: { id: true },
     });
 
     return NextResponse.json({
