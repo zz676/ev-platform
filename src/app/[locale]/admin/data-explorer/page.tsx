@@ -46,6 +46,7 @@ export default function DataExplorerPage() {
   // Execution state
   const [results, setResults] = useState<QueryResult | null>(null);
   const [chartImage, setChartImage] = useState<string | null>(null);
+  const [chartMeta, setChartMeta] = useState<{ title: string; chartType: string } | null>(null);
 
   // Loading states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -89,6 +90,7 @@ export default function DataExplorerPage() {
     setError(null);
     setResults(null);
     setChartImage(null);
+    setChartMeta(null);
 
     try {
       const res = await fetch("/api/admin/data-explorer/generate-query", {
@@ -155,6 +157,7 @@ export default function DataExplorerPage() {
     setExplanation(undefined);
     setResults(null);
     setChartImage(null);
+    setChartMeta(null);
     setError(null);
   }
 
@@ -242,7 +245,7 @@ export default function DataExplorerPage() {
               onChange={setQueryString}
               onExecute={handleExecuteQuery}
               isLoading={isExecuting}
-              error={null}
+              error={error}
               explanation={explanation}
             />
           </div>
@@ -265,7 +268,10 @@ export default function DataExplorerPage() {
             <ChartPreview
               data={results.data}
               initialTitle={question || "Data Results"}
-              onChartGenerated={setChartImage}
+              onChartGenerated={(r) => {
+                setChartImage(r.chartImageBase64);
+                setChartMeta({ title: r.title, chartType: r.chartType });
+              }}
             />
           </div>
         )}
@@ -278,6 +284,12 @@ export default function DataExplorerPage() {
             </h2>
             <PostComposer
               chartImageBase64={chartImage}
+              question={question}
+              table={table}
+              prismaQuery={queryString}
+              results={results.data}
+              chartTitle={chartMeta?.title || question || "Data Results"}
+              chartType={chartMeta?.chartType || "bar"}
               onPostSuccess={() => {
                 // Could refresh or show success state
               }}

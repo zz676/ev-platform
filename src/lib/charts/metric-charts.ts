@@ -1,9 +1,27 @@
-import type { ChartConfiguration } from "chart.js";
+import type { ChartConfiguration, Plugin } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import {
   BrandTrendData,
   AllBrandsData,
 } from "@/lib/metrics/delivery-data";
+
+const CHART_SOURCE_TEXT =
+  process.env.CHART_SOURCE_TEXT || "source: evjuice.net";
+const CHART_FONT_SCALE = parseFloat(process.env.CHART_FONT_SCALE || "2");
+const fs = (n: number) => Math.max(1, Math.round(n * CHART_FONT_SCALE));
+// Titles read a bit too loud when CHART_FONT_SCALE is high. Reduce by 30%.
+const tfs = (n: number) =>
+  Math.max(1, Math.round(n * CHART_FONT_SCALE * 0.7));
+// Data labels get too large when we scale chart typography for X. Keep them smaller.
+// "Reduce by 40%" => multiply by 0.6.
+const dls = (n: number) =>
+  Math.max(1, Math.round(n * CHART_FONT_SCALE * 0.6));
+const ATTRIBUTION_BOTTOM_PADDING = fs(12) + fs(12) + 6;
+const OUTER_PAD = fs(22);
+const CARD_RADIUS = fs(18);
+// Reduce left/right padding by an additional ~8% from the previous setting.
+const PAD_X_SCALE = 0.736;
+const padx = (n: number) => Math.max(0, Math.round(n * PAD_X_SCALE));
 
 // Chart dimensions (16:9 aspect ratio, good for X)
 const CHART_WIDTH = 1200;
@@ -37,6 +55,85 @@ const BRAND_COLORS: Record<string, string> = {
 type ChartJSNodeCanvasType = import("chartjs-node-canvas").ChartJSNodeCanvas;
 
 let chartCanvasPromise: Promise<ChartJSNodeCanvasType> | null = null;
+
+const sourceAttributionPlugin: Plugin = {
+  id: "sourceAttribution",
+  afterDraw: (chart) => {
+    if (!CHART_SOURCE_TEXT) return;
+    const ctx = chart.ctx;
+    const text = CHART_SOURCE_TEXT.replace(/^source:/i, "source:");
+    ctx.save();
+    ctx.font = `italic ${fs(12)}px Arial`;
+    ctx.fillStyle = "#3eb265";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    const padding = fs(12);
+    ctx.fillText(
+      text,
+      chart.width - OUTER_PAD - padding - fs(16),
+      chart.height - OUTER_PAD - padding
+    );
+    ctx.restore();
+  },
+};
+
+function roundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
+const cardBackgroundPlugin: Plugin = {
+  id: "cardBackground",
+  beforeDraw: (chart) => {
+    const ctx = chart.ctx;
+    ctx.save();
+
+    // Light page background
+    ctx.fillStyle = "rgba(249, 250, 251, 1)"; // gray-50
+    ctx.fillRect(0, 0, chart.width, chart.height);
+
+    // White card with subtle shadow + border
+    const x = OUTER_PAD;
+    const y = OUTER_PAD;
+    const w = chart.width - OUTER_PAD * 2;
+    const h = chart.height - OUTER_PAD * 2;
+
+    ctx.shadowColor = "rgba(0, 0, 0, 0.14)";
+    ctx.shadowBlur = fs(28);
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = fs(12);
+
+    ctx.fillStyle = "rgba(255, 255, 255, 1)";
+    roundedRect(ctx, x, y, w, h, CARD_RADIUS);
+    ctx.fill();
+
+    // Reset shadow before stroke
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    ctx.lineWidth = fs(1);
+    ctx.strokeStyle = "rgba(17, 24, 39, 0.08)";
+    roundedRect(ctx, x, y, w, h, CARD_RADIUS);
+    ctx.stroke();
+
+    ctx.restore();
+  },
+};
 
 async function getChartCanvas(): Promise<ChartJSNodeCanvasType> {
   if (!chartCanvasPromise) {
@@ -107,17 +204,17 @@ export async function generateBrandTrendChart(
         title: {
           display: true,
           text: `${data.brandName} Monthly Deliveries: ${data.year - 1} vs ${data.year}`,
-          font: { size: 24, weight: "bold" },
+          font: { size: tfs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: 20, bottom: 20 },
+          padding: { top: fs(20), bottom: fs(20) },
         },
         legend: {
           display: true,
           position: "bottom",
           labels: {
-            font: { size: 14 },
+            font: { size: fs(14) },
             color: COLORS.text,
-            padding: 20,
+            padding: fs(20),
           },
         },
         datalabels: {
@@ -125,43 +222,43 @@ export async function generateBrandTrendChart(
           anchor: "end",
           align: "top",
           formatter: (value: number) => (value > 0 ? formatNumber(value) : ""),
-          font: { size: 11, weight: "bold" },
+          font: { size: dls(11), weight: "bold" },
           color: COLORS.text,
         },
       },
       scales: {
         x: {
           grid: { display: false },
-          ticks: { font: { size: 12 }, color: COLORS.text },
+          ticks: { font: { size: fs(12) }, color: COLORS.text },
         },
         y: {
           beginAtZero: true,
           grid: { color: COLORS.gridLine },
           ticks: {
-            font: { size: 12 },
+            font: { size: fs(12) },
             color: COLORS.text,
             callback: (value) => formatNumber(value as number),
           },
           title: {
             display: true,
             text: "Deliveries",
-            font: { size: 14 },
+            font: { size: fs(14) },
             color: COLORS.text,
           },
         },
       },
-    },
-    plugins: [
-      {
-        id: "customBackground",
-        beforeDraw: (chart) => {
-          const ctx = chart.ctx;
-          ctx.save();
-          ctx.fillStyle = COLORS.white;
-          ctx.fillRect(0, 0, chart.width, chart.height);
-          ctx.restore();
+      layout: {
+        padding: {
+          top: OUTER_PAD,
+          left: OUTER_PAD + padx(fs(28)),
+          right: OUTER_PAD + padx(fs(28)),
+          bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
         },
       },
+    },
+    plugins: [
+      cardBackgroundPlugin,
+      sourceAttributionPlugin,
     ],
   };
 
@@ -208,9 +305,9 @@ export async function generateAllBrandsChart(
         title: {
           display: true,
           text: `${data.monthName} ${data.year} China EV Deliveries`,
-          font: { size: 24, weight: "bold" },
+          font: { size: tfs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: 20, bottom: 20 },
+          padding: { top: fs(20), bottom: fs(20) },
         },
         legend: { display: false },
         datalabels: {
@@ -225,7 +322,7 @@ export async function generateAllBrandsChart(
                 : "";
             return `${formatNumber(value)}${yoy}`;
           },
-          font: { size: 12, weight: "bold" },
+          font: { size: dls(12), weight: "bold" },
           color: COLORS.text,
           padding: { left: 8 },
         },
@@ -235,37 +332,34 @@ export async function generateAllBrandsChart(
           beginAtZero: true,
           grid: { color: COLORS.gridLine },
           ticks: {
-            font: { size: 12 },
+            font: { size: fs(12) },
             color: COLORS.text,
             callback: (value) => formatNumber(value as number),
           },
           title: {
             display: true,
             text: "Deliveries",
-            font: { size: 14 },
+            font: { size: fs(14) },
             color: COLORS.text,
           },
         },
         y: {
           grid: { display: false },
-          ticks: { font: { size: 13, weight: "bold" }, color: COLORS.text },
+          ticks: { font: { size: fs(13), weight: "bold" }, color: COLORS.text },
         },
       },
       layout: {
-        padding: { right: 80 }, // Space for data labels
+        padding: {
+          top: OUTER_PAD,
+          left: OUTER_PAD + padx(fs(28)),
+          right: OUTER_PAD + padx(fs(80)), // Space for data labels + source line
+          bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
+        },
       },
     },
     plugins: [
-      {
-        id: "customBackground",
-        beforeDraw: (chart) => {
-          const ctx = chart.ctx;
-          ctx.save();
-          ctx.fillStyle = COLORS.white;
-          ctx.fillRect(0, 0, chart.width, chart.height);
-          ctx.restore();
-        },
-      },
+      cardBackgroundPlugin,
+      sourceAttributionPlugin,
     ],
   };
 
@@ -308,17 +402,17 @@ export async function generateLineChart(
         title: {
           display: true,
           text: title,
-          font: { size: 24, weight: "bold" },
+          font: { size: tfs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: 20, bottom: 20 },
+          padding: { top: fs(20), bottom: fs(20) },
         },
         legend: {
           display: datasets.length > 1,
           position: "bottom",
           labels: {
-            font: { size: 14 },
+            font: { size: fs(14) },
             color: COLORS.text,
-            padding: 20,
+            padding: fs(20),
           },
         },
         datalabels: {
@@ -328,30 +422,30 @@ export async function generateLineChart(
       scales: {
         x: {
           grid: { display: false },
-          ticks: { font: { size: 12 }, color: COLORS.text },
+          ticks: { font: { size: fs(12) }, color: COLORS.text },
         },
         y: {
           beginAtZero: true,
           grid: { color: COLORS.gridLine },
           ticks: {
-            font: { size: 12 },
+            font: { size: fs(12) },
             color: COLORS.text,
             callback: (value) => formatNumber(value as number),
           },
         },
       },
-    },
-    plugins: [
-      {
-        id: "customBackground",
-        beforeDraw: (chart) => {
-          const ctx = chart.ctx;
-          ctx.save();
-          ctx.fillStyle = COLORS.white;
-          ctx.fillRect(0, 0, chart.width, chart.height);
-          ctx.restore();
+      layout: {
+        padding: {
+          top: OUTER_PAD,
+          left: OUTER_PAD + padx(fs(28)),
+          right: OUTER_PAD + padx(fs(28)),
+          bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
         },
       },
+    },
+    plugins: [
+      cardBackgroundPlugin,
+      sourceAttributionPlugin,
     ],
   };
 
@@ -373,6 +467,57 @@ export async function generateBarChart(
   }
 ): Promise<Buffer> {
   const isHorizontal = options?.horizontal ?? false;
+  const showYoY = options?.showYoY;
+
+  const topRightValueLabelsPlugin: Plugin = {
+    id: "topRightValueLabels",
+    afterDatasetsDraw: (chart) => {
+      if (isHorizontal) return;
+      const ctx = chart.ctx;
+      const chartArea = chart.chartArea;
+      const meta = chart.getDatasetMeta(0);
+      if (!meta?.data?.length) return;
+
+      ctx.save();
+      ctx.font = `${dls(11)}px Arial`;
+      ctx.fillStyle = "rgba(17, 24, 39, 0.95)";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+
+      const insetX = fs(6);
+      const insetY = fs(6);
+      const minY = chartArea.top + dls(11) + fs(2);
+
+      meta.data.forEach((el, i) => {
+        // BarElement exposes x/y and width in Chart.js v4, but the type isn't exported cleanly.
+        const bar = el as unknown as { x?: number; y?: number; width?: number };
+        const xCenter = bar.x;
+        const yTop = bar.y;
+        const w = bar.width;
+        const raw = data[i] ?? 0;
+        if (typeof xCenter !== "number" || typeof yTop !== "number" || typeof w !== "number") return;
+        if (!Number.isFinite(raw) || raw <= 0) return;
+
+        const yoy = showYoY?.[i];
+        const yoyStr =
+          yoy !== undefined && Number.isFinite(yoy)
+            ? ` (${yoy >= 0 ? "+" : ""}${(yoy as number).toFixed(0)}%)`
+            : "";
+        const text = `${formatNumber(raw)}${yoyStr}`;
+
+        let x = xCenter + w / 2 - insetX;
+        let y = yTop - insetY;
+
+        // Keep the label inside the chart area
+        x = Math.min(chartArea.right - insetX, Math.max(chartArea.left + insetX, x));
+        y = Math.max(minY, y);
+
+        ctx.fillText(text, x, y);
+      });
+
+      ctx.restore();
+    },
+  };
 
   const config: ChartConfiguration = {
     type: "bar",
@@ -397,25 +542,29 @@ export async function generateBarChart(
         title: {
           display: true,
           text: title,
-          font: { size: 24, weight: "bold" },
+          font: { size: tfs(24), weight: "bold" },
           color: COLORS.text,
-          padding: { top: 20, bottom: 20 },
+          padding: { top: fs(20), bottom: fs(20) },
         },
         legend: { display: false },
         datalabels: {
-          display: true,
+          // For vertical bars we draw with a custom plugin to place top-right.
+          display: isHorizontal,
           anchor: "end",
-          align: isHorizontal ? "right" : "top",
+          align: "right",
+          textAlign: "start",
           formatter: (value: number, context) => {
-            const yoy = options?.showYoY?.[context.dataIndex];
+            const yoy = showYoY?.[context.dataIndex];
             const yoyStr =
               yoy !== undefined
                 ? ` (${yoy >= 0 ? "+" : ""}${yoy.toFixed(0)}%)`
                 : "";
             return `${formatNumber(value)}${yoyStr}`;
           },
-          font: { size: 11, weight: "bold" },
+          font: { size: dls(11), weight: "bold" },
           color: COLORS.text,
+          clamp: true,
+          clip: false,
         },
       },
       scales: {
@@ -423,7 +572,7 @@ export async function generateBarChart(
           beginAtZero: isHorizontal,
           grid: { display: isHorizontal, color: COLORS.gridLine },
           ticks: {
-            font: { size: 12 },
+            font: { size: fs(12) },
             color: COLORS.text,
             callback: isHorizontal
               ? (value) => formatNumber(value as number)
@@ -434,7 +583,7 @@ export async function generateBarChart(
           beginAtZero: !isHorizontal,
           grid: { display: !isHorizontal, color: COLORS.gridLine },
           ticks: {
-            font: { size: 12 },
+            font: { size: fs(12) },
             color: COLORS.text,
             callback: !isHorizontal
               ? (value) => formatNumber(value as number)
@@ -442,19 +591,28 @@ export async function generateBarChart(
           },
         },
       },
-      layout: isHorizontal ? { padding: { right: 80 } } : undefined,
+      layout: isHorizontal
+        ? {
+            padding: {
+              top: OUTER_PAD,
+              left: OUTER_PAD + padx(fs(28)),
+              right: OUTER_PAD + padx(fs(80)),
+              bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
+            },
+          }
+        : {
+            padding: {
+              top: OUTER_PAD,
+              left: OUTER_PAD + padx(fs(48)),
+              right: OUTER_PAD + padx(fs(48)),
+              bottom: OUTER_PAD + ATTRIBUTION_BOTTOM_PADDING,
+            },
+          },
     },
     plugins: [
-      {
-        id: "customBackground",
-        beforeDraw: (chart) => {
-          const ctx = chart.ctx;
-          ctx.save();
-          ctx.fillStyle = COLORS.white;
-          ctx.fillRect(0, 0, chart.width, chart.height);
-          ctx.restore();
-        },
-      },
+      cardBackgroundPlugin,
+      topRightValueLabelsPlugin,
+      sourceAttributionPlugin,
     ],
   };
 

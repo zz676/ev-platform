@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireApiAdmin } from "@/lib/auth/api-auth";
 import {
   generateQueryFromQuestion,
+  LLMUnavailableError,
+  getSuggestedQuestions,
   SUGGESTED_QUESTIONS,
 } from "@/lib/llm/query-generator";
 import { getAllowedTables } from "@/lib/query-executor";
@@ -44,6 +46,9 @@ export async function POST(request: Request) {
     console.error("Error generating query:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Failed to generate query";
+    if (error instanceof LLMUnavailableError) {
+      return NextResponse.json({ error: errorMessage }, { status: 503 });
+    }
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
@@ -57,10 +62,13 @@ export async function GET() {
 
   try {
     const tables = getAllowedTables();
+    const suggestedQuestions = await getSuggestedQuestions().catch(
+      () => SUGGESTED_QUESTIONS
+    );
 
     return NextResponse.json({
       tables,
-      suggestedQuestions: SUGGESTED_QUESTIONS,
+      suggestedQuestions,
     });
   } catch (error) {
     console.error("Error fetching options:", error);

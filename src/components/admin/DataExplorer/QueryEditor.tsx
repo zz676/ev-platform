@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Play, RefreshCw, Code, AlertCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Play, RefreshCw, Code, AlertCircle, Copy, Wand2 } from "lucide-react";
+import { prismaFindManyToSql } from "@/lib/data-explorer/sql-preview";
 
 interface QueryEditorProps {
   table: string;
@@ -22,7 +23,43 @@ export function QueryEditor({
   error,
   explanation,
 }: QueryEditorProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"prisma" | "sql">("prisma");
+
+  const effectiveError = error || localError;
+
+  const prettyQuery = useMemo(() => query || "", [query]);
+
+  const sqlPreview = useMemo(() => {
+    if (!table || !query) return "";
+    try {
+      const parsed = JSON.parse(query) as Record<string, unknown>;
+      return prismaFindManyToSql({ table, query: parsed });
+    } catch {
+      return "";
+    }
+  }, [table, query]);
+
+  function handleFormat() {
+    try {
+      const parsed = JSON.parse(query);
+      onChange(JSON.stringify(parsed, null, 2));
+      setLocalError(null);
+    } catch {
+      setLocalError("Query JSON is invalid. Fix it before formatting/executing.");
+    }
+  }
+
+  async function handleCopy() {
+    try {
+      const text = activeTab === "sql" ? sqlPreview : prettyQuery;
+      await navigator.clipboard.writeText(text);
+      setLocalError(null);
+    } catch {
+      // Clipboard permissions can fail depending on browser context.
+      setLocalError("Failed to copy to clipboard (browser blocked clipboard access).");
+    }
+  }
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -38,11 +75,47 @@ export function QueryEditor({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white overflow-hidden">
+            <button
+              onClick={() => setActiveTab("prisma")}
+              className={`px-2 py-1 text-xs font-medium transition-colors ${
+                activeTab === "prisma"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+              title="Prisma findMany JSON"
+            >
+              Prisma
+            </button>
+            <button
+              onClick={() => setActiveTab("sql")}
+              className={`px-2 py-1 text-xs font-medium transition-colors ${
+                activeTab === "sql"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+              title="SQL preview you can run in Postgres/Supabase"
+            >
+              SQL
+            </button>
+          </div>
           <button
-            onClick={() => setIsEditing(!isEditing)}
-            className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+            onClick={handleFormat}
+            disabled={!query}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+            title="Format JSON"
           >
-            {isEditing ? "View" : "Edit"}
+            <Wand2 className="h-3.5 w-3.5" />
+            Format
+          </button>
+          <button
+            onClick={handleCopy}
+            disabled={activeTab === "sql" ? !sqlPreview : !query}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+            title={activeTab === "sql" ? "Copy SQL" : "Copy Prisma JSON"}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copy
           </button>
           <button
             onClick={onExecute}
@@ -66,32 +139,40 @@ export function QueryEditor({
 
       {/* Explanation */}
       {explanation && (
-        <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 text-sm text-blue-700">
+        <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 text-sm text-blue-700 break-words overflow-x-auto">
           {explanation}
         </div>
       )}
 
       {/* Query Display/Editor */}
       <div className="p-4 bg-gray-900">
-        {isEditing ? (
+        {activeTab === "prisma" ? (
           <textarea
-            value={query}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full h-48 p-3 font-mono text-sm bg-gray-800 text-green-400 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-ev-green-500 resize-none"
+            value={prettyQuery}
+            onChange={(e) => {
+              onChange(e.target.value);
+              setLocalError(null);
+            }}
+            className="w-full min-h-[20rem] max-h-[60vh] p-3 font-mono text-sm bg-gray-800 text-green-400 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-ev-green-500 resize-y overflow-auto whitespace-pre break-normal"
             spellCheck={false}
+            wrap="off"
           />
         ) : (
-          <pre className="p-3 font-mono text-sm text-green-400 bg-gray-800 rounded overflow-x-auto">
-            <code>{query || "// No query generated"}</code>
-          </pre>
+          <textarea
+            value={sqlPreview || "-- Invalid JSON (switch to Prisma tab and fix it first)."}
+            readOnly
+            className="w-full min-h-[20rem] max-h-[60vh] p-3 font-mono text-sm bg-gray-800 text-amber-200 border border-gray-700 rounded focus:outline-none resize-y overflow-auto whitespace-pre break-normal"
+            spellCheck={false}
+            wrap="off"
+          />
         )}
       </div>
 
       {/* Error Display */}
-      {error && (
+      {effectiveError && (
         <div className="px-4 py-3 bg-red-50 border-t border-red-200 flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-          <span className="text-sm text-red-700">{error}</span>
+          <span className="text-sm text-red-700">{effectiveError}</span>
         </div>
       )}
     </div>

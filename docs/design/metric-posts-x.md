@@ -1,5 +1,7 @@
 # LLM-Powered X Posts from EV Industry Data
 
+Note: The event-driven approve-to-publish pipeline is documented in `docs/design/metric-posts-event-driven.md`. This document contains background, data sources, and early design notes.
+
 ## Overview
 Generate engaging X (Twitter) posts from comprehensive EV industry data using LLM. Posts include **auto-generated chart images** for visual impact. Features both pre-defined metric posts and a flexible Data Explorer for custom queries.
 

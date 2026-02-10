@@ -1,7 +1,7 @@
 import { put } from "@vercel/blob";
 import { Brand, MetricPostStatus, MetricPostType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { postTweet, uploadMedia } from "@/lib/twitter";
+import { postTweet, uploadMedia, uploadMediaBuffer } from "@/lib/twitter";
 import {
   generateAllBrandsChart,
   generateBrandTrendChart,
@@ -30,11 +30,14 @@ function trimTweetTo280(text: string): string {
 async function uploadChartBufferToBlob(params: {
   metricPostId: string;
   buffer: Buffer;
-}): Promise<string> {
+}): Promise<string | null> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) return null;
+
   const blob = await put(
     `metric-charts/post-${params.metricPostId}-${Date.now()}.png`,
     params.buffer,
-    { access: "public", contentType: "image/png" }
+    { access: "public", contentType: "image/png", token }
   );
 
   return blob.url;
@@ -53,9 +56,9 @@ async function ensureChartUrl(metricPost: {
   brand: Brand;
   chartImageUrl: string | null;
   dataSnapshot: unknown;
-}): Promise<{ chartUrl: string; generated: boolean }> {
+}): Promise<{ chartUrl: string | null; buffer: Buffer | null }> {
   if (metricPost.chartImageUrl) {
-    return { chartUrl: metricPost.chartImageUrl, generated: false };
+    return { chartUrl: metricPost.chartImageUrl, buffer: null };
   }
 
   if (metricPost.postType === "ALL_BRANDS_COMPARISON") {
@@ -67,7 +70,7 @@ async function ensureChartUrl(metricPost: {
       metricPostId: metricPost.id,
       buffer,
     });
-    return { chartUrl, generated: true };
+    return { chartUrl, buffer };
   }
 
   if (metricPost.postType === "BRAND_TREND") {
@@ -79,7 +82,7 @@ async function ensureChartUrl(metricPost: {
       metricPostId: metricPost.id,
       buffer,
     });
-    return { chartUrl, generated: true };
+    return { chartUrl, buffer };
   }
 
   throw new Error(`Unsupported MetricPostType: ${metricPost.postType}`);
@@ -171,15 +174,14 @@ export async function publishMetricPost(params: {
 
     // Resolve chart URL (override -> stored -> generated from snapshot/DB)
     let chartUrl = refreshed.chartImageUrl || null;
-    let generatedChart = false;
+    let chartBuffer: Buffer | null = null;
 
     if (params.overrideChartImageBase64) {
-      const buffer = decodeBase64Image(params.overrideChartImageBase64);
+      chartBuffer = decodeBase64Image(params.overrideChartImageBase64);
       chartUrl = await uploadChartBufferToBlob({
         metricPostId: refreshed.id,
-        buffer,
+        buffer: chartBuffer,
       });
-      generatedChart = true;
     } else {
       const ensured = await ensureChartUrl({
         id: refreshed.id,
@@ -191,11 +193,19 @@ export async function publishMetricPost(params: {
         dataSnapshot: refreshed.dataSnapshot,
       });
       chartUrl = ensured.chartUrl;
-      generatedChart = ensured.generated;
+      chartBuffer = ensured.buffer;
     }
 
     // Upload chart to X (required).
-    const mediaId = await uploadMedia(chartUrl);
+    let mediaId: string;
+    if (chartUrl) {
+      mediaId = await uploadMedia(chartUrl);
+    } else if (chartBuffer) {
+      // Local dev commonly lacks BLOB token; still allow posting by uploading from memory.
+      mediaId = await uploadMediaBuffer(chartBuffer, "image/png");
+    } else {
+      throw new Error("Chart image missing (no URL and no buffer)");
+    }
 
     const tweetResponse = await postTweet(tweetText, [mediaId]);
     const tweetId = tweetResponse.data.id;
@@ -207,7 +217,7 @@ export async function publishMetricPost(params: {
           status: MetricPostStatus.POSTED,
           tweetId,
           postedAt: new Date(),
-          chartImageUrl: chartUrl,
+          chartImageUrl: chartUrl ?? refreshed.chartImageUrl,
           content: tweetText,
           lastError: null,
           updatedAt: new Date(),
@@ -222,17 +232,12 @@ export async function publishMetricPost(params: {
       }),
     ]);
 
-    // If we generated a chart URL during publish, persist it for future retries / audit.
-    if (generatedChart && refreshed.chartImageUrl !== chartUrl) {
-      // Best-effort: transaction above already updated chartImageUrl, so this is just a guard.
-    }
-
     return {
       ok: true,
       status: MetricPostStatus.POSTED,
       tweetId,
       tweetUrl: `https://x.com/i/status/${tweetId}`,
-      chartUrl,
+      chartUrl: chartUrl ?? undefined,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

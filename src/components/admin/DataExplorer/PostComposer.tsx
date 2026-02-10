@@ -1,14 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import { Send, RefreshCw, Sparkles, Check, AlertCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Send, RefreshCw, Sparkles, Check, AlertCircle, Wand2, Copy } from "lucide-react";
+import { DATA_EXPLORER_POST_PROMPT } from "@/lib/config/prompts";
+import { prismaFindManyToSql } from "@/lib/data-explorer/sql-preview";
 
 interface PostComposerProps {
   chartImageBase64: string | null;
+  question: string;
+  table: string;
+  prismaQuery: string;
+  results: Record<string, unknown>[];
+  chartTitle: string;
+  chartType: string;
   onPostSuccess?: () => void;
 }
 
-export function PostComposer({ chartImageBase64, onPostSuccess }: PostComposerProps) {
+function summarizeResults(data: Record<string, unknown>[]): string {
+  if (!data.length) return "No rows returned.";
+
+  const cols = Object.keys(data[0]).slice(0, 12);
+  const previewRows = data.slice(0, 8).map((row) => {
+    const parts = cols.map((c) => `${c}=${String(row[c])}`);
+    return `- ${parts.join(", ")}`;
+  });
+
+  return [
+    `Row count: ${data.length}`,
+    `Columns: ${cols.join(", ")}`,
+    "Sample rows:",
+    ...previewRows,
+  ].join("\n");
+}
+
+export function PostComposer({
+  chartImageBase64,
+  question,
+  table,
+  prismaQuery,
+  results,
+  chartTitle,
+  chartType,
+  onPostSuccess,
+}: PostComposerProps) {
   const [content, setContent] = useState("");
   const [attachChart, setAttachChart] = useState(true);
   const [addHashtags, setAddHashtags] = useState(true);
@@ -17,21 +51,71 @@ export function PostComposer({ chartImageBase64, onPostSuccess }: PostComposerPr
   const [isGenerating, setIsGenerating] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState("");
+
+  const sqlPreview = useMemo(() => {
+    try {
+      const parsed = JSON.parse(prismaQuery) as Record<string, unknown>;
+      return prismaFindManyToSql({ table, query: parsed });
+    } catch {
+      return "";
+    }
+  }, [prismaQuery, table]);
+
+  const defaultPrompt = useMemo(() => {
+    const dataSummary = [
+      `Question: ${question || "(none)"}`,
+      `Table: ${table}`,
+      "",
+      summarizeResults(results),
+      "",
+      sqlPreview ? `SQL:\n${sqlPreview}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const chartDescription = `Title: ${chartTitle}\nType: ${chartType}\nImage attached: ${chartImageBase64 ? "yes" : "no"}`;
+
+    return DATA_EXPLORER_POST_PROMPT.replace("{data_summary}", dataSummary).replace(
+      "{chart_description}",
+      chartDescription
+    );
+  }, [question, table, results, sqlPreview, chartTitle, chartType, chartImageBase64]);
+
+  useEffect(() => {
+    setPrompt(defaultPrompt);
+  }, [defaultPrompt]);
 
   async function generateContent() {
     setIsGenerating(true);
     setError(null);
 
     try {
-      // For now, just create a placeholder - in a full implementation,
-      // this would call an API to generate content from the data
-      setContent(
-        "📊 EV Industry Update\n\nKey insights from the latest data analysis.\n\nStay tuned for more updates!"
-      );
+      const res = await fetch("/api/admin/data-explorer/generate-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to generate content");
+      }
+
+      const data = await res.json();
+      setContent(String(data.content || "").trim());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate content");
     } finally {
       setIsGenerating(false);
+    }
+  }
+
+  async function copyPrompt() {
+    try {
+      await navigator.clipboard.writeText(prompt);
+    } catch {
+      setError("Failed to copy prompt to clipboard (browser blocked clipboard access).");
     }
   }
 
@@ -136,6 +220,40 @@ export function PostComposer({ chartImageBase64, onPostSuccess }: PostComposerPr
             {success}
           </div>
         )}
+
+        {/* Prompt Editor */}
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Wand2 className="h-4 w-4 text-gray-500" />
+              Prompt (editable)
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPrompt(defaultPrompt)}
+                className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
+                title="Reset to default prompt"
+              >
+                Reset
+              </button>
+              <button
+                onClick={copyPrompt}
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
+                title="Copy prompt"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </button>
+            </div>
+          </div>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className="w-full min-h-[12rem] max-h-[40vh] p-3 font-mono text-xs bg-white text-gray-900 focus:outline-none resize-y overflow-auto whitespace-pre break-normal"
+            spellCheck={false}
+            wrap="off"
+          />
+        </div>
 
         {/* Content Editor */}
         <div>

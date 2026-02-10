@@ -9,6 +9,19 @@ import {
   BRAND_DISPLAY_NAMES,
 } from "@/lib/metrics/delivery-data";
 
+// In serverless, long timeouts + multi-retries can exceed the function time budget.
+const DEFAULT_LLM_TIMEOUT_MS = process.env.VERCEL ? 8000 : 15000;
+const DEFAULT_LLM_MAX_RETRIES = process.env.VERCEL ? 1 : 2;
+const LLM_TIMEOUT_MS = parseInt(
+  process.env.LLM_TIMEOUT_MS || String(DEFAULT_LLM_TIMEOUT_MS),
+  10
+);
+const LLM_MAX_RETRIES = parseInt(
+  process.env.LLM_MAX_RETRIES || String(DEFAULT_LLM_MAX_RETRIES),
+  10
+);
+const DISABLE_DEEPSEEK = process.env.DISABLE_DEEPSEEK === "true";
+
 // Text completion pricing (per 1M tokens)
 const TEXT_COMPLETION_COST = {
   "deepseek-chat": { input: 0.14, output: 0.28 },
@@ -40,6 +53,7 @@ async function trackAIUsage(params: {
   inputTokens?: number;
   outputTokens?: number;
 }): Promise<void> {
+  if (process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID) return;
   try {
     await prisma.aIUsage.create({ data: params });
   } catch (error) {
@@ -63,6 +77,52 @@ const providers = [
   },
 ];
 
+const providerClients: Record<string, OpenAI | undefined> = {};
+
+function describeError(err: unknown): string {
+  if (!err) return "unknown error";
+  if (err instanceof Error) {
+    const anyErr = err as unknown as {
+      [key: string]: unknown;
+      cause?: unknown;
+    };
+    const parts: string[] = [];
+    if (err.name) parts.push(err.name);
+    if (err.message) parts.push(err.message);
+    if (typeof anyErr.status === "number") parts.push(`status=${anyErr.status}`);
+    if (typeof anyErr.code === "string") parts.push(`code=${anyErr.code}`);
+    if (typeof anyErr.type === "string") parts.push(`type=${anyErr.type}`);
+
+    if (anyErr.cause && typeof anyErr.cause === "object") {
+      const cause = anyErr.cause as { [key: string]: unknown };
+      if (typeof cause.code === "string") parts.push(`cause.code=${cause.code}`);
+      if (typeof cause.message === "string") {
+        parts.push(`cause.message=${cause.message.slice(0, 160)}`);
+      }
+    }
+    return parts.join(" ");
+  }
+  return String(err);
+}
+
+function getProvider(name: "deepseek" | "openai") {
+  const provider = providers.find((p) => p.name === name);
+  if (!provider?.apiKey) {
+    throw new Error(`${name === "deepseek" ? "DeepSeek" : "OpenAI"} API key not configured`);
+  }
+
+  if (!providerClients[name]) {
+    providerClients[name] = new OpenAI({
+      apiKey: provider.apiKey,
+      baseURL: provider.baseURL,
+      timeout: LLM_TIMEOUT_MS,
+      maxRetries: LLM_MAX_RETRIES,
+    });
+  }
+
+  return { provider, client: providerClients[name]! };
+}
+
 /**
  * Call DeepSeek API for text generation
  */
@@ -70,15 +130,7 @@ async function callDeepSeek(
   prompt: string,
   source: string
 ): Promise<string> {
-  const provider = providers.find((p) => p.name === "deepseek");
-  if (!provider?.apiKey) {
-    throw new Error("DeepSeek API key not configured");
-  }
-
-  const client = new OpenAI({
-    apiKey: provider.apiKey,
-    baseURL: provider.baseURL,
-  });
+  const { provider, client } = getProvider("deepseek");
 
   const response = await client.chat.completions.create({
     model: provider.model,
@@ -118,15 +170,7 @@ async function callOpenAI(
   model: string,
   source: string
 ): Promise<string> {
-  const provider = providers.find((p) => p.name === "openai");
-  if (!provider?.apiKey) {
-    throw new Error("OpenAI API key not configured");
-  }
-
-  const client = new OpenAI({
-    apiKey: provider.apiKey,
-    baseURL: provider.baseURL,
-  });
+  const { client } = getProvider("openai");
 
   const response = await client.chat.completions.create({
     model,
@@ -162,28 +206,81 @@ async function callOpenAI(
  * Generate text using LLM with fallback
  */
 async function generateText(prompt: string, source: string): Promise<string> {
-  try {
-    console.log(`[MetricPosts] Trying DeepSeek for ${source}...`);
-    const content = await callDeepSeek(prompt, source);
-    console.log(`[MetricPosts] DeepSeek succeeded for ${source}`);
-    return content;
-  } catch (deepseekError) {
-    console.log(
-      `[MetricPosts] DeepSeek failed for ${source}, trying GPT-4o-mini...`,
-      deepseekError
-    );
+  const deepseekEnabled = !DISABLE_DEEPSEEK && !!process.env.DEEPSEEK_API_KEY;
 
+  if (deepseekEnabled) {
     try {
-      const content = await callOpenAI(prompt, "gpt-4o-mini", source);
-      console.log(`[MetricPosts] GPT-4o-mini succeeded for ${source}`);
+      console.log(`[MetricPosts] Trying DeepSeek for ${source}...`);
+      const content = await callDeepSeek(prompt, source);
+      console.log(`[MetricPosts] DeepSeek succeeded for ${source}`);
       return content;
-    } catch (openaiError) {
-      console.error(`[MetricPosts] Both providers failed for ${source}`);
-      throw new Error(
-        `Failed to generate text: DeepSeek and OpenAI both failed. Last error: ${openaiError}`
+    } catch (deepseekError) {
+      console.warn(
+        `[MetricPosts] DeepSeek failed for ${source}: ${describeError(deepseekError)}. Trying GPT-4o-mini...`
       );
     }
+  } else {
+    console.log(`[MetricPosts] DeepSeek disabled/missing key; using GPT-4o-mini for ${source}...`);
   }
+
+  try {
+    const content = await callOpenAI(prompt, "gpt-4o-mini", source);
+    console.log(`[MetricPosts] GPT-4o-mini succeeded for ${source}`);
+    return content;
+  } catch (openaiError) {
+    const msg = describeError(openaiError);
+    console.warn(`[MetricPosts] OpenAI failed for ${source}: ${msg}`);
+    throw new Error(`LLM providers failed (${source}). ${msg}`);
+  }
+}
+
+function generateAllBrandsFallback(data: AllBrandsData): string {
+  const top = data.brands.slice(0, 7);
+  const lines = top.map((b) => {
+    const yoy =
+      b.yoyChange !== null
+        ? ` (${b.yoyChange >= 0 ? "+" : ""}${b.yoyChange.toFixed(1)}% YoY)`
+        : "";
+    return `${b.ranking}. ${b.brandName}: ${(b.value / 1000).toFixed(0)}K${yoy}`;
+  });
+
+  const totalLine = data.industryTotal
+    ? `Total: ${(data.industryTotal.value / 1000).toFixed(0)}K`
+    : null;
+
+  return [
+    `🏆 ${data.monthName} ${data.year} China EV Deliveries`,
+    ...lines,
+    totalLine,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function generateBrandTrendFallback(data: BrandTrendData): string {
+  const latest = [...data.months]
+    .filter((m) => m.current?.value)
+    .sort((a, b) => b.month - a.month)[0];
+
+  const latestLine = latest
+    ? `${latest.monthName}: ${(latest.current.value / 1000).toFixed(0)}K${
+        latest.yoyChange !== null
+          ? ` (${latest.yoyChange >= 0 ? "+" : ""}${latest.yoyChange.toFixed(1)}% YoY)`
+          : ""
+      }`
+    : null;
+
+  const totalLine = data.yearTotal.previous
+    ? `YTD: ${(data.yearTotal.current / 1000).toFixed(0)}K (${data.yearTotal.yoyChange ? `${data.yearTotal.yoyChange >= 0 ? "+" : ""}${data.yearTotal.yoyChange.toFixed(1)}% YoY` : "YoY n/a"})`
+    : `YTD: ${(data.yearTotal.current / 1000).toFixed(0)}K`;
+
+  return [
+    `📈 ${data.brandName} ${data.year} Deliveries Trend`,
+    latestLine,
+    totalLine,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**
@@ -238,7 +335,21 @@ export async function generateBrandTrendContent(
     .replace("{year}", data.year.toString())
     .replace("{trend_data}", formattedData);
 
-  return generateText(prompt, "metric_brand_trend");
+  try {
+    return await generateText(prompt, "metric_brand_trend");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[MetricPosts] LLM failed for metric_brand_trend, using fallback. ${msg}`);
+    await trackAIUsage({
+      type: "text_completion",
+      model: "fallback",
+      cost: 0,
+      success: false,
+      errorMsg: msg.slice(0, 500),
+      source: "metric_brand_trend",
+    });
+    return generateBrandTrendFallback(data);
+  }
 }
 
 /**
@@ -253,7 +364,21 @@ export async function generateAllBrandsContent(
     .replace("{year}", data.year.toString())
     .replace("{comparison_data}", formattedData);
 
-  return generateText(prompt, "metric_all_brands");
+  try {
+    return await generateText(prompt, "metric_all_brands");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[MetricPosts] LLM failed for metric_all_brands, using fallback. ${msg}`);
+    await trackAIUsage({
+      type: "text_completion",
+      model: "fallback",
+      cost: 0,
+      success: false,
+      errorMsg: msg.slice(0, 500),
+      source: "metric_all_brands",
+    });
+    return generateAllBrandsFallback(data);
+  }
 }
 
 /**

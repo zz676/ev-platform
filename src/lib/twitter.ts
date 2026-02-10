@@ -307,30 +307,19 @@ export async function downloadImageAsBase64(imageUrl: string): Promise<string> {
   return base64;
 }
 
-// Upload media to X (v1.1 API - supports base64 via form-urlencoded)
-export async function uploadMedia(imageUrl: string): Promise<string> {
-  console.log(`[Twitter] uploadMedia called with URL: ${imageUrl}`);
-
+async function uploadBase64ToX(base64Data: string): Promise<string> {
   const creds = getCredentials();
-  if (!creds.apiKey || !creds.apiSecret || !creds.accessToken || !creds.accessTokenSecret) {
+  if (
+    !creds.apiKey ||
+    !creds.apiSecret ||
+    !creds.accessToken ||
+    !creds.accessTokenSecret
+  ) {
     const errorMsg = "X API credentials not configured";
     console.error(`[Twitter] ${errorMsg}`);
     throw new Error(errorMsg);
   }
 
-  // Step 1: Download and normalize image
-  console.log("[Twitter] Step 1: Downloading image...");
-  let base64Data: string;
-  try {
-    base64Data = await downloadImageAsBase64(imageUrl);
-  } catch (downloadError) {
-    const errorMsg = downloadError instanceof Error ? downloadError.message : String(downloadError);
-    console.error(`[Twitter] Image download failed: ${errorMsg}`);
-    throw new Error(`Image download failed: ${errorMsg}`);
-  }
-
-  // Step 2: Upload to X API
-  console.log("[Twitter] Step 2: Uploading to X API...");
   const requestParams = {
     media_data: base64Data,
     media_category: "tweet_image",
@@ -342,13 +331,19 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
     response = await fetch(MEDIA_UPLOAD_URL, {
       method: "POST",
       headers: {
-        Authorization: generateOAuthHeader("POST", MEDIA_UPLOAD_URL, undefined, requestParams),
+        Authorization: generateOAuthHeader(
+          "POST",
+          MEDIA_UPLOAD_URL,
+          undefined,
+          requestParams
+        ),
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: formBody.toString(),
     });
   } catch (fetchError) {
-    const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
+    const errorMsg =
+      fetchError instanceof Error ? fetchError.message : String(fetchError);
     console.error(`[Twitter] X API fetch failed: ${errorMsg}`);
     throw new Error(`X API fetch failed: ${errorMsg}`);
   }
@@ -363,7 +358,6 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
   const result: MediaUploadResponse = await response.json();
   console.log("[Twitter] Media upload response:", JSON.stringify(result));
 
-  // v1.1 returns media_id_string (use string version for v2 tweets API)
   const mediaId = result.media_id_string;
   if (!mediaId) {
     const errorMsg = `X Media Upload failed: No media_id_string in response. Got: ${JSON.stringify(result)}`;
@@ -373,6 +367,49 @@ export async function uploadMedia(imageUrl: string): Promise<string> {
 
   console.log(`[Twitter] Media upload successful, media_id: ${mediaId}`);
   return mediaId;
+}
+
+// Upload media to X from a raw image buffer.
+// This avoids requiring a publicly accessible URL (useful for local dev / server-generated charts).
+export async function uploadMediaBuffer(
+  imageBuffer: Buffer,
+  contentType: string = "image/png"
+): Promise<string> {
+  console.log(
+    `[Twitter] uploadMediaBuffer called: content-type=${contentType}, bytes=${imageBuffer.byteLength}`
+  );
+
+  const prepared = await normalizeImageForX({
+    buffer: imageBuffer,
+    contentType,
+    byteLength: imageBuffer.byteLength,
+  });
+
+  const base64 = prepared.buffer.toString("base64");
+  console.log(
+    `[Twitter] Buffer prepared: normalized=${prepared.normalized}, type=${prepared.contentType}, bytes=${prepared.buffer.byteLength}, base64 length=${base64.length}`
+  );
+
+  return uploadBase64ToX(base64);
+}
+
+// Upload media to X (v1.1 API - supports base64 via form-urlencoded)
+export async function uploadMedia(imageUrl: string): Promise<string> {
+  console.log(`[Twitter] uploadMedia called with URL: ${imageUrl}`);
+
+  // Step 1: Download and normalize image
+  console.log("[Twitter] Step 1: Downloading image...");
+  let base64Data: string;
+  try {
+    base64Data = await downloadImageAsBase64(imageUrl);
+  } catch (downloadError) {
+    const errorMsg = downloadError instanceof Error ? downloadError.message : String(downloadError);
+    console.error(`[Twitter] Image download failed: ${errorMsg}`);
+    throw new Error(`Image download failed: ${errorMsg}`);
+  }
+  // Step 2: Upload to X API
+  console.log("[Twitter] Step 2: Uploading to X API...");
+  return uploadBase64ToX(base64Data);
 }
 
 // Post a tweet (v2 API)
