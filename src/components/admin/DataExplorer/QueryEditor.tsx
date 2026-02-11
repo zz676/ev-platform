@@ -80,10 +80,10 @@ export function QueryEditor({
               onClick={() => setActiveTab("prisma")}
               className={`px-2 py-1 text-xs font-medium transition-colors ${
                 activeTab === "prisma"
-                  ? "bg-gray-900 text-white"
+                  ? "bg-lime-200 text-lime-900"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
-              title="Prisma findMany JSON"
+              title="Copy target: Prisma findMany JSON"
             >
               Prisma
             </button>
@@ -91,10 +91,10 @@ export function QueryEditor({
               onClick={() => setActiveTab("sql")}
               className={`px-2 py-1 text-xs font-medium transition-colors ${
                 activeTab === "sql"
-                  ? "bg-gray-900 text-white"
+                  ? "bg-lime-200 text-lime-900"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
-              title="SQL preview you can run in Postgres/Supabase"
+              title="Copy target: SQL preview for Postgres/Supabase"
             >
               SQL
             </button>
@@ -145,27 +145,40 @@ export function QueryEditor({
       )}
 
       {/* Query Display/Editor */}
-      <div className="p-4 bg-gray-900">
-        {activeTab === "prisma" ? (
-          <textarea
-            value={prettyQuery}
-            onChange={(e) => {
-              onChange(e.target.value);
-              setLocalError(null);
-            }}
-            className="w-full min-h-[20rem] max-h-[60vh] p-3 font-mono text-sm bg-gray-800 text-green-400 border border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-ev-green-500 resize-y overflow-auto whitespace-pre break-normal"
-            spellCheck={false}
-            wrap="off"
-          />
-        ) : (
-          <textarea
-            value={sqlPreview || "-- Invalid JSON (switch to Prisma tab and fix it first)."}
-            readOnly
-            className="w-full min-h-[20rem] max-h-[60vh] p-3 font-mono text-sm bg-gray-800 text-amber-200 border border-gray-700 rounded focus:outline-none resize-y overflow-auto whitespace-pre break-normal"
-            spellCheck={false}
-            wrap="off"
-          />
-        )}
+      <div className="p-4 bg-lime-50 border-t border-lime-100">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold tracking-wide text-gray-700 uppercase">Prisma</span>
+            </div>
+            <textarea
+              value={prettyQuery}
+              onChange={(e) => {
+                onChange(e.target.value);
+                setLocalError(null);
+              }}
+              className={`w-full h-[5rem] min-h-[5rem] max-h-[60vh] p-3 font-mono text-sm bg-white text-emerald-700 border rounded focus:outline-none focus:ring-2 focus:ring-ev-green-500 resize-y overflow-auto whitespace-pre break-normal ${
+                activeTab === "prisma" ? "border-lime-300" : "border-lime-200"
+              }`}
+              spellCheck={false}
+              wrap="off"
+            />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold tracking-wide text-gray-700 uppercase">SQL</span>
+            </div>
+            <textarea
+              value={sqlPreview || "-- Invalid JSON (fix Prisma query first)."}
+              readOnly
+              className={`w-full h-[5rem] min-h-[5rem] max-h-[60vh] p-3 font-mono text-sm bg-lime-100 text-amber-900 border rounded focus:outline-none resize-y overflow-auto whitespace-pre break-normal ${
+                activeTab === "sql" ? "border-lime-300" : "border-lime-200"
+              }`}
+              spellCheck={false}
+              wrap="off"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Error Display */}
