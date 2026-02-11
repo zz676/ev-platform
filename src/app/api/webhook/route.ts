@@ -6,7 +6,7 @@ import crypto from "crypto";
 import { put } from "@vercel/blob";
 import { generatePostImage } from "@/lib/ai";
 import { POSTING_CONFIG } from "@/lib/config/posting";
-import { checkImageRatio } from "@/lib/image-utils";
+import { checkImageRatio, parseImageDataUrl } from "@/lib/image-utils";
 
 // Webhook secret for authenticating scraper requests
 const WEBHOOK_SECRET = process.env.SCRAPER_WEBHOOK_SECRET;
@@ -185,8 +185,10 @@ export async function POST(request: NextRequest) {
                 cardImageUrl = imageUrl;
               } else {
                 // Download and upload to Vercel Blob for permanent storage
-                const imageResponse = await fetch(imageUrl);
-                const imageBlob = await imageResponse.blob();
+                const parsedDataUrl = parseImageDataUrl(imageUrl);
+                const imageBlob = parsedDataUrl
+                  ? new Blob([parsedDataUrl.buffer], { type: parsedDataUrl.contentType })
+                  : await (await fetch(imageUrl)).blob();
                 const { url: blobUrl } = await put(
                   `posts/${postId}.png`,
                   imageBlob,

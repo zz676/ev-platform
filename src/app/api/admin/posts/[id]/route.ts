@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiAdmin } from "@/lib/auth/api-auth";
 import { generatePostImage } from "@/lib/ai";
 import { put } from "@vercel/blob";
-import { checkImageRatio } from "@/lib/image-utils";
+import { checkImageRatio, parseImageDataUrl } from "@/lib/image-utils";
 
 // PATCH: Update single post status
 export async function PATCH(
@@ -80,8 +80,10 @@ export async function PATCH(
           });
 
           // Download and upload to Vercel Blob for permanent storage
-          const imageResponse = await fetch(imageUrl);
-          const imageBlob = await imageResponse.blob();
+          const parsedDataUrl = parseImageDataUrl(imageUrl);
+          const imageBlob = parsedDataUrl
+            ? new Blob([parsedDataUrl.buffer], { type: parsedDataUrl.contentType })
+            : await (await fetch(imageUrl)).blob();
           const { url: blobUrl } = await put(`posts/${id}.png`, imageBlob, {
             access: "public",
           });

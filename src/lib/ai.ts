@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 import crypto from "crypto";
-import path from "path";
 import { put } from "@vercel/blob";
 import prisma from "@/lib/prisma";
 
@@ -96,11 +95,8 @@ async function applyBrandingOverlay(imageUrl: string): Promise<string> {
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL || "https://evjuice.net"
   );
+  const siteLabel = siteUrl.replace(/^https?:\/\//, "");
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!blobToken) {
-    console.warn("[AI] BLOB_READ_WRITE_TOKEN missing; skipping branded overlay");
-    return imageUrl;
-  }
 
   const response = await fetch(imageUrl);
   if (!response.ok) {
@@ -119,42 +115,38 @@ async function applyBrandingOverlay(imageUrl: string): Promise<string> {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(baseImage, 0, 0, width, height);
 
-  const bannerHeight = Math.max(Math.round(height * 0.12), 90);
-  const bannerY = height - bannerHeight;
-  ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
-  ctx.fillRect(0, bannerY, width, bannerHeight);
-
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
-  let logoImage;
-  try {
-    const logoBuffer = await import("fs/promises").then((fs) => fs.readFile(logoPath));
-    logoImage = await loadImage(logoBuffer);
-  } catch (error) {
-    console.warn("[AI] Failed to load logo for branding overlay:", error);
-  }
-
-  const paddingX = Math.round(width * 0.04);
-  const logoSize = Math.round(bannerHeight * 0.55);
-  const logoY = bannerY + Math.round((bannerHeight - logoSize) / 2);
-
-  if (logoImage) {
-    ctx.drawImage(logoImage, paddingX, logoY, logoSize, logoSize);
-  }
-
-  const textX = logoImage ? paddingX + logoSize + Math.round(bannerHeight * 0.3) : paddingX;
+  const padding = Math.round(width * 0.03);
+  const fontSize = Math.max(Math.round(height * 0.04), 18);
+  ctx.font = `600 ${fontSize}px sans-serif`;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
+  ctx.shadowBlur = Math.round(fontSize * 0.35);
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = Math.round(fontSize * 0.15);
   ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-  ctx.font = `600 ${Math.round(bannerHeight * 0.32)}px sans-serif`;
-  ctx.textBaseline = "middle";
-  ctx.fillText(siteUrl, textX, bannerY + bannerHeight / 2);
+  ctx.fillText(siteLabel, width - padding, height - padding);
+  ctx.shadowColor = "transparent";
 
   const outputBuffer = canvas.toBuffer("image/png");
-  const fileName = `generated/brand-${Date.now()}-${crypto.randomBytes(6).toString("hex")}.png`;
-  const blob = await put(fileName, outputBuffer, {
-    access: "public",
-    contentType: "image/png",
-  });
+  if (!blobToken) {
+    console.warn("[AI] BLOB_READ_WRITE_TOKEN missing; returning data URL overlay");
+    return `data:image/png;base64,${outputBuffer.toString("base64")}`;
+  }
 
-  return blob.url;
+  try {
+    const fileName = `generated/brand-${Date.now()}-${crypto.randomBytes(6).toString("hex")}.png`;
+    const blob = await put(fileName, outputBuffer, {
+      access: "public",
+      contentType: "image/png",
+      token: blobToken,
+    });
+
+    return blob.url;
+  } catch (error) {
+    console.warn("[AI] Failed to upload branded overlay, returning data URL:", error);
+    return `data:image/png;base64,${outputBuffer.toString("base64")}`;
+  }
 }
 
 // AI Provider configuration
