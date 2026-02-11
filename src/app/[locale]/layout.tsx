@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { Analytics } from "@vercel/analytics/react";
 import { routing } from "@/i18n/routing";
 import { AuthProvider } from "@/components/context/AuthContext";
 import { UserPanelProvider } from "@/components/context/UserPanelContext";
@@ -60,7 +59,6 @@ export default async function RootLayout({
             </LoginModalProvider>
           </AuthProvider>
         </NextIntlClientProvider>
-        <Analytics />
       </body>
     </html>
   );
