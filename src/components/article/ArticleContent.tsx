@@ -174,7 +174,7 @@ export function ArticleContent({
                     </p>
                     {/* Insert first image after first paragraph */}
                     {idx === 0 && imageUrls.length > 0 && (
-                      <div className="relative aspect-video w-full max-w-2xl mx-auto overflow-hidden rounded-lg my-6 bg-gray-50">
+                      <div className="relative aspect-video w-full max-w-2xl mx-auto overflow-hidden rounded-lg my-6 bg-white">
                         <Image
                           src={imageUrls[0]}
                           alt={title || "Article image"}
@@ -196,7 +196,7 @@ export function ArticleContent({
                   {imageUrls.slice(1).map((url, idx) => (
                     <div
                       key={idx}
-                      className="relative aspect-video rounded-lg overflow-hidden bg-gray-50"
+                      className="relative aspect-video rounded-lg overflow-hidden bg-white"
                     >
                       <Image
                         src={url}
