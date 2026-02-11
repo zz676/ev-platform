@@ -29,7 +29,12 @@ const nextConfig = {
   // Ensure server-side chart rendering has access to a real font (Vercel serverless
   // can have zero system fonts installed, which causes tofu squares for any text).
   outputFileTracingIncludes: {
-    '/api/**': ['src/lib/charts/fonts/*.otf'],
+    '/api/**': [
+      'src/lib/charts/fonts/*.otf',
+      'node_modules/canvas/**',
+      'node_modules/@napi-rs/canvas/**',
+      'packages/canvas-shim/**',
+    ],
   },
 };
 
