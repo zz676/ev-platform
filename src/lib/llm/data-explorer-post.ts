@@ -12,11 +12,9 @@ const LLM_MAX_RETRIES = parseInt(
   process.env.LLM_MAX_RETRIES || String(DEFAULT_LLM_MAX_RETRIES),
   10
 );
-const DISABLE_DEEPSEEK = process.env.DISABLE_DEEPSEEK === "true";
 
 // Text completion pricing (per 1M tokens)
 const TEXT_COMPLETION_COST = {
-  "deepseek-chat": { input: 0.14, output: 0.28 },
   "gpt-4o-mini": { input: 0.15, output: 0.6 },
 } as const;
 
@@ -46,12 +44,6 @@ async function trackAIUsage(params: {
 
 const providers = [
   {
-    name: "deepseek",
-    baseURL: "https://api.deepseek.com",
-    apiKey: process.env.DEEPSEEK_API_KEY,
-    model: "deepseek-chat",
-  },
-  {
     name: "openai",
     baseURL: "https://api.openai.com/v1",
     apiKey: process.env.OPENAI_API_KEY,
@@ -67,11 +59,9 @@ function describeError(err: unknown): string {
   return String(err);
 }
 
-function getProvider(name: "deepseek" | "openai") {
+function getProvider(name: "openai") {
   const provider = providers.find((p) => p.name === name);
-  if (!provider?.apiKey) {
-    throw new Error(`${name === "deepseek" ? "DeepSeek" : "OpenAI"} API key not configured`);
-  }
+  if (!provider?.apiKey) throw new Error("OpenAI API key not configured");
 
   if (!providerClients[name]) {
     providerClients[name] = new OpenAI({
@@ -85,37 +75,10 @@ function getProvider(name: "deepseek" | "openai") {
   return { provider, client: providerClients[name]! };
 }
 
-async function callDeepSeek(prompt: string): Promise<string> {
-  const { provider, client } = getProvider("deepseek");
-  const response = await client.chat.completions.create({
-    model: provider.model,
-    messages: [{ role: "user", content: prompt }],
-    max_tokens: 350,
-    temperature: 0.5,
-  });
-
-  const content = response.choices[0]?.message?.content?.trim();
-  if (!content) throw new Error("DeepSeek returned empty response");
-
-  const inputTokens = response.usage?.prompt_tokens || 0;
-  const outputTokens = response.usage?.completion_tokens || 0;
-  await trackAIUsage({
-    type: "text_completion",
-    model: provider.model,
-    cost: calculateTextCost(provider.model, inputTokens, outputTokens),
-    success: true,
-    source: "data_explorer_post_deepseek",
-    inputTokens,
-    outputTokens,
-  });
-
-  return content;
-}
-
-async function callOpenAI(prompt: string, model: string): Promise<string> {
+async function callOpenAI(prompt: string): Promise<string> {
   const { client } = getProvider("openai");
   const response = await client.chat.completions.create({
-    model,
+    model: "gpt-4o-mini",
     messages: [{ role: "user", content: prompt }],
     max_tokens: 350,
     temperature: 0.5,
@@ -128,8 +91,8 @@ async function callOpenAI(prompt: string, model: string): Promise<string> {
   const outputTokens = response.usage?.completion_tokens || 0;
   await trackAIUsage({
     type: "text_completion",
-    model,
-    cost: calculateTextCost(model, inputTokens, outputTokens),
+    model: "gpt-4o-mini",
+    cost: calculateTextCost("gpt-4o-mini", inputTokens, outputTokens),
     success: true,
     source: "data_explorer_post_openai",
     inputTokens,
@@ -140,17 +103,8 @@ async function callOpenAI(prompt: string, model: string): Promise<string> {
 }
 
 export async function generateDataExplorerPostFromPrompt(prompt: string): Promise<string> {
-  const deepseekEnabled = !DISABLE_DEEPSEEK && !!process.env.DEEPSEEK_API_KEY;
-  if (deepseekEnabled) {
-    try {
-      return await callDeepSeek(prompt);
-    } catch (err) {
-      console.warn(`[DataExplorerPost] DeepSeek failed: ${describeError(err)}. Falling back to GPT-4o-mini...`);
-    }
-  }
-
   try {
-    return await callOpenAI(prompt, "gpt-4o-mini");
+    return await callOpenAI(prompt);
   } catch (err) {
     const msg = describeError(err);
     await trackAIUsage({
@@ -164,4 +118,3 @@ export async function generateDataExplorerPostFromPrompt(prompt: string): Promis
     throw new Error(`Failed to generate post text. ${msg}`);
   }
 }
-
