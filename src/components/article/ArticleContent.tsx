@@ -174,12 +174,12 @@ export function ArticleContent({
                     </p>
                     {/* Insert first image after first paragraph */}
                     {idx === 0 && imageUrls.length > 0 && (
-                      <div className="relative aspect-video w-full max-w-2xl mx-auto overflow-hidden rounded-lg my-6">
+                      <div className="relative aspect-video w-full max-w-2xl mx-auto overflow-hidden rounded-lg my-6 bg-gray-50">
                         <Image
                           src={imageUrls[0]}
                           alt={title || "Article image"}
                           fill
-                          className="object-cover"
+                          className="object-contain"
                           priority
                         />
                       </div>
@@ -196,13 +196,13 @@ export function ArticleContent({
                   {imageUrls.slice(1).map((url, idx) => (
                     <div
                       key={idx}
-                      className="relative aspect-video rounded-lg overflow-hidden bg-gray-100"
+                      className="relative aspect-video rounded-lg overflow-hidden bg-gray-50"
                     >
                       <Image
                         src={url}
                         alt={`Article image ${idx + 2}`}
                         fill
-                        className="object-cover"
+                        className="object-contain"
                         sizes="(max-width: 768px) 100vw, 50vw"
                       />
                     </div>
@@ -277,15 +277,7 @@ export function ArticleContent({
             </div>
           </article>
 
-          {/* Terms and Privacy links */}
-          <div className="flex justify-center gap-6 mt-4 text-sm text-gray-500">
-            <Link href={`/${locale}/terms`} className="hover:text-ev-green-600 transition-colors">
-              Terms
-            </Link>
-            <Link href={`/${locale}/privacy`} className="hover:text-ev-green-600 transition-colors">
-              Privacy
-            </Link>
-          </div>
+          {/* Terms and Privacy links removed per request */}
         </div>
 
         {/* Right sidebar - Related Articles (now visible on mobile too) */}
