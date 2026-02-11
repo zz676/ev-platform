@@ -15,13 +15,11 @@ const LLM_MAX_RETRIES = parseInt(
   process.env.LLM_MAX_RETRIES || String(DEFAULT_LLM_MAX_RETRIES),
   10
 );
-const DISABLE_DEEPSEEK = process.env.DISABLE_DEEPSEEK === "true";
 
 type SuggestedQuestions = Record<string, string[]>;
 
 // Text completion pricing (per 1M tokens)
 const TEXT_COMPLETION_COST = {
-  "deepseek-chat": { input: 0.14, output: 0.28 },
   "gpt-4o-mini": { input: 0.15, output: 0.6 },
 } as const;
 
@@ -60,12 +58,6 @@ async function trackAIUsage(params: {
 
 // AI Provider configuration
 const providers = [
-  {
-    name: "deepseek",
-    baseURL: "https://api.deepseek.com",
-    apiKey: process.env.DEEPSEEK_API_KEY,
-    model: "deepseek-chat",
-  },
   {
     name: "openai",
     baseURL: "https://api.openai.com/v1",
@@ -106,11 +98,9 @@ function describeError(err: unknown): string {
   return String(err);
 }
 
-function getProvider(name: "deepseek" | "openai") {
+function getProvider(name: "openai") {
   const provider = providers.find((p) => p.name === name);
-  if (!provider?.apiKey) {
-    throw new Error(`${name === "deepseek" ? "DeepSeek" : "OpenAI"} API key not configured`);
-  }
+  if (!provider?.apiKey) throw new Error("OpenAI API key not configured");
 
   if (!providerClients[name]) {
     providerClients[name] = new OpenAI({
@@ -271,56 +261,16 @@ IMPORTANT OVERRIDES:
 }
 
 /**
- * Call DeepSeek API for query generation
- */
-async function callDeepSeek(
-  prompt: string,
-  source: string
-): Promise<string> {
-  const { provider, client } = getProvider("deepseek");
-
-  const response = await client.chat.completions.create({
-    model: provider.model,
-    messages: [{ role: "user", content: prompt }],
-    max_tokens: 800,
-    temperature: 0.3, // Lower temperature for more consistent output
-  });
-
-  const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error("DeepSeek returned empty response");
-  }
-
-  // Track token usage
-  const inputTokens = response.usage?.prompt_tokens || 0;
-  const outputTokens = response.usage?.completion_tokens || 0;
-  const cost = calculateTextCost(provider.model, inputTokens, outputTokens);
-
-  await trackAIUsage({
-    type: "text_completion",
-    model: provider.model,
-    cost,
-    success: true,
-    source,
-    inputTokens,
-    outputTokens,
-  });
-
-  return content.trim();
-}
-
-/**
- * Call OpenAI API for query generation (fallback)
+ * Call OpenAI API for query generation
  */
 async function callOpenAI(
   prompt: string,
-  model: string,
   source: string
 ): Promise<string> {
   const { client } = getProvider("openai");
 
   const response = await client.chat.completions.create({
-    model,
+    model: "gpt-4o-mini",
     messages: [{ role: "user", content: prompt }],
     max_tokens: 800,
     temperature: 0.3,
@@ -334,11 +284,11 @@ async function callOpenAI(
   // Track token usage
   const inputTokens = response.usage?.prompt_tokens || 0;
   const outputTokens = response.usage?.completion_tokens || 0;
-  const cost = calculateTextCost(model, inputTokens, outputTokens);
+  const cost = calculateTextCost("gpt-4o-mini", inputTokens, outputTokens);
 
   await trackAIUsage({
     type: "text_completion",
-    model,
+    model: "gpt-4o-mini",
     cost,
     success: true,
     source,
@@ -398,34 +348,15 @@ Output the result as JSON with fields: table, query, chartType, chartTitle, expl
 
   let response: string;
 
-  const deepseekEnabled = !DISABLE_DEEPSEEK && !!process.env.DEEPSEEK_API_KEY;
-
-  if (deepseekEnabled) {
-    try {
-      console.log("[QueryGenerator] Trying DeepSeek...");
-      response = await callDeepSeek(prompt, "query_generator");
-      console.log("[QueryGenerator] DeepSeek succeeded");
-    } catch (deepseekError) {
-      console.warn(
-        `[QueryGenerator] DeepSeek failed: ${describeError(deepseekError)}. Trying GPT-4o-mini...`
-      );
-      response = "";
-    }
-  } else {
-    response = "";
-  }
-
-  if (!response) {
-    try {
-      response = await callOpenAI(prompt, "gpt-4o-mini", "query_generator");
-      console.log("[QueryGenerator] GPT-4o-mini succeeded");
-    } catch (openaiError) {
-      const msg = describeError(openaiError);
-      console.warn(`[QueryGenerator] OpenAI failed: ${msg}`);
-      throw new LLMUnavailableError(
-        `LLM providers unavailable right now. Please retry in a minute. ${msg}`
-      );
-    }
+  try {
+    response = await callOpenAI(prompt, "query_generator");
+    console.log("[QueryGenerator] GPT-4o-mini succeeded");
+  } catch (openaiError) {
+    const msg = describeError(openaiError);
+    console.warn(`[QueryGenerator] OpenAI failed: ${msg}`);
+    throw new LLMUnavailableError(
+      `LLM provider unavailable right now. Please retry in a minute. ${msg}`
+    );
   }
 
   const parsed = parseQueryResponse(response);
