@@ -433,6 +433,85 @@ model Subscriber {
   @@index([verified])
 }
 
+/// API key used for Data API authentication and tiered access.
+model ApiKey {
+  /// Primary identifier for the record.
+  id            String          @id @default(cuid())
+  /// Identifier of the related user.
+  userId        String
+  /// Display name set by the user.
+  name          String?
+  /// Access tier for this key.
+  tier          ApiTier         @default(FREE)
+  /// SHA-256 hash of the plaintext API key.
+  keyHash       String          @unique
+  /// Last 4 characters of the plaintext API key for display.
+  last4         String
+  /// Whether key is active.
+  isActive      Boolean         @default(true)
+  /// Timestamp when key was revoked.
+  revokedAt     DateTime?
+  /// Timestamp when this key was last used.
+  lastUsedAt    DateTime?
+  /// Timestamp when the record was created.
+  createdAt     DateTime        @default(now())
+  /// Timestamp when the record was last updated.
+  updatedAt     DateTime        @updatedAt
+  /// List of daily usage counters.
+  ApiUsageDaily ApiUsageDaily[]
+  /// List of per-request usage logs.
+  ApiUsage      ApiUsage[]
+  /// Related user record.
+  User          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([isActive])
+}
+
+/// Daily usage counter for API key rate limiting.
+model ApiUsageDaily {
+  /// Primary identifier for the record.
+  id        String   @id @default(cuid())
+  /// Identifier of the related API key.
+  apiKeyId  String
+  /// UTC day bucket for aggregation.
+  date      DateTime
+  /// Number of requests made for this day.
+  count     Int      @default(0)
+  /// Timestamp when the record was created.
+  createdAt DateTime @default(now())
+  /// Timestamp when the record was last updated.
+  updatedAt DateTime @updatedAt
+  /// Related API key record.
+  ApiKey    ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@unique([apiKeyId, date], map: "apiKeyId_date")
+  @@index([date])
+}
+
+/// Per-request usage log for auditing and billing.
+model ApiUsage {
+  /// Primary identifier for the record.
+  id             String   @id @default(cuid())
+  /// Identifier of the related API key.
+  apiKeyId       String
+  /// Request endpoint path.
+  endpoint       String
+  /// HTTP method.
+  method         String
+  /// HTTP status code.
+  statusCode     Int
+  /// Optional response latency in milliseconds.
+  responseTimeMs Int?
+  /// Timestamp when the record was created.
+  createdAt      DateTime @default(now())
+  /// Related API key record.
+  ApiKey         ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId, createdAt(sort: Desc)])
+  @@index([endpoint, createdAt(sort: Desc)])
+}
+
 /// Application user profile and auth metadata.
 model User {
   /// Primary identifier for the record.
@@ -457,6 +536,8 @@ model User {
   role              UserRole            @default(USER)
   /// List of account.
   Account           Account[]
+  /// List of API keys.
+  ApiKey            ApiKey[]
   /// List of email notification.
   EmailNotification EmailNotification[]
   /// List of saved post.
@@ -573,6 +654,13 @@ enum AuthProvider {
   GOOGLE
   GITHUB
   TWITTER
+}
+
+enum ApiTier {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
 }
 
 enum Brand {

@@ -82,7 +82,9 @@ export async function PATCH(
           // Download and upload to Vercel Blob for permanent storage
           const parsedDataUrl = parseImageDataUrl(imageUrl);
           const imageBlob = parsedDataUrl
-            ? new Blob([parsedDataUrl.buffer], { type: parsedDataUrl.contentType })
+            ? new Blob([Uint8Array.from(parsedDataUrl.buffer)], {
+                type: parsedDataUrl.contentType,
+              })
             : await (await fetch(imageUrl)).blob();
           const { url: blobUrl } = await put(`posts/${id}.png`, imageBlob, {
             access: "public",
