@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { parseImageDataUrl } from "@/lib/image-utils";
 
 // X API endpoints
 // Media upload uses v1.1 (v2 requires binary format, v1.1 supports base64)
@@ -142,6 +143,15 @@ function isLikelyImageContentType(contentType: string | null): boolean {
 
 async function downloadImageBuffer(imageUrl: string): Promise<DownloadedImage> {
   console.log(`[Twitter] Downloading image from: ${imageUrl}`);
+
+  const parsed = parseImageDataUrl(imageUrl);
+  if (parsed) {
+    const { buffer, contentType } = parsed;
+    console.log(
+      `[Twitter] Image data URL parsed: content-type=${contentType}, bytes=${buffer.byteLength}`
+    );
+    return { buffer, contentType, byteLength: buffer.byteLength };
+  }
 
   const response = await fetch(imageUrl);
   if (!response.ok) {

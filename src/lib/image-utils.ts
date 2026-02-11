@@ -6,6 +6,24 @@ interface ImageDimensions {
   height: number;
 }
 
+interface ParsedDataUrl {
+  buffer: Buffer;
+  contentType: string;
+}
+
+export function parseImageDataUrl(dataUrl: string): ParsedDataUrl | null {
+  const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match) return null;
+  try {
+    return {
+      contentType: match[1],
+      buffer: Buffer.from(match[2], "base64"),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Get image dimensions from a URL by reading only the headers/minimal data
  * Works with JPEG, PNG, GIF, and WebP formats
