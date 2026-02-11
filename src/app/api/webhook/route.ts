@@ -187,7 +187,11 @@ export async function POST(request: NextRequest) {
                 // Download and upload to Vercel Blob for permanent storage
                 const parsedDataUrl = parseImageDataUrl(imageUrl);
                 const imageBlob = parsedDataUrl
+<<<<<<< Updated upstream
                   ? new Blob([Uint8Array.from(parsedDataUrl.buffer)], {
+=======
+                  ? new Blob([new Uint8Array(parsedDataUrl.buffer)], {
+>>>>>>> Stashed changes
                       type: parsedDataUrl.contentType,
                     })
                   : await (await fetch(imageUrl)).blob();
