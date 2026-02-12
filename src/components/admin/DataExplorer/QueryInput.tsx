@@ -53,13 +53,13 @@ export function QueryInput({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask a question about EV industry data... (e.g., 'BYD deliveries in 2024')"
-          className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-36 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500"
-          rows={2}
+          className="h-12 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-36 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500"
+          rows={1}
         />
         <button
           onClick={onSubmit}
           disabled={isLoading || !value.trim()}
-          className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1.5 rounded-lg bg-lime-500 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-lime-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="absolute inset-y-0 right-2 my-auto inline-flex h-fit items-center gap-1.5 rounded-lg bg-lime-500 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-lime-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? (
             <>
@@ -119,12 +119,12 @@ export function QueryInput({
                         {category}
                       </button>
                       {expandedCategory === category && (
-                        <ul className="mt-1 space-y-1">
+                        <ul className="mt-1 space-y-0 pl-4">
                           {questions.map((q, i) => (
-                            <li key={i}>
+                            <li key={i} className="pt-0">
                               <button
                                 onClick={() => handleSuggestionClick(q)}
-                                className="w-full truncate text-left font-mono text-sm text-slate-900 hover:text-slate-900 hover:underline"
+                                className="w-full truncate pt-0 text-left font-mono text-[12px] text-slate-900 hover:text-slate-900 hover:underline"
                                 title={q}
                               >
                                 {q}

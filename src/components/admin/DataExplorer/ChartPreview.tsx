@@ -7,6 +7,8 @@ import {
   TrendingUp,
   Image as ImageIcon,
   Download,
+  Minus,
+  Plus,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -29,6 +31,10 @@ const DEFAULT_PADDING = {
   bottom: 20,
   left: 20,
 };
+const DEFAULT_IMAGE_ZOOM = 50;
+const MIN_IMAGE_ZOOM = 50;
+const MAX_IMAGE_ZOOM = 250;
+const IMAGE_ZOOM_STEP = 25;
 
 interface ChartPreviewProps {
   data: Record<string, unknown>[];
@@ -70,11 +76,14 @@ export function ChartPreview({
   const [xAxisFontColor, setXAxisFontColor] = useState("#0f172a");
   const [yAxisFontColor, setYAxisFontColor] = useState("#0f172a");
   const [sourceText, setSourceText] = useState("source: evjuice.net");
-  const [sourceFontSize, setSourceFontSize] = useState("12");
+  const [sourceFontSize, setSourceFontSize] = useState("24");
   const [sourceColor, setSourceColor] = useState("#65a30d");
   const [xAxisField, setXAxisField] = useState("auto");
   const [barColor, setBarColor] = useState("#84cc16");
+  const [barWidth, setBarWidth] = useState("");
   const [toast, setToast] = useState<{ type: "info" | "success" | "error"; message: string } | null>(null);
+  const [imageZoom, setImageZoom] = useState(DEFAULT_IMAGE_ZOOM);
+  const [imageNaturalWidth, setImageNaturalWidth] = useState<number | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chartImageRef = useRef(chartImage);
   const onChartClearedRef = useRef(onChartCleared);
@@ -86,6 +95,15 @@ export function ChartPreview({
   useEffect(() => {
     onChartClearedRef.current = onChartCleared;
   }, [onChartCleared]);
+
+  useEffect(() => {
+    if (!chartImage) {
+      setImageNaturalWidth(null);
+      setImageZoom(DEFAULT_IMAGE_ZOOM);
+      return;
+    }
+    setImageZoom(DEFAULT_IMAGE_ZOOM);
+  }, [chartImage]);
 
   useEffect(() => {
     return () => {
@@ -112,6 +130,7 @@ export function ChartPreview({
   const parsedXAxisFontSize = Number(xAxisFontSize);
   const parsedYAxisFontSize = Number(yAxisFontSize);
   const parsedSourceFontSize = Number(sourceFontSize);
+  const parsedBarWidth = Number(barWidth);
 
   const resolvedTitleSize = Number.isFinite(parsedTitleSize) ? parsedTitleSize : 24;
   const resolvedXAxisFontSize = Number.isFinite(parsedXAxisFontSize)
@@ -123,6 +142,13 @@ export function ChartPreview({
   const resolvedSourceFontSize = Number.isFinite(parsedSourceFontSize)
     ? parsedSourceFontSize
     : 12;
+  const resolvedBarWidth =
+    Number.isFinite(parsedBarWidth) && parsedBarWidth > 0 ? parsedBarWidth : undefined;
+  const previewPadding = {
+    ...parsedPadding,
+    // Keep room for source text footer so it never overlaps x-axis labels in preview.
+    bottom: Math.max(parsedPadding.bottom, Math.ceil(resolvedSourceFontSize * 1.4) + 16),
+  };
 
   const detectXField = (row: Record<string, unknown>) => {
     if (row.month !== undefined && row.year !== undefined) return "month";
@@ -214,6 +240,7 @@ export function ChartPreview({
     sourceFontSize,
     sourceColor,
     barColor,
+    barWidth,
     data,
   ]);
 
@@ -253,6 +280,8 @@ export function ChartPreview({
         sourceColor,
         sourceFontSize: resolvedSourceFontSize,
         barColor,
+        barWidth: resolvedBarWidth,
+        compactNumbers: false,
       };
 
       const res = await fetch("/api/admin/data-explorer/generate-chart", {
@@ -260,6 +289,7 @@ export function ChartPreview({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           data,
+          previewData: chartData,
           chartType,
           title,
           xField: xAxisField !== "auto" ? xAxisField : undefined,
@@ -387,48 +417,48 @@ export function ChartPreview({
 
         {showCustomize && (
           <div className="space-y-2.5 border-t border-slate-200 pt-3 text-xs text-slate-600">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <label className="flex items-center gap-2">
-                <span className="font-mono text-xs font-medium text-slate-600">Chart Background</span>
+            <div className="flex flex-nowrap items-center gap-3 overflow-x-auto pb-0.5">
+              <label className="flex flex-shrink-0 items-center gap-2">
+                <span className="font-mono text-xs font-medium text-slate-600">Background</span>
                 <input
                   type="color"
                   value={backgroundColor}
                   onChange={(e) => setBackgroundColor(e.target.value)}
-                  className="h-8 w-10 rounded-md border border-slate-300 bg-white p-0.5"
+                  className="h-8 w-[30px] rounded-md border border-slate-300 bg-white p-0.5"
                 />
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex flex-shrink-0 items-center gap-2">
                 <span className="font-mono text-xs font-medium text-slate-600">Title Size</span>
                 <input
                   type="number"
                   value={titleSize}
                   onChange={(e) => setTitleSize(e.target.value)}
-                  className="h-8 w-20 rounded border border-slate-300 bg-white px-2 py-1 text-center font-mono text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  className="h-8 w-[60px] rounded border border-slate-300 bg-white px-2 py-1 text-center font-mono text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-lime-500"
                 />
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex flex-shrink-0 items-center gap-2">
                 <span className="font-mono text-xs font-medium text-slate-600">Title Color</span>
                 <input
                   type="color"
                   value={titleColor}
                   onChange={(e) => setTitleColor(e.target.value)}
-                  className="h-8 w-10 rounded-md border border-slate-300 bg-white p-0.5"
+                  className="h-8 w-[30px] rounded-md border border-slate-300 bg-white p-0.5"
                 />
               </label>
-              <label className="flex min-w-[18rem] flex-1 items-center gap-2">
-                <span className="font-mono text-xs font-medium text-slate-600">Title</span>
+              <label className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="flex-shrink-0 font-mono text-xs font-medium text-slate-600">Title</span>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="flex-1 rounded border border-slate-300 px-2 py-1 text-center font-mono text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1 text-center font-mono text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-lime-500"
                   placeholder="Chart title..."
                 />
               </label>
             </div>
 
             <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-              <label className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+              <label className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5">
                 <span className="whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
                   Padding Top
                 </span>
@@ -436,10 +466,10 @@ export function ChartPreview({
                   type="number"
                   value={paddingTop}
                   onChange={(e) => setPaddingTop(e.target.value)}
-                  className="h-8 w-20 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  className="h-8 w-[50px] rounded-md border border-slate-300 bg-white px-2 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
                 />
               </label>
-              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+              <label className="flex w-[101%] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5">
                 <span className="whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
                   Padding Right
                 </span>
@@ -447,10 +477,10 @@ export function ChartPreview({
                   type="number"
                   value={paddingRight}
                   onChange={(e) => setPaddingRight(e.target.value)}
-                  className="h-8 w-20 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  className="h-8 w-[50px] rounded-md border border-slate-300 bg-white px-2 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
                 />
               </label>
-              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5">
                 <span className="whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
                   Padding Bottom
                 </span>
@@ -458,10 +488,10 @@ export function ChartPreview({
                   type="number"
                   value={paddingBottom}
                   onChange={(e) => setPaddingBottom(e.target.value)}
-                  className="h-8 w-20 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  className="h-8 w-[49px] rounded-md border border-slate-300 bg-white px-2 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
                 />
               </label>
-              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5">
                 <span className="whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
                   Padding Left
                 </span>
@@ -469,35 +499,52 @@ export function ChartPreview({
                   type="number"
                   value={paddingLeft}
                   onChange={(e) => setPaddingLeft(e.target.value)}
-                  className="h-8 w-20 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  className="h-8 w-[50px] rounded-md border border-slate-300 bg-white px-2 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
                 />
               </label>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-6">
-              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+            <div className="flex flex-nowrap items-center gap-1 pb-0.5">
+              <div className="flex flex-shrink-0 items-center px-1">
                 <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
-                  Bar Color
+                  Bar
+                </span>
+              </div>
+              <label className="min-w-0 flex flex-1 items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-1">
+                <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
+                  Color
                 </span>
                 <input
                   type="color"
                   value={barColor}
                   onChange={(e) => setBarColor(e.target.value)}
-                  className="h-7 w-8 rounded border border-slate-300 bg-white p-0.5"
+                  className="h-7 w-7 rounded border border-slate-300 bg-white p-0.5"
                 />
               </label>
-              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+              <label className="min-w-0 flex flex-1 items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-1">
                 <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
-                  Bar Font
+                  Font
                 </span>
                 <input
                   type="color"
                   value={fontColor}
                   onChange={(e) => setFontColor(e.target.value)}
-                  className="h-7 w-8 rounded border border-slate-300 bg-white p-0.5"
+                  className="h-7 w-7 rounded border border-slate-300 bg-white p-0.5"
                 />
               </label>
-              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+              <label className="min-w-0 flex flex-1 items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-1">
+                <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
+                  Width
+                </span>
+                <input
+                  type="number"
+                  value={barWidth}
+                  onChange={(e) => setBarWidth(e.target.value)}
+                  placeholder="Auto"
+                  className="h-7 w-10 rounded border border-slate-300 bg-white px-1 text-center text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                />
+              </label>
+              <label className="min-w-0 flex flex-1 items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-1">
                 <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
                   X Size
                 </span>
@@ -505,10 +552,10 @@ export function ChartPreview({
                   type="number"
                   value={xAxisFontSize}
                   onChange={(e) => setXAxisFontSize(e.target.value)}
-                  className="h-7 w-12 rounded border border-slate-300 bg-white px-1.5 text-center text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  className="h-7 w-10 rounded border border-slate-300 bg-white px-1 text-center text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
                 />
               </label>
-              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+              <label className="min-w-0 flex flex-1 items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-1">
                 <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
                   X Color
                 </span>
@@ -516,10 +563,10 @@ export function ChartPreview({
                   type="color"
                   value={xAxisFontColor}
                   onChange={(e) => setXAxisFontColor(e.target.value)}
-                  className="h-7 w-8 rounded border border-slate-300 bg-white p-0.5"
+                  className="h-7 w-7 rounded border border-slate-300 bg-white p-0.5"
                 />
               </label>
-              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+              <label className="min-w-0 flex flex-1 items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-1">
                 <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
                   Y Size
                 </span>
@@ -527,10 +574,10 @@ export function ChartPreview({
                   type="number"
                   value={yAxisFontSize}
                   onChange={(e) => setYAxisFontSize(e.target.value)}
-                  className="h-7 w-12 rounded border border-slate-300 bg-white px-1.5 text-center text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  className="h-7 w-10 rounded border border-slate-300 bg-white px-1 text-center text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
                 />
               </label>
-              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+              <label className="min-w-0 flex flex-1 items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-1">
                 <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
                   Y Color
                 </span>
@@ -538,12 +585,12 @@ export function ChartPreview({
                   type="color"
                   value={yAxisFontColor}
                   onChange={(e) => setYAxisFontColor(e.target.value)}
-                  className="h-7 w-8 rounded border border-slate-300 bg-white p-0.5"
+                  className="h-7 w-7 rounded border border-slate-300 bg-white p-0.5"
                 />
               </label>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[2fr_1fr_1fr]">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[2.3fr_0.85fr_0.85fr]">
               <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
                 <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
                   Source Text
@@ -558,24 +605,24 @@ export function ChartPreview({
               </label>
               <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
                 <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
-                  Source Size
+                  Size
                 </span>
                 <input
                   type="number"
                   value={sourceFontSize}
                   onChange={(e) => setSourceFontSize(e.target.value)}
-                  className="h-8 w-20 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  className="h-8 w-[68px] rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
                 />
               </label>
               <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
                 <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
-                  Source Color
+                  Color
                 </span>
                 <input
                   type="color"
                   value={sourceColor}
                   onChange={(e) => setSourceColor(e.target.value)}
-                  className="h-8 w-10 rounded-md border border-slate-300 bg-white p-0.5"
+                  className="h-8 w-[34px] rounded-md border border-slate-300 bg-white p-0.5"
                 />
               </label>
             </div>
@@ -610,11 +657,12 @@ export function ChartPreview({
                   {chartType === "line" ? (
                     <LineChart
                       data={chartData}
-                      margin={parsedPadding}
+                      margin={previewPadding}
                     >
                       <CartesianGrid stroke="#e5e7eb" />
                       <XAxis
                         dataKey="label"
+                        interval={0}
                         tick={{ fontSize: resolvedXAxisFontSize, fill: xAxisFontColor }}
                       />
                       <YAxis
@@ -633,7 +681,7 @@ export function ChartPreview({
                     <BarChart
                       data={chartData}
                       layout="vertical"
-                      margin={parsedPadding}
+                      margin={previewPadding}
                     >
                       <CartesianGrid stroke="#e5e7eb" />
                       <XAxis
@@ -643,26 +691,28 @@ export function ChartPreview({
                       <YAxis
                         type="category"
                         dataKey="label"
+                        interval={0}
                         tick={{ fontSize: resolvedYAxisFontSize, fill: yAxisFontColor }}
                         width={80}
                       />
                       <Tooltip />
-                      <Bar dataKey="value" fill={barColor} radius={[6, 6, 6, 6]}>
+                      <Bar dataKey="value" fill={barColor} radius={[6, 6, 6, 6]} barSize={resolvedBarWidth}>
                         <LabelList dataKey="value" position="right" fill={fontColor} fontSize={11} />
                       </Bar>
                     </BarChart>
                   ) : (
-                    <BarChart data={chartData} margin={parsedPadding}>
+                    <BarChart data={chartData} margin={previewPadding}>
                       <CartesianGrid stroke="#e5e7eb" />
                       <XAxis
                         dataKey="label"
+                        interval={0}
                         tick={{ fontSize: resolvedXAxisFontSize, fill: xAxisFontColor }}
                       />
                       <YAxis
                         tick={{ fontSize: resolvedYAxisFontSize, fill: yAxisFontColor }}
                       />
                       <Tooltip />
-                      <Bar dataKey="value" radius={[6, 6, 0, 0]} fill={barColor}>
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]} fill={barColor} barSize={resolvedBarWidth}>
                         <LabelList dataKey="value" position="top" fill={fontColor} fontSize={11} />
                       </Bar>
                     </BarChart>
@@ -688,14 +738,48 @@ export function ChartPreview({
 
         {chartImage ? (
           <div className="w-full overflow-x-auto">
-            <div className="mb-2 text-center text-xs font-medium text-slate-600">
-              Generated image
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div className="text-xs font-medium text-slate-600">Generated image</div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setImageZoom((z) => Math.max(MIN_IMAGE_ZOOM, z - IMAGE_ZOOM_STEP))}
+                  disabled={imageZoom <= MIN_IMAGE_ZOOM}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Zoom out"
+                  title="Zoom out"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <span className="w-12 text-center font-mono text-xs text-slate-600">{imageZoom}%</span>
+                <button
+                  type="button"
+                  onClick={() => setImageZoom((z) => Math.min(MAX_IMAGE_ZOOM, z + IMAGE_ZOOM_STEP))}
+                  disabled={imageZoom >= MAX_IMAGE_ZOOM}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Zoom in"
+                  title="Zoom in"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={chartImage}
               alt="Generated chart"
-              className="block h-auto max-w-none mx-auto rounded-lg shadow-sm"
+              onLoad={(e) => {
+                const width = e.currentTarget.naturalWidth;
+                if (Number.isFinite(width) && width > 0) {
+                  setImageNaturalWidth(width);
+                }
+              }}
+              style={
+                imageNaturalWidth
+                  ? { width: `${(imageNaturalWidth * imageZoom) / 100}px` }
+                  : undefined
+              }
+              className="mx-auto block h-auto max-w-none rounded-2xl border border-slate-200 shadow-[0_18px_40px_-18px_rgba(15,23,42,0.35)]"
             />
             <div className="mt-3 flex justify-end">
               <a

@@ -22,7 +22,7 @@ const dls = (n: number) =>
   Math.max(1, Math.round(n * CHART_FONT_SCALE * 0.6));
 const ATTRIBUTION_BOTTOM_PADDING = px(12) + px(12) + 6;
 const OUTER_PAD = px(22);
-const CARD_RADIUS = px(18);
+const CARD_RADIUS = px(24);
 // Reduce left/right padding by an additional ~8% from the previous setting.
 const PAD_X_SCALE = 0.736;
 const padx = (n: number) => Math.max(0, Math.round(n * PAD_X_SCALE));
@@ -136,8 +136,10 @@ type BarChartStyleOptions = {
   sourceText?: string;
   sourceColor?: string;
   sourceFontSize?: number;
+  barWidth?: number;
   minBarWidth?: number;
   maxWidth?: number;
+  compactNumbers?: boolean;
 };
 
 const chartCanvasPromises = new Map<string, Promise<ChartJSNodeCanvasType>>();
@@ -161,11 +163,12 @@ const sourceAttributionPlugin: Plugin = {
     ctx.fillStyle = color;
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
-    const padding = px(12);
+    const paddingRight = px(12);
+    const paddingBottom = px(4);
     ctx.fillText(
       text.replace(/^source:/i, "source:"),
-      chart.width - OUTER_PAD - padding - px(16),
-      chart.height - OUTER_PAD - padding
+      chart.width - OUTER_PAD - paddingRight - px(16),
+      chart.height - OUTER_PAD - paddingBottom
     );
     ctx.restore();
   },
@@ -193,11 +196,15 @@ function createCardBackgroundPlugin(options?: {
   backgroundColor?: string;
   cardColor?: string;
   borderColor?: string;
+  roundImageCorners?: boolean;
+  outerRadius?: number;
 }): Plugin {
   const backgroundColor = options?.backgroundColor || DEFAULT_PAGE_BACKGROUND;
   const cardColor = options?.cardColor || DEFAULT_CARD_BACKGROUND;
   const borderColor =
     options?.borderColor || "rgba(17, 24, 39, 0.08)";
+  const roundImageCorners = options?.roundImageCorners ?? false;
+  const outerRadius = options?.outerRadius ?? CARD_RADIUS;
 
   return {
     id: "cardBackground",
@@ -206,8 +213,15 @@ function createCardBackgroundPlugin(options?: {
       ctx.save();
 
       // Page background
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(0, 0, chart.width, chart.height);
+      if (roundImageCorners) {
+        ctx.clearRect(0, 0, chart.width, chart.height);
+        ctx.fillStyle = backgroundColor;
+        roundedRect(ctx, 0, 0, chart.width, chart.height, outerRadius);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, chart.width, chart.height);
+      }
 
       // Card with subtle shadow + border
       const x = OUTER_PAD;
@@ -215,10 +229,10 @@ function createCardBackgroundPlugin(options?: {
       const w = chart.width - OUTER_PAD * 2;
       const h = chart.height - OUTER_PAD * 2;
 
-      ctx.shadowColor = "rgba(0, 0, 0, 0.14)";
-      ctx.shadowBlur = px(28);
+      ctx.shadowColor = "rgba(15, 23, 42, 0.2)";
+      ctx.shadowBlur = px(36);
       ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = px(12);
+      ctx.shadowOffsetY = px(14);
 
       ctx.fillStyle = cardColor;
       roundedRect(ctx, x, y, w, h, CARD_RADIUS);
@@ -283,6 +297,11 @@ function formatNumber(value: number): string {
     return `${Math.round(value / 1000)}K`;
   }
   return value.toString();
+}
+
+function formatMetricValue(value: number, compactNumbers: boolean): string {
+  if (!Number.isFinite(value)) return "";
+  return compactNumbers ? formatNumber(value) : `${Math.round(value)}`;
 }
 
 /**
@@ -501,10 +520,12 @@ export async function generateLineChart(
     xAxisFontSize?: number;
     yAxisFontSize?: number;
     backgroundColor?: string;
+    compactNumbers?: boolean;
   }
 ): Promise<Buffer> {
   const xTickSize = px(options?.xAxisFontSize ?? 12);
   const yTickSize = px(options?.yAxisFontSize ?? 12);
+  const compactNumbers = options?.compactNumbers ?? true;
 
   const config: ChartConfiguration = {
     type: "line",
@@ -549,7 +570,13 @@ export async function generateLineChart(
       scales: {
         x: {
           grid: { display: false },
-          ticks: { font: { size: xTickSize }, color: COLORS.text },
+          ticks: {
+            font: { size: xTickSize },
+            color: COLORS.text,
+            autoSkip: false,
+            maxRotation: 0,
+            minRotation: 0,
+          },
         },
         y: {
           beginAtZero: true,
@@ -557,7 +584,8 @@ export async function generateLineChart(
           ticks: {
             font: { size: yTickSize },
             color: COLORS.text,
-            callback: (value) => formatNumber(value as number),
+            callback: (value) =>
+              formatMetricValue(value as number, compactNumbers),
           },
         },
       },
@@ -571,12 +599,19 @@ export async function generateLineChart(
       },
     },
     plugins: [
-      createCardBackgroundPlugin({ backgroundColor: options?.backgroundColor }),
+      createCardBackgroundPlugin({
+        backgroundColor: options?.backgroundColor,
+        borderColor: "transparent",
+        roundImageCorners: true,
+        outerRadius: CARD_RADIUS,
+      }),
       sourceAttributionPlugin,
     ],
   };
 
-  const chartJSNodeCanvas = await getChartCanvas();
+  const chartJSNodeCanvas = await getChartCanvas({
+    backgroundColour: "rgba(0, 0, 0, 0)",
+  });
   return chartJSNodeCanvas.renderToBufferSync(config);
 }
 
@@ -610,6 +645,7 @@ export async function generateBarChart(
   const sourceText = style?.sourceText ?? CHART_SOURCE_TEXT;
   const sourceColor = style?.sourceColor || "#3eb265";
   const sourceFontSize = style?.sourceFontSize ?? px(12);
+  const compactNumbers = style?.compactNumbers ?? true;
 
   const topRightValueLabelsPlugin: Plugin = {
     id: "topRightValueLabels",
@@ -644,7 +680,7 @@ export async function generateBarChart(
           yoy !== undefined && Number.isFinite(yoy)
             ? ` (${yoy >= 0 ? "+" : ""}${(yoy as number).toFixed(0)}%)`
             : "";
-        const text = `${formatNumber(raw)}${yoyStr}`;
+        const text = `${formatMetricValue(raw, compactNumbers)}${yoyStr}`;
 
         let x = xCenter;
         let y = yTop - insetY;
@@ -660,7 +696,11 @@ export async function generateBarChart(
     },
   };
 
-  const minBarWidth = style?.minBarWidth ?? px(28);
+  const resolvedBarWidth =
+    typeof style?.barWidth === "number" && Number.isFinite(style.barWidth)
+      ? Math.max(4, style.barWidth)
+      : undefined;
+  const minBarWidth = style?.minBarWidth ?? resolvedBarWidth ?? px(28);
   const maxWidth = style?.maxWidth ?? 2600;
   const dynamicWidth =
     OUTER_PAD * 2 + minBarWidth * labels.length + padx(px(120));
@@ -685,7 +725,11 @@ export async function generateBarChart(
   const resolvedPadding = {
     top: style?.padding?.top ?? defaultPadding.top,
     right: style?.padding?.right ?? defaultPadding.right,
-    bottom: style?.padding?.bottom ?? defaultPadding.bottom,
+    // Keep enough footer space so source attribution never overlaps the chart area.
+    bottom: Math.max(
+      style?.padding?.bottom ?? defaultPadding.bottom,
+      OUTER_PAD + px(12) + Math.ceil(sourceFontSize * 1.4) - 15
+    ),
     left: style?.padding?.left ?? defaultPadding.left,
   };
 
@@ -701,6 +745,7 @@ export async function generateBarChart(
             data.map((_, i) => Object.values(BRAND_COLORS)[i] || COLORS.primary),
           borderRadius: 4,
           borderWidth: 1,
+          barThickness: resolvedBarWidth,
         },
       ],
     },
@@ -729,7 +774,7 @@ export async function generateBarChart(
               yoy !== undefined
                 ? ` (${yoy >= 0 ? "+" : ""}${yoy.toFixed(0)}%)`
                 : "";
-            return `${formatNumber(value)}${yoyStr}`;
+            return `${formatMetricValue(value, compactNumbers)}${yoyStr}`;
           },
           font: { size: dls(11), weight: "bold" },
           color: textColor,
@@ -749,8 +794,11 @@ export async function generateBarChart(
           ticks: {
             font: { size: xTickSize },
             color: xTickColor,
+            autoSkip: isHorizontal ? undefined : false,
+            maxRotation: isHorizontal ? undefined : 0,
+            minRotation: isHorizontal ? undefined : 0,
             callback: isHorizontal
-              ? (value) => formatNumber(value as number)
+              ? (value) => formatMetricValue(value as number, compactNumbers)
               : undefined,
           },
         },
@@ -760,8 +808,9 @@ export async function generateBarChart(
           ticks: {
             font: { size: yTickSize },
             color: yTickColor,
+            autoSkip: isHorizontal ? false : undefined,
             callback: !isHorizontal
-              ? (value) => formatNumber(value as number)
+              ? (value) => formatMetricValue(value as number, compactNumbers)
               : undefined,
           },
         },
@@ -774,6 +823,9 @@ export async function generateBarChart(
       createCardBackgroundPlugin({
         backgroundColor: outerBackgroundColor,
         cardColor,
+        borderColor: "transparent",
+        roundImageCorners: true,
+        outerRadius: CARD_RADIUS,
       }),
       topRightValueLabelsPlugin,
       sourceAttributionPlugin,
@@ -783,7 +835,7 @@ export async function generateBarChart(
   const chartJSNodeCanvas = await getChartCanvas({
     width: chartWidth,
     height: CHART_HEIGHT,
-    backgroundColour: cardColor,
+    backgroundColour: "rgba(0, 0, 0, 0)",
   });
   return chartJSNodeCanvas.renderToBufferSync(config);
 }

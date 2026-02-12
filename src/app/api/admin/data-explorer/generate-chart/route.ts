@@ -24,8 +24,18 @@ interface BarChartStyleOptions {
   xAxisFontColor?: string;
   yAxisFontColor?: string;
   barColor?: string;
+  barWidth?: number;
   minBarWidth?: number;
   maxWidth?: number;
+  sourceText?: string;
+  sourceColor?: string;
+  sourceFontSize?: number;
+  compactNumbers?: boolean;
+}
+
+interface PreviewChartPoint {
+  label: string;
+  value: number;
 }
 
 // POST: Generate chart from query results
@@ -39,6 +49,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       data,
+      previewData,
       chartType,
       title,
       xField,
@@ -47,6 +58,7 @@ export async function POST(request: Request) {
       chartOptions,
     }: {
       data: Record<string, unknown>[];
+      previewData?: PreviewChartPoint[];
       chartType: string;
       title?: string;
       xField?: string;
@@ -75,92 +87,110 @@ export async function POST(request: Request) {
     const yoyChanges: number[] = [];
     const datasets: ChartDataset[] = [];
 
-    // Try to auto-detect fields if not specified
-    const sampleRow = data[0];
-    const detectedXField =
-      xField ||
-      (sampleRow.month && sampleRow.year
-        ? "month"
-        : sampleRow.brand
-          ? "brand"
-          : sampleRow.maker
-            ? "maker"
-            : sampleRow.automaker
-              ? "automaker"
-              : Object.keys(sampleRow).find((k) =>
-                  ["name", "label", "period", "date"].includes(k.toLowerCase())
-                ));
-
-    const detectedYField =
-      yField ||
-      (sampleRow.value !== undefined
-        ? "value"
-        : sampleRow.installation !== undefined
-          ? "installation"
-          : sampleRow.retailSales !== undefined
-            ? "retailSales"
-            : Object.keys(sampleRow).find(
-                (k) =>
-                  typeof sampleRow[k] === "number" &&
-                  !["year", "month", "period", "ranking"].includes(k)
-              ));
-
-    if (!detectedXField || !detectedYField) {
-      return NextResponse.json(
-        { error: "Could not detect x/y fields from data" },
-        { status: 400 }
+    const hasPreviewData =
+      Array.isArray(previewData) &&
+      previewData.length > 0 &&
+      previewData.every(
+        (point) =>
+          point &&
+          typeof point.label === "string" &&
+          Number.isFinite(Number(point.value))
       );
-    }
 
-    // Handle grouped data (multiple series)
-    if (groupField && sampleRow[groupField] !== undefined) {
-      const groups = new Map<string, { x: string[]; y: number[] }>();
-
-      for (const row of data) {
-        const groupKey = String(row[groupField]);
-        const xValue = String(row[detectedXField]);
-        const yValue = Number(row[detectedYField]) || 0;
-
-        if (!groups.has(groupKey)) {
-          groups.set(groupKey, { x: [], y: [] });
-        }
-        const group = groups.get(groupKey)!;
-        group.x.push(xValue);
-        group.y.push(yValue);
-      }
-
-      // Use first group's x values as labels
-      const firstGroup = groups.values().next().value;
-      if (firstGroup) {
-        labels.push(...firstGroup.x);
-      }
-
-      // Build datasets
-      for (const [label, group] of groups) {
-        datasets.push({ label, data: group.y });
+    if (hasPreviewData) {
+      for (const point of previewData as PreviewChartPoint[]) {
+        labels.push(point.label);
+        values.push(Number(point.value));
       }
     } else {
-      // Single series
-      for (const row of data) {
-        let labelValue: string;
+      // Try to auto-detect fields if not specified
+      const sampleRow = data[0];
+      const detectedXField =
+        xField ||
+        (sampleRow.month !== undefined && sampleRow.year !== undefined
+          ? "month"
+          : sampleRow.brand !== undefined
+            ? "brand"
+            : sampleRow.maker !== undefined
+              ? "maker"
+              : sampleRow.automaker !== undefined
+                ? "automaker"
+                : Object.keys(sampleRow).find((k) =>
+                    ["name", "label", "period", "date"].includes(k.toLowerCase())
+                  ));
 
-        // Format label based on field type
-        if (detectedXField === "month" && row.year) {
-          const monthNames = [
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-          ];
-          labelValue = `${monthNames[(row.month as number) - 1]} ${row.year}`;
-        } else {
-          labelValue = String(row[detectedXField]);
+      const detectedYField =
+        yField ||
+        (sampleRow.value !== undefined
+          ? "value"
+          : sampleRow.installation !== undefined
+            ? "installation"
+            : sampleRow.retailSales !== undefined
+              ? "retailSales"
+              : Object.keys(sampleRow).find(
+                  (k) =>
+                    typeof sampleRow[k] === "number" &&
+                    !["year", "month", "period", "ranking"].includes(k)
+                ));
+
+      if (!detectedXField || !detectedYField) {
+        return NextResponse.json(
+          { error: "Could not detect x/y fields from data" },
+          { status: 400 }
+        );
+      }
+
+      // Handle grouped data (multiple series)
+      if (groupField && sampleRow[groupField] !== undefined) {
+        const groups = new Map<string, { x: string[]; y: number[] }>();
+
+        for (const row of data) {
+          const groupKey = String(row[groupField]);
+          const xValue = String(row[detectedXField]);
+          const yValue = Number(row[detectedYField]) || 0;
+
+          if (!groups.has(groupKey)) {
+            groups.set(groupKey, { x: [], y: [] });
+          }
+          const group = groups.get(groupKey)!;
+          group.x.push(xValue);
+          group.y.push(yValue);
         }
 
-        labels.push(labelValue);
-        values.push(Number(row[detectedYField]) || 0);
+        // Use first group's x values as labels
+        const firstGroup = groups.values().next().value;
+        if (firstGroup) {
+          labels.push(...firstGroup.x);
+        }
 
-        // Capture YoY change if available
-        if (row.yoyChange !== undefined && row.yoyChange !== null) {
-          yoyChanges.push(Number(row.yoyChange));
+        // Build datasets
+        for (const [label, group] of groups) {
+          datasets.push({ label, data: group.y });
+        }
+      } else {
+        // Single series
+        for (const row of data) {
+          let labelValue: string;
+
+          // Format label based on field type
+          if (detectedXField === "month" && row.year !== undefined) {
+            const monthNames = [
+              "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+            ];
+            const monthIndex = Number(row.month) - 1;
+            labelValue = `${monthNames[monthIndex] || row.month} ${row.year}`;
+          } else {
+            labelValue = String(row[detectedXField]);
+          }
+
+          labels.push(labelValue);
+          values.push(Number(row[detectedYField]) || 0);
+
+          // Capture YoY change if available
+          if (row.yoyChange !== undefined && row.yoyChange !== null) {
+            yoyChanges.push(Number(row.yoyChange));
+          }
         }
       }
     }
@@ -170,12 +200,18 @@ export async function POST(request: Request) {
     const chartTitle = title || "Data Results";
 
     if (chartType === "line") {
+      const lineOptions = {
+        xAxisFontSize: chartOptions?.xAxisFontSize,
+        yAxisFontSize: chartOptions?.yAxisFontSize,
+        backgroundColor: chartOptions?.backgroundColor,
+        compactNumbers: chartOptions?.compactNumbers,
+      };
       if (datasets.length > 0) {
-        chartBuffer = await generateLineChart(chartTitle, labels, datasets);
+        chartBuffer = await generateLineChart(chartTitle, labels, datasets, lineOptions);
       } else {
         chartBuffer = await generateLineChart(chartTitle, labels, [
           { label: "Value", data: values, color: chartOptions?.barColor },
-        ]);
+        ], lineOptions);
       }
     } else {
       // bar or horizontalBar
