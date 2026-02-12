@@ -63,9 +63,9 @@ export function QueryEditor({
   }
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-ev-green-200 rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-2 bg-ev-green-50 border-b border-ev-green-200">
         <div className="flex items-center gap-2">
           <Code className="h-4 w-4 text-gray-500" />
           <span className="text-sm font-medium text-gray-700">

@@ -98,7 +98,7 @@ export function QueryInput({
           </button>
 
           {showSuggestions && (
-            <div className="mt-2 border border-gray-200 rounded-lg bg-gray-50 p-3">
+            <div className="mt-2 border border-ev-green-200 rounded-lg bg-ev-green-50 p-3">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Object.entries(suggestedQuestions).map(
                   ([category, questions]) => (

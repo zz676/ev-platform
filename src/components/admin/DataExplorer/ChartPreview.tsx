@@ -313,7 +313,7 @@ export function ChartPreview({
   return (
     <div
       id={scrollAnchorId}
-      className="border border-gray-200 rounded-lg overflow-hidden relative"
+      className="border border-ev-green-200 rounded-lg overflow-hidden relative"
     >
       {toast && (
         <div
@@ -322,14 +322,14 @@ export function ChartPreview({
               ? "bg-green-50 text-green-700 border-green-200"
               : toast.type === "error"
                 ? "bg-red-50 text-red-700 border-red-200"
-                : "bg-gray-50 text-gray-700 border-gray-200"
+                : "bg-ev-green-50 text-gray-700 border-ev-green-200"
           }`}
         >
           {toast.message}
         </div>
       )}
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-2 bg-ev-green-50 border-b border-ev-green-200">
         <div className="flex items-center gap-2">
           <ImageIcon className="h-4 w-4 text-gray-500" />
           <span className="text-sm font-medium text-gray-700">Chart Preview</span>
@@ -337,7 +337,7 @@ export function ChartPreview({
       </div>
 
       {/* Controls */}
-      <div className="px-4 py-3 border-b border-gray-200 space-y-3">
+      <div className="px-4 py-3 border-b border-ev-green-200 space-y-3">
         {/* Chart Type Selector */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium text-gray-600">Type:</span>
@@ -567,7 +567,7 @@ export function ChartPreview({
       </div>
 
       {/* Chart Display */}
-      <div className="p-4 bg-gray-50 space-y-4">
+      <div className="p-4 bg-ev-green-50 space-y-4">
         {previewError ? (
           <div className="text-center text-red-600">
             <p className="font-medium">Preview Error</p>
@@ -576,7 +576,7 @@ export function ChartPreview({
         ) : (
           <div className="w-full overflow-x-auto">
             <div
-              className="relative rounded-lg border border-gray-200 shadow-sm"
+              className="relative rounded-lg border border-ev-green-200 shadow-sm"
               style={{
                 backgroundColor,
                 minWidth: previewWidth,

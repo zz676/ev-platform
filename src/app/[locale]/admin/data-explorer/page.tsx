@@ -165,6 +165,18 @@ export default function DataExplorerPage() {
     return () => clearTimeout(timeout);
   }, [shouldScrollToChart, results]);
 
+  useEffect(() => {
+    if (!shouldScrollToPost || !chartImage) return;
+    const timeout = setTimeout(() => {
+      const el = document.getElementById("compose-post");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      setShouldScrollToPost(false);
+    }, 150);
+    return () => clearTimeout(timeout);
+  }, [shouldScrollToPost, chartImage]);
+
   function handleReset() {
     setQuestion("");
     setTable("");
@@ -188,22 +200,10 @@ export default function DataExplorerPage() {
     return null;
   }
 
-  useEffect(() => {
-    if (!shouldScrollToPost || !chartImage) return;
-    const timeout = setTimeout(() => {
-      const el = document.getElementById("compose-post");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-      setShouldScrollToPost(false);
-    }, 150);
-    return () => clearTimeout(timeout);
-  }, [shouldScrollToPost, chartImage]);
-
   return (
     <div className="min-h-screen bg-ev-green-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-ev-green-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
@@ -249,7 +249,7 @@ export default function DataExplorerPage() {
         )}
 
         {/* Step 1: Query Input */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-ev-green-50 rounded-lg border border-ev-green-200 p-4">
           <h2 className="text-sm font-semibold text-gray-900 mb-3">
             Step 1: Ask a Question
           </h2>
@@ -334,7 +334,7 @@ export default function DataExplorerPage() {
 
         {/* Available Tables (when no query) */}
         {!table && !queryString && !loadingOptions && tables.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="bg-ev-green-50 rounded-lg border border-ev-green-200 p-4">
             <h2 className="text-sm font-semibold text-gray-900 mb-3">
               Available Data Tables
             </h2>
@@ -342,7 +342,7 @@ export default function DataExplorerPage() {
               {tables.map((t) => (
                 <div
                   key={t.name}
-                  className="p-3 bg-gray-50 rounded-lg border border-gray-200"
+                  className="p-3 bg-ev-green-50 rounded-lg border border-ev-green-200"
                 >
                   <p className="font-mono text-sm text-ev-green-700">{t.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{t.description}</p>

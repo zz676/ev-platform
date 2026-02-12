@@ -221,9 +221,9 @@ export function PostComposer({
   const isOverLimit = characterCount > 280;
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-ev-green-200 rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-2 bg-ev-green-50 border-b border-ev-green-200">
         <span className="text-sm font-medium text-gray-700">Compose Post</span>
         <button
           onClick={generateContent}
@@ -266,8 +266,8 @@ export function PostComposer({
         )}
 
         {/* Prompt Editor */}
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+        <div className="border border-ev-green-200 rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 bg-ev-green-50 border-b border-ev-green-200">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
               <Wand2 className="h-4 w-4 text-gray-500" />
               Prompt (editable)

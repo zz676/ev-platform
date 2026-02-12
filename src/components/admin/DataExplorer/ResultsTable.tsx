@@ -28,7 +28,7 @@ export function ResultsTable({
 
   if (data.length === 0) {
     return (
-      <div className="border border-gray-200 rounded-lg p-8 text-center text-gray-500">
+      <div className="border border-ev-green-200 rounded-lg p-8 text-center text-gray-500">
         <Table className="h-12 w-12 mx-auto mb-3 text-gray-400" />
         <p className="font-medium">No results</p>
         <p className="text-sm mt-1">The query returned no data.</p>
@@ -62,10 +62,10 @@ export function ResultsTable({
   };
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-ev-green-200 rounded-lg overflow-hidden">
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200 cursor-pointer"
+        className="flex items-center justify-between px-4 py-2 bg-ev-green-50 border-b border-ev-green-200 cursor-pointer"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
         <div className="flex items-center gap-4">
@@ -106,7 +106,7 @@ export function ResultsTable({
                   {columns.map((col) => (
                     <th
                       key={col}
-                      className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap border-b border-gray-200"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap border-b border-ev-green-200"
                     >
                       {col}
                     </th>
@@ -117,7 +117,7 @@ export function ResultsTable({
                 {pageData.map((row, rowIndex) => (
                   <tr
                     key={rowIndex}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-ev-green-50 transition-colors"
                   >
                     {columns.map((col) => (
                       <td
@@ -135,7 +135,7 @@ export function ResultsTable({
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-t border-gray-200">
+            <div className="flex items-center justify-between px-4 py-2 bg-ev-green-50 border-t border-ev-green-200">
               <div className="text-xs text-gray-500">
                 Showing {startIndex + 1}-{endIndex} of {data.length}
               </div>
