@@ -47,6 +47,8 @@ export default function DataExplorerPage() {
   const [results, setResults] = useState<QueryResult | null>(null);
   const [chartImage, setChartImage] = useState<string | null>(null);
   const [chartMeta, setChartMeta] = useState<{ title: string; chartType: string } | null>(null);
+  const [shouldScrollToChart, setShouldScrollToChart] = useState(false);
+  const [shouldScrollToPost, setShouldScrollToPost] = useState(false);
 
   // Loading states
   const [isGenerating, setIsGenerating] = useState(false);
@@ -143,12 +145,25 @@ export default function DataExplorerPage() {
 
       const data = await res.json();
       setResults(data);
+      setShouldScrollToChart(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Execution failed");
     } finally {
       setIsExecuting(false);
     }
   }
+
+  useEffect(() => {
+    if (!shouldScrollToChart || !results) return;
+    const timeout = setTimeout(() => {
+      const el = document.getElementById("chart-preview");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      setShouldScrollToChart(false);
+    }, 150);
+    return () => clearTimeout(timeout);
+  }, [shouldScrollToChart, results]);
 
   function handleReset() {
     setQuestion("");
@@ -173,12 +188,24 @@ export default function DataExplorerPage() {
     return null;
   }
 
+  useEffect(() => {
+    if (!shouldScrollToPost || !chartImage) return;
+    const timeout = setTimeout(() => {
+      const el = document.getElementById("compose-post");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      setShouldScrollToPost(false);
+    }, 150);
+    return () => clearTimeout(timeout);
+  }, [shouldScrollToPost, chartImage]);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-ev-green-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.back()}
@@ -196,12 +223,14 @@ export default function DataExplorerPage() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleReset}
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              Start Over
-            </button>
+            <div className="flex flex-col justify-end self-stretch">
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-ev-green-500 text-white text-sm font-medium rounded-lg hover:bg-ev-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Start Over
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -266,19 +295,25 @@ export default function DataExplorerPage() {
             />
 
             <ChartPreview
+              scrollAnchorId="chart-preview"
               data={results.data}
               initialTitle={question || "Data Results"}
-              onChartGenerated={(r) => {
-                setChartImage(r.chartImageBase64);
-                setChartMeta({ title: r.title, chartType: r.chartType });
+              onChartCleared={() => {
+                setChartImage(null);
+                setChartMeta(null);
               }}
-            />
-          </div>
-        )}
+      onChartGenerated={(r) => {
+        setChartImage(r.chartImageBase64);
+        setChartMeta({ title: r.title, chartType: r.chartType });
+        setShouldScrollToPost(true);
+      }}
+    />
+  </div>
+)}
 
         {/* Step 4: Post Composer */}
         {results && results.data.length > 0 && (
-          <div>
+          <div id="compose-post">
             <h2 className="text-sm font-semibold text-gray-900 mb-3">
               Step 4: Compose & Post
             </h2>

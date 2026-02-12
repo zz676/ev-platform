@@ -177,3 +177,193 @@ export function prismaFindManyToSql(params: {
   return `${header}SELECT ${select}\nFROM ${tableIdent}\nWHERE ${where}\n${orderBy}\n${take}\n${skip}`.trim() + ";";
 }
 
+function parseSqlStringLiteral(value: string): string {
+  if (!value.startsWith("'") || !value.endsWith("'")) return value;
+  const inner = value.slice(1, -1);
+  return inner.replace(/''/g, "'");
+}
+
+function parseSqlValue(raw: string): unknown {
+  const value = raw.trim();
+  if (!value) return "";
+  if (/^null$/i.test(value)) return null;
+  if (/^true$/i.test(value)) return true;
+  if (/^false$/i.test(value)) return false;
+  if (value.startsWith("'") && value.endsWith("'")) return parseSqlStringLiteral(value);
+  const num = Number(value);
+  if (Number.isFinite(num)) return num;
+  return value;
+}
+
+function splitSqlList(list: string): string[] {
+  const parts: string[] = [];
+  const regex = /'(?:''|[^'])*'|[^,]+/g;
+  const matches = list.match(regex);
+  if (!matches) return [];
+  for (const part of matches) {
+    const trimmed = part.trim();
+    if (trimmed) parts.push(trimmed);
+  }
+  return parts;
+}
+
+function parseSqlField(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+    return trimmed.slice(1, -1).replace(/""/g, '"');
+  }
+  return trimmed.replace(/"/g, "");
+}
+
+function parseWhereClause(wherePart: string): Record<string, unknown> | null {
+  if (!wherePart) return null;
+  const normalized = wherePart.trim();
+  if (!normalized || /^true$/i.test(normalized) || /^1\s*=\s*1$/i.test(normalized)) {
+    return null;
+  }
+  if (/\s+or\s+/i.test(normalized)) {
+    return null;
+  }
+  const conditions = normalized.split(/\s+and\s+/i);
+  const where: Record<string, unknown> = {};
+
+  for (const condition of conditions) {
+    const cond = condition.trim();
+    if (!cond) continue;
+
+    let match = cond.match(/^"([^"]+)"\s+is\s+null$/i);
+    if (match) {
+      where[match[1]] = null;
+      continue;
+    }
+    match = cond.match(/^"([^"]+)"\s+is\s+not\s+null$/i);
+    if (match) {
+      where[match[1]] = { not: null };
+      continue;
+    }
+
+    match = cond.match(/^"([^"]+)"\s+(not\s+in|in)\s*\((.+)\)$/i);
+    if (match) {
+      const field = match[1];
+      const op = match[2].toLowerCase();
+      const list = splitSqlList(match[3]);
+      const values = list.map(parseSqlValue);
+      if (op.includes("not")) {
+        where[field] = { notIn: values };
+      } else {
+        where[field] = { in: values };
+      }
+      continue;
+    }
+
+    match = cond.match(/^"([^"]+)"\s+ilike\s+(.+)$/i);
+    if (match) {
+      const field = match[1];
+      const pattern = parseSqlValue(match[2]) as string;
+      if (typeof pattern !== "string") return null;
+      if (pattern.startsWith("%") && pattern.endsWith("%")) {
+        where[field] = { contains: pattern.slice(1, -1) };
+      } else if (pattern.startsWith("%")) {
+        where[field] = { endsWith: pattern.slice(1) };
+      } else if (pattern.endsWith("%")) {
+        where[field] = { startsWith: pattern.slice(0, -1) };
+      } else {
+        where[field] = { equals: pattern };
+      }
+      continue;
+    }
+
+    match = cond.match(/^"([^"]+)"\s*(=|<>|<=|>=|<|>)\s*(.+)$/);
+    if (match) {
+      const field = match[1];
+      const op = match[2];
+      const value = parseSqlValue(match[3]);
+      if (op === "=") {
+        if (where[field] && typeof where[field] === "object" && !Array.isArray(where[field])) {
+          (where[field] as Record<string, unknown>).equals = value;
+        } else {
+          where[field] = value;
+        }
+      } else if (op === "<>") {
+        where[field] = { not: value };
+      } else {
+        const bucket =
+          where[field] && typeof where[field] === "object" && !Array.isArray(where[field])
+            ? (where[field] as Record<string, unknown>)
+            : ((where[field] = {}) as Record<string, unknown>);
+        if (op === "<") bucket.lt = value;
+        if (op === "<=") bucket.lte = value;
+        if (op === ">") bucket.gt = value;
+        if (op === ">=") bucket.gte = value;
+      }
+      continue;
+    }
+
+    // Unsupported condition
+    return null;
+  }
+
+  return Object.keys(where).length ? where : null;
+}
+
+function parseSelectClause(selectPart: string): Record<string, boolean> | null {
+  const trimmed = selectPart.trim();
+  if (trimmed === "*") return null;
+  const fields = trimmed.split(",").map((f) => f.trim()).filter(Boolean);
+  if (!fields.length) return null;
+  const select: Record<string, boolean> = {};
+  for (const field of fields) {
+    const cleaned = parseSqlField(field.split(".").pop() || field);
+    if (cleaned) select[cleaned] = true;
+  }
+  return Object.keys(select).length ? select : null;
+}
+
+function parseOrderByClause(orderPart: string): Array<Record<string, "asc" | "desc">> | null {
+  const trimmed = orderPart.trim();
+  if (!trimmed) return null;
+  const pieces = trimmed.split(",").map((p) => p.trim()).filter(Boolean);
+  if (!pieces.length) return null;
+  const orderBy: Array<Record<string, "asc" | "desc">> = [];
+  for (const piece of pieces) {
+    const match = piece.match(/^"([^"]+)"\s+(asc|desc)$/i);
+    if (!match) return null;
+    orderBy.push({ [match[1]]: match[2].toLowerCase() as "asc" | "desc" });
+  }
+  return orderBy.length ? orderBy : null;
+}
+
+export function sqlToPrismaFindMany(sql: string): Record<string, unknown> | null {
+  if (!sql) return null;
+  const cleaned = sql.replace(/^\s*--.*$/gm, "").trim();
+  if (!cleaned) return null;
+  const normalized = cleaned.replace(/;$/, "").trim();
+  const compact = normalized.replace(/\s+/g, " ").trim();
+
+  const match = compact.match(
+    /^select\s+(.+?)\s+from\s+(.+?)(?:\s+where\s+(.+?))?(?:\s+order\s+by\s+(.+?))?(?:\s+limit\s+(\d+))?(?:\s+offset\s+(\d+))?$/i
+  );
+  if (!match) return null;
+
+  const selectPart = match[1];
+  const wherePart = match[3] || "";
+  const orderPart = match[4] || "";
+  const limitPart = match[5];
+  const offsetPart = match[6];
+
+  const query: Record<string, unknown> = {};
+
+  const select = parseSelectClause(selectPart);
+  if (select) query.select = select;
+
+  const where = parseWhereClause(wherePart);
+  if (where) query.where = where;
+
+  const orderBy = parseOrderByClause(orderPart);
+  if (orderBy) query.orderBy = orderBy;
+
+  if (limitPart) query.take = Number(limitPart);
+  if (offsetPart) query.skip = Number(offsetPart);
+
+  return query;
+}

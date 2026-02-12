@@ -40,9 +40,11 @@ export async function POST(
     });
 
     if (!result.ok) {
+      const message = result.error || result.reason || "Failed to post to X";
+      const isChartMissing = message.toLowerCase().includes("chart image required");
       return NextResponse.json(
-        { error: result.error || result.reason || "Failed to post to X", status: result.status },
-        { status: result.skipped ? 409 : 500 }
+        { error: message, status: result.status },
+        { status: isChartMissing ? 400 : result.skipped ? 409 : 500 }
       );
     }
 

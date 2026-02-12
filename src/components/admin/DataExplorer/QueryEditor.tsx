@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Play, RefreshCw, Code, AlertCircle, Copy, Wand2 } from "lucide-react";
-import { prismaFindManyToSql } from "@/lib/data-explorer/sql-preview";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { Play, RefreshCw, Code, AlertCircle, Copy } from "lucide-react";
+import {
+  prismaFindManyToSql,
+  sqlToPrismaFindMany,
+} from "@/lib/data-explorer/sql-preview";
 
 interface QueryEditorProps {
   table: string;
@@ -24,8 +27,8 @@ export function QueryEditor({
   explanation,
 }: QueryEditorProps) {
   const [localError, setLocalError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"prisma" | "sql">("prisma");
-
+  const [sqlOverride, setSqlOverride] = useState<string | null>(null);
+  const sqlEditRef = useRef(false);
   const effectiveError = error || localError;
 
   const prettyQuery = useMemo(() => query || "", [query]);
@@ -40,20 +43,18 @@ export function QueryEditor({
     }
   }, [table, query]);
 
-  function handleFormat() {
-    try {
-      const parsed = JSON.parse(query);
-      onChange(JSON.stringify(parsed, null, 2));
-      setLocalError(null);
-    } catch {
-      setLocalError("Query JSON is invalid. Fix it before formatting/executing.");
+  useEffect(() => {
+    if (sqlEditRef.current) {
+      sqlEditRef.current = false;
+      return;
     }
-  }
+    setSqlOverride(null);
+  }, [query]);
 
   async function handleCopy() {
     try {
-      const text = activeTab === "sql" ? sqlPreview : prettyQuery;
-      await navigator.clipboard.writeText(text);
+      const text = sqlOverride ?? sqlPreview;
+      await navigator.clipboard.writeText(text || "");
       setLocalError(null);
     } catch {
       // Clipboard permissions can fail depending on browser context.
@@ -75,47 +76,14 @@ export function QueryEditor({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white overflow-hidden">
-            <button
-              onClick={() => setActiveTab("prisma")}
-              className={`px-2 py-1 text-xs font-medium transition-colors ${
-                activeTab === "prisma"
-                  ? "bg-lime-200 text-lime-900"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-              title="Copy target: Prisma findMany JSON"
-            >
-              Prisma
-            </button>
-            <button
-              onClick={() => setActiveTab("sql")}
-              className={`px-2 py-1 text-xs font-medium transition-colors ${
-                activeTab === "sql"
-                  ? "bg-lime-200 text-lime-900"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-              title="Copy target: SQL preview for Postgres/Supabase"
-            >
-              SQL
-            </button>
-          </div>
-          <button
-            onClick={handleFormat}
-            disabled={!query}
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
-            title="Format JSON"
-          >
-            <Wand2 className="h-3.5 w-3.5" />
-            Format
-          </button>
           <button
             onClick={handleCopy}
-            disabled={activeTab === "sql" ? !sqlPreview : !query}
+            disabled={!sqlPreview && !sqlOverride}
             className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
-            title={activeTab === "sql" ? "Copy SQL" : "Copy Prisma JSON"}
+            title="Copy SQL"
           >
             <Copy className="h-3.5 w-3.5" />
-            Copy
+            Copy SQL
           </button>
           <button
             onClick={onExecute}
@@ -157,9 +125,7 @@ export function QueryEditor({
                 onChange(e.target.value);
                 setLocalError(null);
               }}
-              className={`w-full h-[5rem] min-h-[5rem] max-h-[60vh] p-3 font-mono text-sm bg-white text-emerald-700 border rounded focus:outline-none focus:ring-2 focus:ring-ev-green-500 resize-y overflow-auto whitespace-pre break-normal ${
-                activeTab === "prisma" ? "border-lime-300" : "border-lime-200"
-              }`}
+              className="w-full h-[5rem] min-h-[5rem] max-h-[60vh] p-3 font-mono text-sm bg-white text-emerald-700 border border-lime-300 rounded focus:outline-none focus:ring-2 focus:ring-ev-green-500 resize-y overflow-auto whitespace-pre break-normal"
               spellCheck={false}
               wrap="off"
             />
@@ -169,11 +135,27 @@ export function QueryEditor({
               <span className="text-xs font-semibold tracking-wide text-gray-700 uppercase">SQL</span>
             </div>
             <textarea
-              value={sqlPreview || "-- Invalid JSON (fix Prisma query first)."}
-              readOnly
-              className={`w-full h-[5rem] min-h-[5rem] max-h-[60vh] p-3 font-mono text-sm bg-lime-100 text-amber-900 border rounded focus:outline-none resize-y overflow-auto whitespace-pre break-normal ${
-                activeTab === "sql" ? "border-lime-300" : "border-lime-200"
-              }`}
+              value={sqlOverride ?? sqlPreview}
+              onChange={(e) => {
+                const next = e.target.value;
+                setSqlOverride(next);
+                if (!next.trim()) {
+                  setLocalError(null);
+                  return;
+                }
+                const parsed = sqlToPrismaFindMany(next);
+                if (!parsed) {
+                  setLocalError(
+                    "SQL parser supports simple SELECT/WHERE/ORDER/LIMIT/OFFSET. Update Prisma JSON for complex queries."
+                  );
+                  return;
+                }
+                sqlEditRef.current = true;
+                onChange(JSON.stringify(parsed, null, 2));
+                setLocalError(null);
+              }}
+              placeholder="SQL (editable). Supports simple SELECT/WHERE/ORDER/LIMIT/OFFSET."
+              className="w-full h-[5rem] min-h-[5rem] max-h-[60vh] p-3 font-mono text-sm bg-lime-100 text-amber-900 border border-lime-300 rounded focus:outline-none focus:ring-2 focus:ring-ev-green-500 resize-y overflow-auto whitespace-pre break-normal"
               spellCheck={false}
               wrap="off"
             />

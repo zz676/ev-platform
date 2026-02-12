@@ -112,6 +112,19 @@ export async function publishMetricPost(params: {
     return { ok: false, status: MetricPostStatus.FAILED, error: "Not found" };
   }
 
+  const dataSnapshot = metricPost.dataSnapshot as { source?: string } | null;
+  if (
+    dataSnapshot?.source === "data-explorer" &&
+    !params.overrideChartImageBase64 &&
+    !metricPost.chartImageUrl
+  ) {
+    return {
+      ok: false,
+      status: metricPost.status,
+      error: "Chart image required for data-explorer posts",
+    };
+  }
+
   if (metricPost.status === MetricPostStatus.POSTED) {
     return {
       ok: true,

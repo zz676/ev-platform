@@ -49,7 +49,7 @@ export function PostComposer({
   const [addFooter, setAddFooter] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [success, setSuccess] = useState<{ message: string; tweetUrl?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
 
@@ -127,6 +127,9 @@ export function PostComposer({
     setSuccess(null);
 
     try {
+      if (!chartImageBase64 || !attachChart) {
+        throw new Error("Generate a chart image before posting to X.");
+      }
       const now = new Date();
       const basePeriod = now.getMonth() + 1;
       const maxPeriod = 2147483647;
@@ -198,7 +201,13 @@ export function PostComposer({
       }
 
       const result = await postRes.json();
-      setSuccess(`Posted to X! Tweet ID: ${result.tweetId}`);
+      const tweetUrl =
+        result.tweetUrl ||
+        (result.tweetId ? `https://x.com/i/status/${result.tweetId}` : undefined);
+      setSuccess({
+        message: "Posted to X successfully.",
+        tweetUrl,
+      });
       setContent("");
       onPostSuccess?.();
     } catch (err) {
@@ -242,7 +251,17 @@ export function PostComposer({
         {success && (
           <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 text-sm">
             <Check className="h-4 w-4 flex-shrink-0" />
-            {success}
+            <span>{success.message}</span>
+            {success.tweetUrl && (
+              <a
+                href={success.tweetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-ev-green-700 hover:text-ev-green-800 underline underline-offset-2"
+              >
+                View Tweet
+              </a>
+            )}
           </div>
         )}
 

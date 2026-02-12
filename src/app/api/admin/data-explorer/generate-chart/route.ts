@@ -23,6 +23,7 @@ interface BarChartStyleOptions {
   yAxisFontSize?: number;
   xAxisFontColor?: string;
   yAxisFontColor?: string;
+  barColor?: string;
   minBarWidth?: number;
   maxWidth?: number;
 }
@@ -173,15 +174,18 @@ export async function POST(request: Request) {
         chartBuffer = await generateLineChart(chartTitle, labels, datasets);
       } else {
         chartBuffer = await generateLineChart(chartTitle, labels, [
-          { label: "Value", data: values },
+          { label: "Value", data: values, color: chartOptions?.barColor },
         ]);
       }
     } else {
       // bar or horizontalBar
       const isHorizontal = chartType === "horizontalBar";
+      const barColors =
+        chartOptions?.barColor ? labels.map(() => chartOptions.barColor as string) : undefined;
       chartBuffer = await generateBarChart(chartTitle, labels, values, {
         horizontal: isHorizontal,
         showYoY: yoyChanges.length === values.length ? yoyChanges : undefined,
+        colors: barColors,
         style: chartOptions,
       });
     }
