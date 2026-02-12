@@ -49,6 +49,46 @@ const ALLOWED_QUERY_KEYS = [
   "distinct",
 ];
 
+const FIELD_DESCRIPTIONS: Record<string, string> = {
+  acceleration: "0-100 km/h acceleration time.",
+  automaker: "Automaker name.",
+  batteryCapacity: "Battery capacity.",
+  brand: "Brand name.",
+  currentPrice: "Current listed price.",
+  dataSource: "Original data source.",
+  endDate: "End date of the reporting period.",
+  installation: "Battery installation volume.",
+  maker: "Battery maker name.",
+  marketShare: "Market share percentage.",
+  metric: "Metric category.",
+  model: "Vehicle model name.",
+  momChange: "Month-over-month percentage change.",
+  month: "Month number in the year.",
+  period: "Period value within the selected period type.",
+  periodType: "Period granularity (monthly/weekly/etc).",
+  plant: "Manufacturing plant name.",
+  production: "Production volume.",
+  rangeCltc: "CLTC range value.",
+  ranking: "Ranking position.",
+  retailSales: "Retail sales volume.",
+  retailYoy: "Retail year-over-year percentage change.",
+  scope: "Coverage scope of ranking data.",
+  startDate: "Start date of the reporting period.",
+  startingPrice: "Starting listed price.",
+  unit: "Unit of measure.",
+  value: "Primary numeric value for the record.",
+  variant: "Vehicle trim/variant.",
+  vehicleType: "Vehicle category/type.",
+  wholesaleSales: "Wholesale sales volume.",
+  wholesaleYoy: "Wholesale year-over-year percentage change.",
+  year: "Calendar year.",
+  yoyChange: "Year-over-year percentage change.",
+};
+
+function getFieldDescription(field: string): string {
+  return FIELD_DESCRIPTIONS[field] || `${field} value.`;
+}
+
 function normalizeOrderBy(orderBy: unknown): unknown {
   if (!orderBy) return orderBy;
   if (Array.isArray(orderBy)) return orderBy;
@@ -302,12 +342,23 @@ export function getTableInfo(
 /**
  * Get list of allowed tables with descriptions
  */
-export function getAllowedTables(): Array<{ name: string; description: string }> {
+export function getAllowedTables(): Array<{
+  name: string;
+  description: string;
+  fields: string[];
+  columns: Array<{ name: string; description: string }>;
+}> {
   return ALLOWED_TABLES.map((table) => {
     const info = getTableInfo(table);
+    const fields = info?.fields || [];
     return {
       name: table,
       description: info?.description || "",
+      fields,
+      columns: fields.map((field) => ({
+        name: field,
+        description: getFieldDescription(field),
+      })),
     };
   });
 }
