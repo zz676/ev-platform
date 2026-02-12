@@ -3,7 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import { ArrowLeft, Database, RefreshCw, AlertCircle, Check, Circle } from "lucide-react";
+import {
+  ArrowLeft,
+  Database,
+  RefreshCw,
+  AlertCircle,
+  Check,
+  Circle,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { useAuth } from "@/components/context/AuthContext";
 import {
   QueryInput,
@@ -20,6 +29,8 @@ interface SuggestedQuestions {
 interface TableInfo {
   name: string;
   description: string;
+  fields: string[];
+  columns?: Array<{ name: string; description: string }>;
 }
 
 interface QueryResult {
@@ -48,6 +59,8 @@ export default function DataExplorerPage() {
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [suggestedQuestions, setSuggestedQuestions] = useState<SuggestedQuestions>({});
   const [loadingOptions, setLoadingOptions] = useState(true);
+  const [isTablesExpanded, setIsTablesExpanded] = useState(false);
+  const [expandedTableName, setExpandedTableName] = useState<string | null>(null);
 
   // Query state
   const [question, setQuestion] = useState("");
@@ -68,6 +81,26 @@ export default function DataExplorerPage() {
 
   // Error state
   const [error, setError] = useState<string | null>(null);
+  const expandedTable = expandedTableName
+    ? tables.find((tableInfo) => tableInfo.name === expandedTableName) || null
+    : null;
+  const expandedTableIndex = expandedTableName
+    ? tables.findIndex((tableInfo) => tableInfo.name === expandedTableName)
+    : -1;
+  const desktopDetailsInsertionIndex =
+    expandedTableIndex >= 0
+      ? expandedTableIndex % 2 === 0
+        ? Math.min(expandedTableIndex + 1, tables.length - 1)
+        : expandedTableIndex
+      : -1;
+  const expandedTableColumns = expandedTable
+    ? expandedTable.columns && expandedTable.columns.length > 0
+      ? expandedTable.columns
+      : expandedTable.fields.map((field) => ({
+          name: field,
+          description: "",
+        }))
+    : [];
 
   // Fetch options on mount
   useEffect(() => {
@@ -262,7 +295,7 @@ export default function DataExplorerPage() {
       <div className="relative">
         <header className="border-b border-slate-200/90 bg-white/90 backdrop-blur">
           <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-wrap items-start gap-4">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => router.back()}
@@ -285,7 +318,7 @@ export default function DataExplorerPage() {
                   </p>
                 </div>
               </div>
-              <div className="self-end">
+              <div className="self-end xl:hidden">
                 <button
                   onClick={handleReset}
                   className="inline-flex items-center gap-1.5 rounded-full border border-[#65a30d] bg-white px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:border-[#65a30d] hover:bg-lime-50 hover:text-lime-700"
@@ -455,22 +488,124 @@ export default function DataExplorerPage() {
 
               {!table && !queryString && !loadingOptions && tables.length > 0 && (
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsTablesExpanded((prev) => {
+                        const next = !prev;
+                        if (!next) setExpandedTableName(null);
+                        return next;
+                      });
+                    }}
+                    className="flex w-full items-center justify-between border-b border-slate-200 bg-slate-50/80 px-5 py-3 text-left"
+                  >
                     <h2 className="text-sm font-semibold tracking-wide text-slate-900">
                       Available Data Tables
                     </h2>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 p-5">
-                    {tables.map((t) => (
-                      <div
-                        key={t.name}
-                        className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 transition-colors hover:border-lime-300 hover:bg-lime-50/70"
-                      >
-                        <p className="font-mono text-sm font-medium text-lime-700">{t.name}</p>
-                        <p className="mt-1 text-sm text-slate-500">{t.description}</p>
+                    {isTablesExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-slate-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-slate-500" />
+                    )}
+                  </button>
+
+                  {isTablesExpanded && (
+                    <div className="space-y-3 p-5 pt-4">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {tables.map((t, tableIndex) => {
+                          const isExpanded = expandedTableName === t.name;
+                          return (
+                            <div key={t.name} className="contents">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedTableName((prev) =>
+                                    prev === t.name ? null : t.name
+                                  )
+                                }
+                                className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                                  isExpanded
+                                    ? "border-lime-300 bg-lime-50/70"
+                                    : "border-slate-200 bg-slate-50/80 hover:border-lime-300 hover:bg-lime-50/70"
+                                }`}
+                              >
+                                <p className="font-mono text-sm font-medium text-lime-700">{t.name}</p>
+                                <p className="mt-1 text-sm text-slate-500">{t.description}</p>
+                              </button>
+
+                              {isExpanded && expandedTable && (
+                                <div className="rounded-xl border border-lime-300 bg-lime-50/70 p-4 md:hidden">
+                                  <div className="space-y-3">
+                                    <div>
+                                      <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                        Columns
+                                      </p>
+                                      {expandedTableColumns.length > 0 ? (
+                                        <div className="mt-2 grid grid-cols-1 gap-2">
+                                          {expandedTableColumns.map((column) => (
+                                            <div
+                                              key={column.name}
+                                              className="rounded-md border border-lime-200 bg-white px-3 py-2"
+                                            >
+                                              <p className="font-mono text-xs font-semibold text-lime-700">
+                                                {column.name}
+                                              </p>
+                                              <p className="mt-1 text-xs text-slate-600">
+                                                {column.description || "No description available."}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="mt-2 text-sm text-slate-500">
+                                          No columns metadata available.
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {expandedTable &&
+                                desktopDetailsInsertionIndex >= 0 &&
+                                tableIndex === desktopDetailsInsertionIndex && (
+                                  <div className="hidden rounded-xl border border-lime-300 bg-lime-50/70 p-4 md:block md:col-span-2">
+                                    <div className="space-y-3">
+                                      <div>
+                                        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                          Columns
+                                        </p>
+                                        {expandedTableColumns.length > 0 ? (
+                                          <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+                                            {expandedTableColumns.map((column) => (
+                                              <div
+                                                key={column.name}
+                                                className="rounded-md border border-lime-200 bg-white px-3 py-2"
+                                              >
+                                                <p className="font-mono text-xs font-semibold text-lime-700">
+                                                  {column.name}
+                                                </p>
+                                                <p className="mt-1 text-xs text-slate-600">
+                                                  {column.description || "No description available."}
+                                                </p>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <p className="mt-2 text-sm text-slate-500">
+                                            No columns metadata available.
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </section>
               )}
             </div>
@@ -479,10 +614,9 @@ export default function DataExplorerPage() {
               <div className="space-y-4">
                 <div className="overflow-hidden rounded-2xl border border-lime-300 bg-white shadow-sm">
                   <div className="border-b border-lime-200 bg-lime-100/35 px-4 py-3">
-                    <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-lime-700">
+                    <p className="text-center font-mono text-[14px] font-semibold uppercase tracking-[0.14em] text-lime-700">
                       Workflow
                     </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">Progress Tracker</p>
                   </div>
                   <div className="relative px-4 py-4">
                     <div className="absolute left-8 top-5 h-[calc(100%-2.5rem)] w-px bg-lime-200" />
@@ -530,14 +664,15 @@ export default function DataExplorerPage() {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-4 shadow-sm">
-                  <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-lime-700">
+                  <p className="text-center font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-lime-700">
                     Current Step
                   </p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                  <p className="mt-1 text-[14px] font-semibold text-slate-900">
                     {workflowSteps[currentStep - 1]?.title}
                   </p>
                   <p className="mt-2 text-sm text-slate-500">{workflowSteps[currentStep - 1]?.detail}</p>
                 </div>
+
               </div>
             </aside>
           </div>

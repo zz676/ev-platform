@@ -53,7 +53,7 @@ export function QueryInput({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask a question about EV industry data... (e.g., 'BYD deliveries in 2024')"
-          className="h-12 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-36 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500"
+          className="h-12 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-36 font-mono text-[13px] text-slate-900 placeholder:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500"
           rows={1}
         />
         <button
