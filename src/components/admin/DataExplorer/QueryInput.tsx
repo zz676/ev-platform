@@ -44,22 +44,22 @@ export function QueryInput({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 text-slate-900">
       {/* Input Field */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask a question about EV industry data... (e.g., 'BYD deliveries in 2024')"
-          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ev-green-500 resize-none text-sm"
+          className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-36 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500"
           rows={2}
         />
         <button
           onClick={onSubmit}
           disabled={isLoading || !value.trim()}
-          className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-ev-green-500 text-white text-sm font-medium rounded-lg hover:bg-ev-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+          className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1.5 rounded-lg bg-lime-500 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-lime-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? (
             <>
@@ -76,8 +76,8 @@ export function QueryInput({
       </div>
 
       {isLoading && (
-        <div className="text-xs text-gray-500 flex items-center gap-2">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-ev-green-500 animate-pulse" />
+        <div className="text-xs text-slate-500 flex items-center gap-2">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-lime-500 animate-pulse" />
           Generating query (LLM). This can take a few seconds.
         </div>
       )}
@@ -87,7 +87,7 @@ export function QueryInput({
         <div>
           <button
             onClick={() => setShowSuggestions(!showSuggestions)}
-            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-700"
           >
             {showSuggestions ? (
               <ChevronDown className="h-4 w-4" />
@@ -98,7 +98,7 @@ export function QueryInput({
           </button>
 
           {showSuggestions && (
-            <div className="mt-2 border border-ev-green-200 rounded-lg bg-ev-green-50 p-3">
+            <div className="mt-2 rounded-xl border border-lime-200 bg-lime-100/35 p-3">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Object.entries(suggestedQuestions).map(
                   ([category, questions]) => (
@@ -109,7 +109,7 @@ export function QueryInput({
                             expandedCategory === category ? null : category
                           )
                         }
-                        className="flex items-center gap-1 text-xs font-semibold text-gray-700 uppercase tracking-wide hover:text-gray-900 w-full text-left"
+                        className="flex w-full items-center gap-1 text-left font-mono text-sm font-medium text-slate-900 hover:text-slate-900"
                       >
                         {expandedCategory === category ? (
                           <ChevronDown className="h-3 w-3" />
@@ -124,7 +124,7 @@ export function QueryInput({
                             <li key={i}>
                               <button
                                 onClick={() => handleSuggestionClick(q)}
-                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline text-left w-full truncate"
+                                className="w-full truncate text-left font-mono text-sm text-slate-900 hover:text-slate-900 hover:underline"
                                 title={q}
                               >
                                 {q}

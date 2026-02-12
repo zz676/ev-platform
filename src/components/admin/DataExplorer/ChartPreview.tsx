@@ -23,20 +23,11 @@ import {
 
 type ChartType = "bar" | "line" | "horizontalBar";
 
-const DEFAULT_CHART_FONT_SCALE = 2;
-const DEFAULT_PAD_X_SCALE = 0.736;
-const defaultPx = (n: number) =>
-  Math.max(1, Math.round(n * DEFAULT_CHART_FONT_SCALE));
-const defaultPadx = (n: number) =>
-  Math.max(0, Math.round(n * DEFAULT_PAD_X_SCALE));
-const DEFAULT_OUTER_PAD = defaultPx(22);
-const DEFAULT_ATTRIBUTION_BOTTOM_PADDING =
-  defaultPx(12) + defaultPx(12) + 6;
 const DEFAULT_PADDING = {
-  top: DEFAULT_OUTER_PAD,
-  right: DEFAULT_OUTER_PAD + defaultPadx(defaultPx(48)),
-  bottom: DEFAULT_OUTER_PAD + DEFAULT_ATTRIBUTION_BOTTOM_PADDING,
-  left: DEFAULT_OUTER_PAD + defaultPadx(defaultPx(48)),
+  top: 20,
+  right: 20,
+  bottom: 20,
+  left: 20,
 };
 
 interface ChartPreviewProps {
@@ -70,19 +61,19 @@ export function ChartPreview({
   const [paddingRight, setPaddingRight] = useState(String(DEFAULT_PADDING.right));
   const [paddingBottom, setPaddingBottom] = useState(String(DEFAULT_PADDING.bottom));
   const [paddingLeft, setPaddingLeft] = useState(String(DEFAULT_PADDING.left));
-  const [fontColor, setFontColor] = useState("#111827");
-  const [titleColor, setTitleColor] = useState("#111827");
+  const [fontColor, setFontColor] = useState("#0f172a");
+  const [titleColor, setTitleColor] = useState("#0f172a");
   const [titleSize, setTitleSize] = useState("24");
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [xAxisFontSize, setXAxisFontSize] = useState("12");
   const [yAxisFontSize, setYAxisFontSize] = useState("12");
-  const [xAxisFontColor, setXAxisFontColor] = useState("#111827");
-  const [yAxisFontColor, setYAxisFontColor] = useState("#111827");
+  const [xAxisFontColor, setXAxisFontColor] = useState("#0f172a");
+  const [yAxisFontColor, setYAxisFontColor] = useState("#0f172a");
   const [sourceText, setSourceText] = useState("source: evjuice.net");
   const [sourceFontSize, setSourceFontSize] = useState("12");
-  const [sourceColor, setSourceColor] = useState("#3eb265");
+  const [sourceColor, setSourceColor] = useState("#65a30d");
   const [xAxisField, setXAxisField] = useState("auto");
-  const [barColor, setBarColor] = useState("#22c55e");
+  const [barColor, setBarColor] = useState("#84cc16");
   const [toast, setToast] = useState<{ type: "info" | "success" | "error"; message: string } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chartImageRef = useRef(chartImage);
@@ -313,43 +304,43 @@ export function ChartPreview({
   return (
     <div
       id={scrollAnchorId}
-      className="border border-ev-green-200 rounded-lg overflow-hidden relative"
+      className="relative overflow-hidden rounded-xl border border-slate-200 bg-white"
     >
       {toast && (
         <div
-          className={`absolute top-3 right-3 z-10 px-3 py-2 rounded-lg text-xs font-medium shadow-md border ${
+          className={`absolute right-3 top-3 z-10 rounded-lg border px-3 py-2 text-xs font-medium shadow-md ${
             toast.type === "success"
-              ? "bg-green-50 text-green-700 border-green-200"
+              ? "border-lime-300 bg-lime-100/80 text-lime-700"
               : toast.type === "error"
-                ? "bg-red-50 text-red-700 border-red-200"
-                : "bg-ev-green-50 text-gray-700 border-ev-green-200"
+                ? "border-slate-300 bg-slate-100 text-slate-700"
+                : "border-slate-200 bg-slate-100 text-slate-700"
           }`}
         >
           {toast.message}
         </div>
       )}
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-ev-green-50 border-b border-ev-green-200">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-lime-100/35 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <ImageIcon className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">Chart Preview</span>
+          <ImageIcon className="h-4 w-4 text-slate-400" />
+          <span className="text-sm font-semibold text-slate-700">Chart Preview</span>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="px-4 py-3 border-b border-ev-green-200 space-y-3">
+      <div className="space-y-3 border-b border-slate-200 px-4 py-3">
         {/* Chart Type Selector */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-gray-600">Type:</span>
+          <span className="text-xs font-medium text-slate-600">Type:</span>
           <div className="flex items-center gap-1">
             {chartTypes.map(({ value, label, icon: Icon }) => (
               <button
                 key={value}
                 onClick={() => setChartType(value)}
-                className={`flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
                   chartType === value
-                    ? "bg-ev-green-100 text-ev-green-700"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "border-lime-200 bg-lime-100 text-lime-700"
+                    : "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
                 <Icon className={`h-3 w-3 ${value === "horizontalBar" ? "rotate-90" : ""}`} />
@@ -358,11 +349,11 @@ export function ChartPreview({
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-600">X-Axis:</span>
+            <span className="text-xs font-medium text-slate-600">X-Axis:</span>
             <select
               value={xAxisField}
               onChange={(e) => setXAxisField(e.target.value)}
-              className="px-2 py-1 text-xs border border-gray-300 rounded bg-white"
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
             >
               <option value="auto">Auto</option>
               {availableColumns.map((col) => (
@@ -375,190 +366,216 @@ export function ChartPreview({
           <button
             type="button"
             onClick={() => setShowCustomize((prev) => !prev)}
-            className="ml-auto text-xs font-medium text-ev-green-600 underline underline-offset-2 hover:text-ev-green-700"
+            className="ml-auto text-xs font-semibold text-lime-600 underline underline-offset-2 hover:text-lime-700"
           >
             {showCustomize ? "Hide Customization" : "Customize Chart"}
           </button>
         </div>
 
-        {/* Title Input */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-600">Title:</span>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-ev-green-500"
-            placeholder="Chart title..."
-          />
-        </div>
+        {!showCustomize && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-600">Title:</span>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="flex-1 rounded border border-slate-300 px-2 py-1 font-mono text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-lime-500"
+              placeholder="Chart title..."
+            />
+          </div>
+        )}
 
         {showCustomize && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs text-gray-600">
-            <div className="space-y-2">
-              <div className="font-semibold text-gray-700">Padding (px)</div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <input
-                  type="number"
-                  value={paddingTop}
-                  onChange={(e) => setPaddingTop(e.target.value)}
-                  placeholder="Top"
-                  className="w-full px-2 py-1 border border-gray-300 rounded"
-                />
-                <input
-                  type="number"
-                  value={paddingRight}
-                  onChange={(e) => setPaddingRight(e.target.value)}
-                  placeholder="Right"
-                  className="w-full px-2 py-1 border border-gray-300 rounded"
-                />
-                <input
-                  type="number"
-                  value={paddingBottom}
-                  onChange={(e) => setPaddingBottom(e.target.value)}
-                  placeholder="Bottom"
-                  className="w-full px-2 py-1 border border-gray-300 rounded"
-                />
-                <input
-                  type="number"
-                  value={paddingLeft}
-                  onChange={(e) => setPaddingLeft(e.target.value)}
-                  placeholder="Left"
-                  className="w-full px-2 py-1 border border-gray-300 rounded"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="font-semibold text-gray-700">Typography</div>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="flex items-center gap-2">
-                  <span>Font</span>
-                  <input
-                    type="color"
-                    value={fontColor}
-                    onChange={(e) => setFontColor(e.target.value)}
-                    className="h-6 w-8 border border-gray-300 rounded"
-                  />
-                </label>
-                <label className="flex items-center gap-2">
-                  <span>Title</span>
-                  <input
-                    type="color"
-                    value={titleColor}
-                    onChange={(e) => setTitleColor(e.target.value)}
-                    className="h-6 w-8 border border-gray-300 rounded"
-                  />
-                </label>
-                <label className="flex items-center gap-2">
-                  <span>Title Size</span>
-                  <input
-                    type="number"
-                    value={titleSize}
-                    onChange={(e) => setTitleSize(e.target.value)}
-                    className="w-20 px-2 py-1 border border-gray-300 rounded"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="font-semibold text-gray-700">Axes</div>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="flex items-center gap-2">
-                  <span>X Size</span>
-                  <input
-                    type="number"
-                    value={xAxisFontSize}
-                    onChange={(e) => setXAxisFontSize(e.target.value)}
-                    className="w-20 px-2 py-1 border border-gray-300 rounded"
-                  />
-                </label>
-                <label className="flex items-center gap-2">
-                  <span>X Color</span>
-                  <input
-                    type="color"
-                    value={xAxisFontColor}
-                    onChange={(e) => setXAxisFontColor(e.target.value)}
-                    className="h-6 w-8 border border-gray-300 rounded"
-                  />
-                </label>
-                <label className="flex items-center gap-2">
-                  <span>Y Size</span>
-                  <input
-                    type="number"
-                    value={yAxisFontSize}
-                    onChange={(e) => setYAxisFontSize(e.target.value)}
-                    className="w-20 px-2 py-1 border border-gray-300 rounded"
-                  />
-                </label>
-                <label className="flex items-center gap-2">
-                  <span>Y Color</span>
-                  <input
-                    type="color"
-                    value={yAxisFontColor}
-                    onChange={(e) => setYAxisFontColor(e.target.value)}
-                    className="h-6 w-8 border border-gray-300 rounded"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="font-semibold text-gray-700">Source</div>
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={sourceText}
-                  onChange={(e) => setSourceText(e.target.value)}
-                  className="w-full px-2 py-1 border border-gray-300 rounded"
-                  placeholder="source: evjuice.net"
-                />
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2">
-                    <span>Size</span>
-                    <input
-                      type="number"
-                      value={sourceFontSize}
-                      onChange={(e) => setSourceFontSize(e.target.value)}
-                      className="w-20 px-2 py-1 border border-gray-300 rounded"
-                    />
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <span>Color</span>
-                    <input
-                      type="color"
-                      value={sourceColor}
-                      onChange={(e) => setSourceColor(e.target.value)}
-                      className="h-6 w-8 border border-gray-300 rounded"
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="font-semibold text-gray-700">Background</div>
+          <div className="space-y-2.5 border-t border-slate-200 pt-3 text-xs text-slate-600">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <label className="flex items-center gap-2">
-                <span>Chart</span>
+                <span className="font-mono text-xs font-medium text-slate-600">Chart Background</span>
                 <input
                   type="color"
                   value={backgroundColor}
                   onChange={(e) => setBackgroundColor(e.target.value)}
-                  className="h-6 w-8 border border-gray-300 rounded"
+                  className="h-8 w-10 rounded-md border border-slate-300 bg-white p-0.5"
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="font-mono text-xs font-medium text-slate-600">Title Size</span>
+                <input
+                  type="number"
+                  value={titleSize}
+                  onChange={(e) => setTitleSize(e.target.value)}
+                  className="h-8 w-20 rounded border border-slate-300 bg-white px-2 py-1 text-center font-mono text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="font-mono text-xs font-medium text-slate-600">Title Color</span>
+                <input
+                  type="color"
+                  value={titleColor}
+                  onChange={(e) => setTitleColor(e.target.value)}
+                  className="h-8 w-10 rounded-md border border-slate-300 bg-white p-0.5"
+                />
+              </label>
+              <label className="flex min-w-[18rem] flex-1 items-center gap-2">
+                <span className="font-mono text-xs font-medium text-slate-600">Title</span>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="flex-1 rounded border border-slate-300 px-2 py-1 text-center font-mono text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  placeholder="Chart title..."
                 />
               </label>
             </div>
 
-            <div className="space-y-2">
-              <div className="font-semibold text-gray-700">Series</div>
-              <label className="flex items-center gap-2">
-                <span>Bar Color</span>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+              <label className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+                <span className="whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                  Padding Top
+                </span>
+                <input
+                  type="number"
+                  value={paddingTop}
+                  onChange={(e) => setPaddingTop(e.target.value)}
+                  className="h-8 w-20 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+                <span className="whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                  Padding Right
+                </span>
+                <input
+                  type="number"
+                  value={paddingRight}
+                  onChange={(e) => setPaddingRight(e.target.value)}
+                  className="h-8 w-20 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+                <span className="whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                  Padding Bottom
+                </span>
+                <input
+                  type="number"
+                  value={paddingBottom}
+                  onChange={(e) => setPaddingBottom(e.target.value)}
+                  className="h-8 w-20 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+                <span className="whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                  Padding Left
+                </span>
+                <input
+                  type="number"
+                  value={paddingLeft}
+                  onChange={(e) => setPaddingLeft(e.target.value)}
+                  className="h-8 w-20 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-6">
+              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+                <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
+                  Bar Color
+                </span>
                 <input
                   type="color"
                   value={barColor}
                   onChange={(e) => setBarColor(e.target.value)}
-                  className="h-6 w-8 border border-gray-300 rounded"
+                  className="h-7 w-8 rounded border border-slate-300 bg-white p-0.5"
+                />
+              </label>
+              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+                <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
+                  Bar Font
+                </span>
+                <input
+                  type="color"
+                  value={fontColor}
+                  onChange={(e) => setFontColor(e.target.value)}
+                  className="h-7 w-8 rounded border border-slate-300 bg-white p-0.5"
+                />
+              </label>
+              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+                <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
+                  X Size
+                </span>
+                <input
+                  type="number"
+                  value={xAxisFontSize}
+                  onChange={(e) => setXAxisFontSize(e.target.value)}
+                  className="h-7 w-12 rounded border border-slate-300 bg-white px-1.5 text-center text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                />
+              </label>
+              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+                <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
+                  X Color
+                </span>
+                <input
+                  type="color"
+                  value={xAxisFontColor}
+                  onChange={(e) => setXAxisFontColor(e.target.value)}
+                  className="h-7 w-8 rounded border border-slate-300 bg-white p-0.5"
+                />
+              </label>
+              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+                <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
+                  Y Size
+                </span>
+                <input
+                  type="number"
+                  value={yAxisFontSize}
+                  onChange={(e) => setYAxisFontSize(e.target.value)}
+                  className="h-7 w-12 rounded border border-slate-300 bg-white px-1.5 text-center text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                />
+              </label>
+              <label className="min-w-0 flex items-center justify-between gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1">
+                <span className="whitespace-nowrap font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-600">
+                  Y Color
+                </span>
+                <input
+                  type="color"
+                  value={yAxisFontColor}
+                  onChange={(e) => setYAxisFontColor(e.target.value)}
+                  className="h-7 w-8 rounded border border-slate-300 bg-white p-0.5"
+                />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[2fr_1fr_1fr]">
+              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                  Source Text
+                </span>
+                <input
+                  type="text"
+                  value={sourceText}
+                  onChange={(e) => setSourceText(e.target.value)}
+                  className="h-8 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                  placeholder="source: evjuice.net"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                  Source Size
+                </span>
+                <input
+                  type="number"
+                  value={sourceFontSize}
+                  onChange={(e) => setSourceFontSize(e.target.value)}
+                  className="h-8 w-20 rounded-md border border-slate-300 bg-white px-2.5 text-center text-[13px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-lime-500"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                  Source Color
+                </span>
+                <input
+                  type="color"
+                  value={sourceColor}
+                  onChange={(e) => setSourceColor(e.target.value)}
+                  className="h-8 w-10 rounded-md border border-slate-300 bg-white p-0.5"
                 />
               </label>
             </div>
@@ -567,16 +584,16 @@ export function ChartPreview({
       </div>
 
       {/* Chart Display */}
-      <div className="p-4 bg-ev-green-50 space-y-4">
+      <div className="space-y-4 bg-lime-100/35 p-4">
         {previewError ? (
-          <div className="text-center text-red-600">
+          <div className="text-center text-slate-700">
             <p className="font-medium">Preview Error</p>
             <p className="text-sm mt-1">{previewError}</p>
           </div>
         ) : (
           <div className="w-full overflow-x-auto">
             <div
-              className="relative rounded-lg border border-ev-green-200 shadow-sm"
+              className="relative rounded-lg border border-slate-200 shadow-sm"
               style={{
                 backgroundColor,
                 minWidth: previewWidth,
@@ -663,7 +680,7 @@ export function ChartPreview({
         )}
 
         {error && (
-          <div className="text-center text-red-600">
+          <div className="text-center text-slate-700">
             <p className="font-medium">Image Error</p>
             <p className="text-sm mt-1">{error}</p>
           </div>
@@ -671,7 +688,7 @@ export function ChartPreview({
 
         {chartImage ? (
           <div className="w-full overflow-x-auto">
-            <div className="text-xs font-medium text-gray-600 mb-2 text-center">
+            <div className="mb-2 text-center text-xs font-medium text-slate-600">
               Generated image
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -684,7 +701,7 @@ export function ChartPreview({
               <a
                 href={chartImage}
                 download={`chart-${title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "data"}.png`}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-ev-green-500 rounded-lg hover:bg-ev-green-600 transition-colors"
+                className="inline-flex items-center gap-2 rounded-lg bg-lime-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-lime-600"
               >
                 <Download className="h-4 w-4" />
                 Download Image
@@ -692,7 +709,7 @@ export function ChartPreview({
             </div>
           </div>
         ) : (
-          <div className="text-gray-500 text-sm">
+          <div className="text-sm text-slate-500">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-center sm:text-left">
                 Generate an image to download or attach when posting to X.
@@ -700,7 +717,7 @@ export function ChartPreview({
               <button
                 onClick={generateChart}
                 disabled={isLoading || data.length === 0}
-                className="inline-flex items-center gap-2 px-3 py-1.5 bg-ev-green-500 text-white text-sm font-medium rounded-lg hover:bg-ev-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed sm:ml-auto"
+                className="inline-flex items-center gap-2 rounded-lg bg-lime-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-lime-600 disabled:cursor-not-allowed disabled:opacity-50 sm:ml-auto"
               >
                 {isLoading ? (
                   <>
