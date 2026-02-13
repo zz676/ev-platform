@@ -34,24 +34,43 @@ export function RelatedArticles({
   if (articles.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-lime-300 py-4 px-[0.72rem]">
-      <h3 className="font-semibold text-gray-600 mb-4">{title}</h3>
-      <div className="divide-y divide-lime-200">
-        {articles.map((article, index) => (
-          <Link
-            key={article.id}
-            href={`/${locale}/post/${article.id}`}
-            className={`block group ${index > 0 ? 'pt-[0.85rem]' : ''} ${index < articles.length - 1 ? 'pb-[0.85rem]' : ''}`}
-          >
-            <p className="text-sm text-gray-600 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-snug">
-              {article.title}
-            </p>
-            <p className="text-xs text-gray-500 italic text-left mt-1">
-              {formatRelativeTime(article.timestamp)}
-            </p>
-          </Link>
-        ))}
-      </div>
+    <div className="bg-lime-50/40 border border-lime-100 rounded-lg pt-[0.56rem] pb-3 px-3">
+      <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-2">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ev-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-ev-green-500"></span>
+        </span>
+        {title}
+      </h2>
+      <ol className="space-y-0">
+        {articles.map((article, index) => {
+          const isTop3 = index < 3;
+          return (
+            <li key={article.id}>
+              <Link
+                href={`/${locale}/post/${article.id}`}
+                className="flex items-start gap-2.5 py-[0.3rem] px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors group"
+              >
+                <span className={`flex-shrink-0 w-5 text-center font-bold text-sidebar leading-tight mt-[0.1rem] ${
+                  isTop3 ? "text-ev-green-600" : "text-gray-400"
+                }`}>
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className={`text-sidebar text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-tight ${
+                    isTop3 ? "font-semibold" : "font-medium"
+                  }`}>
+                    {article.title}
+                  </h3>
+                  <p className="text-xs text-gray-400 italic mt-0.5">
+                    {formatRelativeTime(article.timestamp)}
+                  </p>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
