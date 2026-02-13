@@ -158,20 +158,6 @@ export default async function Home({
   const getImage = (post: Post) =>
     post.cardImageUrl || post.originalMediaUrls?.[0] || undefined;
 
-  // Helper to format relative time
-  const formatRelativeTime = (date: Date): string => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
   return (
     <>
       <StockTicker />
@@ -180,7 +166,7 @@ export default async function Home({
       {featuredPost || poolPosts.length > 0 ? (
         <div className="space-y-2">
           {/* Featured Section - USAToday Style 3-Column Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[250px_1fr_280px] gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[200px_1fr_240px] xl:grid-cols-[250px_1fr_280px] gap-4">
             {/* Left Column - 2 News Cards (stacked) */}
             <div className="flex flex-col justify-between gap-4 order-2 md:order-1 lg:order-1 h-[468px]">
               {leftColumnPosts.map((post) => (
@@ -214,26 +200,39 @@ export default async function Home({
               )}
             </div>
 
-            {/* Right Column - Top Headlines */}
+            {/* Right Column - Trending */}
             <div className="order-3 bg-lime-50/40 border border-lime-100 rounded-lg pt-[0.56rem] pb-3 px-3">
-              <h2 className="text-lg font-bold text-gray-900 mb-3">
-                {locale === "zh" ? "热门新闻" : "Top Headlines"}
+              <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ev-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-ev-green-500"></span>
+                </span>
+                {locale === "zh" ? "热门趋势" : "Trending"}
               </h2>
-              <ul className="space-y-0">
-                {topHeadlines.map((post, index) => (
-                  <li key={post.id}>
-                    <Link
-                      href={`/${locale}/post/${post.id}`}
-                      className="flex items-start gap-2 py-[0.29rem] px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors group"
-                    >
-                      <span className="flex-shrink-0 w-1.5 h-1.5 bg-lime-400 rounded-full mt-[0.35rem]"></span>
-                      <h3 className="text-[0.78rem] font-medium text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-tight">
-                        {getTitle(post) || "Untitled"}
-                      </h3>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <ol className="space-y-0">
+                {topHeadlines.map((post, index) => {
+                  const isTop3 = index < 3;
+                  return (
+                    <li key={post.id}>
+                      <Link
+                        href={`/${locale}/post/${post.id}`}
+                        className="flex items-start gap-2.5 py-[0.3rem] px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors group"
+                      >
+                        <span className={`flex-shrink-0 w-5 text-center font-bold text-sidebar leading-tight mt-[0.1rem] ${
+                          isTop3 ? "text-ev-green-600" : "text-gray-400"
+                        }`}>
+                          {index + 1}
+                        </span>
+                        <h3 className={`min-w-0 text-sidebar text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-tight ${
+                            isTop3 ? "font-semibold" : "font-medium"
+                          }`}>
+                            {getTitle(post) || "Untitled"}
+                          </h3>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ol>
             </div>
           </div>
 
