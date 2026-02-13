@@ -316,12 +316,12 @@ export function MetricPostsSection() {
           {/* Posts Table */}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
               <h3 className="font-semibold text-gray-900">Recent Posts</h3>
               <button
                 onClick={() => fetchPosts(currentPage)}
                 disabled={loading}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
               >
                 <RefreshCw
                   className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
@@ -348,7 +348,7 @@ export function MetricPostsSection() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
+                    <tr className="bg-white border-b border-gray-200">
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type / Period
                       </th>
@@ -375,7 +375,7 @@ export function MetricPostsSection() {
                       const isRetrying = retryingIds.has(post.id);
 
                       return (
-                        <tr key={post.id} className="hover:bg-gray-50">
+                        <tr key={post.id} className="hover:bg-white">
                           <td className="px-4 py-3 whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               <BarChart3 className="h-4 w-4 text-ev-green-600" />
@@ -484,7 +484,7 @@ export function MetricPostsSection() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white">
                 <div className="text-sm text-gray-500">
                   Page {currentPage} of {totalPages}
                 </div>
@@ -492,7 +492,7 @@ export function MetricPostsSection() {
                   <button
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage <= 1 || loading}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Prev
@@ -500,7 +500,7 @@ export function MetricPostsSection() {
                   <button
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage >= totalPages || loading}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
                   >
                     Next
                     <ChevronRight className="h-4 w-4" />

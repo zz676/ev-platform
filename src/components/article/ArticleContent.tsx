@@ -140,7 +140,7 @@ export function ArticleContent({
           {/* Article card */}
           <article className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {/* Metadata bar */}
-            <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 border-b border-gray-200 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1 bg-white border-b border-gray-200 text-sm">
               <CategoryBadge category={category} variant="green" />
               {isImportant && (
                 <div className="flex items-center gap-1.5 text-amber-500">
@@ -212,7 +212,7 @@ export function ArticleContent({
             )}
 
             {/* Footer actions */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-2 bg-gray-50 border-t border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-2 bg-white border-t border-gray-200">
               <a
                 href={sourceUrl}
                 target="_blank"

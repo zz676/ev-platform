@@ -65,7 +65,11 @@ export function ResultsTable({
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       {/* Header */}
       <div
+<<<<<<< Updated upstream
         className="flex cursor-pointer items-center justify-between border-b border-slate-200 bg-lime-100/35 px-4 py-2.5"
+=======
+        className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 cursor-pointer"
+>>>>>>> Stashed changes
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
         <div className="flex items-center gap-4">
@@ -117,7 +121,11 @@ export function ResultsTable({
                 {pageData.map((row, rowIndex) => (
                   <tr
                     key={rowIndex}
+<<<<<<< Updated upstream
                     className="hover:bg-lime-100/35 transition-colors"
+=======
+                    className="hover:bg-white transition-colors"
+>>>>>>> Stashed changes
                   >
                     {columns.map((col) => (
                       <td
@@ -135,8 +143,13 @@ export function ResultsTable({
 
           {/* Pagination */}
           {totalPages > 1 && (
+<<<<<<< Updated upstream
             <div className="flex items-center justify-between border-t border-slate-200 bg-lime-100/35 px-4 py-2">
               <div className="text-xs text-slate-500">
+=======
+            <div className="flex items-center justify-between px-4 py-2 bg-white border-t border-gray-200">
+              <div className="text-xs text-gray-500">
+>>>>>>> Stashed changes
                 Showing {startIndex + 1}-{endIndex} of {data.length}
               </div>
               <div className="flex items-center gap-1">

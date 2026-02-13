@@ -89,7 +89,7 @@ export function PostRow({ post, activeStatus, onApprove, onReject, onOpenPreview
   const showApproveReject = activeStatus === "PENDING" || (!activeStatus && post.status === "PENDING");
 
   return (
-    <tr className="border-b border-gray-100 hover:bg-gray-50">
+    <tr className="border-b border-gray-100 hover:bg-white">
       <td className="px-4 py-3">
         <div className="max-w-md">
           <p className="text-sm font-medium text-gray-900 truncate" title={title}>

@@ -284,6 +284,7 @@ export default function DataExplorerPage() {
   }
 
   return (
+<<<<<<< Updated upstream
     <div
       className={`${inter.className} ${jetbrainsMono.variable} data-explorer-theme min-h-screen bg-slate-50 text-slate-900`}
     >
@@ -327,9 +328,42 @@ export default function DataExplorerPage() {
                 </button>
               </div>
             </div>
+=======
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.back()}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Database className="h-6 w-6 text-ev-green-600" />
+                  Data Explorer
+                </h1>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Query EV industry data with natural language
+                </p>
+              </div>
+            </div>
+            <div className="self-end">
+              <button
+                onClick={handleReset}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ev-green-500 text-white text-sm font-medium rounded-lg hover:bg-ev-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Start Over
+              </button>
+            </div>
+>>>>>>> Stashed changes
           </div>
         </header>
 
+<<<<<<< Updated upstream
         <main className="mx-auto max-w-[1200px] px-4 py-7 sm:px-6 lg:px-8">
           <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
             <div className="space-y-6">
@@ -340,6 +374,116 @@ export default function DataExplorerPage() {
                     <p className="font-semibold text-slate-900">Error</p>
                     <p className="mt-1 text-slate-700">{error}</p>
                   </div>
+=======
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Error Display */}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-red-800">Error</p>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 1: Query Input */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <h2 className="text-sm font-semibold text-gray-900 mb-3">
+            Step 1: Ask a Question
+          </h2>
+          <QueryInput
+            value={question}
+            onChange={setQuestion}
+            onSubmit={handleGenerateQuery}
+            isLoading={isGenerating}
+            suggestedQuestions={suggestedQuestions}
+          />
+        </div>
+
+        {/* Step 2: Query Editor */}
+        {(table || queryString) && (
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">
+              Step 2: Review / Edit Query
+            </h2>
+            <QueryEditor
+              table={table}
+              query={queryString}
+              onChange={setQueryString}
+              onExecute={handleExecuteQuery}
+              isLoading={isExecuting}
+              error={error}
+              explanation={explanation}
+            />
+          </div>
+        )}
+
+        {/* Step 3: Results */}
+        {results && (
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-gray-900">
+              Step 3: View Results & Chart
+            </h2>
+
+            <ResultsTable
+              data={results.data}
+              rowCount={results.rowCount}
+              executionTimeMs={results.executionTimeMs}
+              tableInfo={results.tableInfo}
+            />
+
+            <div id="chart-preview">
+              <ChartPreview
+                data={results.data}
+                initialTitle={question || "Data Results"}
+                onChartGenerated={(r) => {
+                  setChartImage(r.chartImageBase64);
+                  setChartMeta({ title: r.title, chartType: r.chartType });
+                  setShouldScrollToPost(true);
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Post Composer */}
+        {results && results.data.length > 0 && (
+          <div id="compose-post">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">
+              Step 4: Compose & Post
+            </h2>
+            <PostComposer
+              chartImageBase64={chartImage}
+              question={question}
+              table={table}
+              prismaQuery={queryString}
+              results={results.data}
+              chartTitle={chartMeta?.title || question || "Data Results"}
+              chartType={chartMeta?.chartType || "bar"}
+              onPostSuccess={() => {
+                // Could refresh or show success state
+              }}
+            />
+          </div>
+        )}
+
+        {/* Available Tables (when no query) */}
+        {!table && !queryString && !loadingOptions && tables.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">
+              Available Data Tables
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {tables.map((t) => (
+                <div
+                  key={t.name}
+                  className="p-3 bg-white rounded-lg border border-gray-200"
+                >
+                  <p className="font-mono text-sm text-ev-green-700">{t.name}</p>
+                  <p className="text-xs text-gray-500 mt-1">{t.description}</p>
+>>>>>>> Stashed changes
                 </div>
               )}
 

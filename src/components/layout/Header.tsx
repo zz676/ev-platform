@@ -111,7 +111,7 @@ export function Header() {
                   autoFocus
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-48 lg:w-64 pl-3 pr-8 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ev-green-500 focus:border-transparent"
+                  className="w-48 lg:w-64 pl-3 pr-8 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-ev-green-500 focus:border-transparent"
                   onBlur={(e) => {
                     // Don't close if clicking the X button
                     if (!e.relatedTarget?.closest('button')) {
@@ -181,7 +181,7 @@ export function Header() {
           {user ? (
             <button
               onClick={openPanel}
-              className="relative flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="relative flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-white transition-colors"
               aria-label="Open user menu"
             >
               {user.avatarUrl ? (
@@ -203,7 +203,7 @@ export function Header() {
             <button
               onClick={openLoginModal}
               disabled={isLoading}
-              className="flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 hover:bg-white transition-colors disabled:opacity-50"
               aria-label="Login"
             >
               <User className="h-5 w-5 text-gray-600" />

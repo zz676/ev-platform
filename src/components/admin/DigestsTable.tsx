@@ -116,10 +116,10 @@ function EditModal({ digest, onClose, onSave }: EditModalProps) {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-white">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white transition-colors"
           >
             Cancel
           </button>
@@ -190,12 +190,12 @@ export function DigestsTable({
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
         <h2 className="font-semibold text-gray-900">Daily Digests</h2>
         <button
           onClick={onRefresh}
           disabled={isLoading}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           Refresh
@@ -218,7 +218,7 @@ export function DigestsTable({
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
+              <tr className="bg-white border-b border-gray-200">
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Scheduled For
                 </th>
@@ -242,7 +242,7 @@ export function DigestsTable({
                 const isDeleting = deletingIds.has(digest.id);
 
                 return (
-                  <tr key={digest.id} className="hover:bg-gray-50">
+                  <tr key={digest.id} className="hover:bg-white">
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2 text-sm text-gray-900">
                         <Calendar className="h-4 w-4 text-gray-400" />
@@ -317,7 +317,7 @@ export function DigestsTable({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white">
           <div className="text-sm text-gray-500">
             Page {currentPage} of {totalPages}
           </div>
@@ -325,7 +325,7 @@ export function DigestsTable({
             <button
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage <= 1 || isLoading}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="h-4 w-4" />
               Prev
@@ -333,7 +333,7 @@ export function DigestsTable({
             <button
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage >= totalPages || isLoading}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
               <ChevronRight className="h-4 w-4" />
