@@ -138,7 +138,7 @@ export function ArticleContent({
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Article card */}
-          <article className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <article className="bg-white rounded-xl border border-gray-200 border-t-2 border-t-ev-green-500 overflow-hidden">
             {/* Metadata bar */}
             <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 border-b border-gray-200 text-sm">
               <CategoryBadge category={category} variant="green" />
@@ -155,10 +155,10 @@ export function ArticleContent({
 
             {/* Header */}
             <div className="px-3 pt-[0.554rem] pb-[0.318rem] border-b border-gray-100">
-              <h1 className="text-[1.161rem] md:text-[1.453rem] font-bold text-gray-600 text-center max-w-[70%] mx-auto">
+              <h1 className="text-[1.161rem] md:text-[1.453rem] font-bold text-gray-900 text-center max-w-[70%] mx-auto">
                 {title || "Untitled"}
               </h1>
-              <div className="flex items-center justify-center gap-1.5 text-sm text-gray-500 mt-2">
+              <div className="flex items-center justify-center gap-1.5 text-sm text-ev-green-600/70 mt-2">
                 <Calendar className="h-4 w-4" />
                 <span className="italic">{formatDate(sourceDate)}</span>
               </div>
@@ -174,12 +174,14 @@ export function ArticleContent({
                     </p>
                     {/* Insert first image after first paragraph */}
                     {idx === 0 && imageUrls.length > 0 && (
-                      <div className="relative aspect-video w-full max-w-2xl mx-auto overflow-hidden rounded-lg my-6 bg-white ring-1 ring-black/5 shadow-sm">
+                      <div className="w-full max-w-2xl mx-auto overflow-hidden rounded-lg my-6 shadow-[0_0_10px_rgba(0,0,0,0.1)]">
                         <Image
                           src={imageUrls[0]}
                           alt={title || "Article image"}
-                          fill
-                          className="object-contain"
+                          width={0}
+                          height={0}
+                          sizes="100vw"
+                          className="w-full h-auto"
                           priority
                         />
                       </div>
@@ -196,14 +198,15 @@ export function ArticleContent({
                   {imageUrls.slice(1).map((url, idx) => (
                     <div
                       key={idx}
-                      className="relative aspect-video rounded-lg overflow-hidden bg-white ring-1 ring-black/5 shadow-sm"
+                      className="rounded-lg overflow-hidden shadow-[0_0_10px_rgba(0,0,0,0.1)]"
                     >
                       <Image
                         src={url}
                         alt={`Article image ${idx + 2}`}
-                        fill
-                        className="object-contain"
+                        width={0}
+                        height={0}
                         sizes="(max-width: 768px) 100vw, 50vw"
+                        className="w-full h-auto"
                       />
                     </div>
                   ))}
@@ -246,7 +249,7 @@ export function ArticleContent({
                 {/* Share to Reddit */}
                 <button
                   onClick={shareToReddit}
-                  className="flex items-center gap-1.5 text-gray-600 hover:text-orange-500 transition-colors"
+                  className="flex items-center gap-1.5 text-ev-green-600 hover:text-orange-500 transition-colors"
                   aria-label="Share to Reddit"
                 >
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
@@ -256,7 +259,7 @@ export function ArticleContent({
                 {/* Share to LinkedIn */}
                 <button
                   onClick={shareToLinkedIn}
-                  className="flex items-center gap-1.5 text-gray-600 hover:text-[#0A66C2] transition-colors"
+                  className="flex items-center gap-1.5 text-ev-green-600 hover:text-[#0A66C2] transition-colors"
                   aria-label="Share to LinkedIn"
                 >
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
@@ -266,7 +269,7 @@ export function ArticleContent({
                 {/* Share to Facebook */}
                 <button
                   onClick={shareToFacebook}
-                  className="flex items-center gap-1.5 text-gray-600 hover:text-[#1877F2] transition-colors"
+                  className="flex items-center gap-1.5 text-ev-green-600 hover:text-[#1877F2] transition-colors"
                   aria-label="Share to Facebook"
                 >
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
