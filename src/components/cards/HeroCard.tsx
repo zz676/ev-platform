@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { PLACEHOLDER_IMAGE } from "@/lib/constants";
+import { PLACEHOLDER_IMAGE, HERO_BLUR_DATA_URL } from "@/lib/constants";
 
 // Brand logos mapping
 const brandLogos: Record<string, string> = {
@@ -70,6 +70,8 @@ export function HeroCard({
           className="object-cover transition-transform duration-300 group-hover:scale-105"
           sizes={isLarge ? "(max-width: 768px) 100vw, 50vw" : "25vw"}
           priority={isLarge}
+          placeholder="blur"
+          blurDataURL={HERO_BLUR_DATA_URL}
         />
       </div>
 
@@ -92,7 +94,7 @@ export function HeroCard({
         <h2
           className={`font-bold text-white leading-tight group-hover:text-ev-green-300 transition-colors ${
             isLarge
-              ? "text-[1.275rem] md:text-[1.59rem] line-clamp-3"
+              ? "text-hero-sm md:text-hero-lg line-clamp-3"
               : "text-sm line-clamp-2"
           }`}
         >

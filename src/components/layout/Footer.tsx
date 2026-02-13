@@ -61,7 +61,7 @@ export function Footer() {
                 <button
                   type="submit"
                   disabled={status === "loading"}
-                  className="px-4 py-[0.4125rem] text-[0.825rem] font-medium text-white rounded-md transition-colors disabled:opacity-50 hover:opacity-80 italic"
+                  className="px-4 py-[0.4125rem] text-btn-sm font-medium text-white rounded-md transition-colors disabled:opacity-50 hover:opacity-80 italic"
                   style={{ backgroundColor: 'rgb(81, 191, 36)' }}
                 >
                   {t("subscribeButton")}

@@ -49,7 +49,7 @@ export function SideNewsCard({
           alt={title}
           fill
           className="object-cover"
-          sizes="250px"
+          sizes="(min-width: 1280px) 250px, 200px"
         />
       </div>
 

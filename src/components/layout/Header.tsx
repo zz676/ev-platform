@@ -53,7 +53,7 @@ export function Header() {
             height={36}
             className="w-9 h-9"
           />
-          <span className="font-bold text-[1.4375rem]" style={{ color: '#27c618' }}>{t("brand")}</span>
+          <span className="font-bold text-brand" style={{ color: '#27c618' }}>{t("brand")}</span>
         </Link>
 
         {/* Navigation - Center */}
@@ -63,7 +63,7 @@ export function Header() {
               <Link
                 key={item.key}
                 href={item.href}
-                className={`text-[0.9625rem] font-medium transition-colors ${
+                className={`text-nav font-medium transition-colors ${
                   isActive(item.href, item.key)
                     ? "text-ev-green-600 font-semibold"
                     : "text-gray-600 hover:text-ev-green-600"
@@ -74,7 +74,7 @@ export function Header() {
             ) : (
               <span
                 key={item.key}
-                className="text-[0.9625rem] font-medium text-gray-600 cursor-default"
+                className="text-nav font-medium text-gray-600 cursor-default"
               >
                 {item.label}
               </span>
@@ -83,7 +83,7 @@ export function Header() {
           {/* Subscribe Link */}
           <button
             onClick={() => document.getElementById('subscribe')?.scrollIntoView({ behavior: 'smooth' })}
-            className="text-[0.9625rem] font-medium text-gray-600 hover:text-ev-green-600 underline transition-colors animate-shimmer bg-gradient-to-r from-gray-600 via-ev-green-500 to-gray-600 bg-[length:200%_100%] bg-clip-text text-transparent"
+            className="text-nav font-medium text-gray-600 hover:text-ev-green-600 underline transition-colors animate-shimmer bg-gradient-to-r from-gray-600 via-ev-green-500 to-gray-600 bg-[length:200%_100%] bg-clip-text text-transparent"
           >
             {t("subscribe")}
           </button>
