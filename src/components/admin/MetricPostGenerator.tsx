@@ -316,7 +316,7 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+      <div className="px-4 py-3 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-ev-green-600" />
           <h3 className="font-semibold text-gray-900">Generate Metric Post</h3>
@@ -454,7 +454,7 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
         {/* Preview */}
         {preview && (
           <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+            <div className="px-4 py-2 bg-white border-b border-gray-200">
               <span className="text-sm font-medium text-gray-700">Preview</span>
             </div>
 
@@ -466,7 +466,7 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
                     <ImageIcon className="h-4 w-4" />
                     Chart Preview
                   </div>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={preview.chartImageBase64}
@@ -530,7 +530,7 @@ export function MetricPostGenerator({ onPostSaved }: MetricPostGeneratorProps) {
                 <button
                   onClick={handleSave}
                   disabled={saving || !editedContent.trim()}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   {saving ? (
                     <>

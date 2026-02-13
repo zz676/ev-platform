@@ -350,7 +350,11 @@ export function ChartPreview({
         </div>
       )}
       {/* Header */}
+<<<<<<< Updated upstream
       <div className="flex items-center justify-between border-b border-slate-200 bg-lime-100/35 px-4 py-2.5">
+=======
+      <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200">
+>>>>>>> Stashed changes
         <div className="flex items-center gap-2">
           <ImageIcon className="h-4 w-4 text-slate-400" />
           <span className="text-sm font-semibold text-slate-700">Chart Preview</span>
@@ -631,6 +635,7 @@ export function ChartPreview({
       </div>
 
       {/* Chart Display */}
+<<<<<<< Updated upstream
       <div className="space-y-4 bg-lime-100/35 p-4">
         {previewError ? (
           <div className="text-center text-slate-700">
@@ -732,6 +737,12 @@ export function ChartPreview({
         {error && (
           <div className="text-center text-slate-700">
             <p className="font-medium">Image Error</p>
+=======
+      <div className="p-4 min-h-[300px] bg-white flex items-center justify-center">
+        {error ? (
+          <div className="text-center text-red-600">
+            <p className="font-medium">Error</p>
+>>>>>>> Stashed changes
             <p className="text-sm mt-1">{error}</p>
           </div>
         )}

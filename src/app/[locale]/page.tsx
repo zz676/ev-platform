@@ -224,7 +224,7 @@ export default async function Home({
                   <li key={post.id}>
                     <Link
                       href={`/${locale}/post/${post.id}`}
-                      className="flex items-start gap-2 py-[0.29rem] px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors group"
+                      className="flex items-start gap-2 py-[0.29rem] px-2 -mx-2 rounded-lg hover:bg-white transition-colors group"
                     >
                       <span className="flex-shrink-0 w-1.5 h-1.5 bg-lime-400 rounded-full mt-[0.35rem]"></span>
                       <h3 className="text-[0.78rem] font-medium text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors leading-tight">

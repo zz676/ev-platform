@@ -131,7 +131,7 @@ export default function MonitoringPage() {
           <button
             onClick={() => void fetchData()}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             Refresh
@@ -264,7 +264,7 @@ export default function MonitoringPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-white">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <button
@@ -341,7 +341,7 @@ export default function MonitoringPage() {
                 <tbody className="divide-y divide-gray-200">
                   {data.recentUsage.length > 0 ? (
                     data.recentUsage.map((usage) => (
-                      <tr key={usage.id} className="hover:bg-gray-50">
+                      <tr key={usage.id} className="hover:bg-white">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(usage.createdAt).toLocaleString("en-US", {
                             month: "short",
@@ -420,7 +420,7 @@ export default function MonitoringPage() {
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                     disabled={isLoading || data.recentUsagePagination.page <= 1}
-                    className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                    className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50"
                   >
                     Previous
                   </button>
@@ -433,7 +433,7 @@ export default function MonitoringPage() {
                     disabled={
                       isLoading || !data.recentUsagePagination.hasMore
                     }
-                    className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                    className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50"
                   >
                     Next
                   </button>

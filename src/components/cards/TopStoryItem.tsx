@@ -40,7 +40,7 @@ export function TopStoryItem({
   return (
     <Link
       href={`/${locale}/post/${id}`}
-      className="flex items-start gap-3 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 -mx-2 px-2 rounded-lg transition-colors group"
+      className="flex items-start gap-3 py-4 border-b border-gray-100 last:border-b-0 hover:bg-white -mx-2 px-2 rounded-lg transition-colors group"
     >
       {/* Rank Number */}
       <div className="flex-shrink-0 w-8 h-8 bg-ev-green-500 text-white rounded-full flex items-center justify-center font-bold text-sm">

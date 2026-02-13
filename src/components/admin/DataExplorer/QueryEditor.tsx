@@ -65,7 +65,11 @@ export function QueryEditor({
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       {/* Header */}
+<<<<<<< Updated upstream
       <div className="flex items-center justify-between border-b border-slate-200 bg-lime-100/35 px-4 py-2.5">
+=======
+      <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200">
+>>>>>>> Stashed changes
         <div className="flex items-center gap-2">
           <Code className="h-4 w-4 text-slate-400" />
           <span className="text-sm font-semibold text-slate-700">

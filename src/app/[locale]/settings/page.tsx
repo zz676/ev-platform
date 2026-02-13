@@ -43,7 +43,7 @@ export default async function SettingsPage() {
   const providers = identities.map((i) => i.provider);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-2xl mx-auto px-4 py-8">
         <Link
           href="/"

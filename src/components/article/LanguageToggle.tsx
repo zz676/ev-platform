@@ -30,7 +30,7 @@ export function LanguageToggle({
   };
 
   return (
-    <div className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 p-1">
+    <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white p-1">
       <button
         onClick={() => handleToggle("en")}
         className={cn(

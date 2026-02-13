@@ -36,7 +36,7 @@ export function AIUsageChart({ data }: AIUsageChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="flex items-center justify-center h-64 bg-white rounded-lg border border-gray-200">
         <p className="text-gray-500">No usage data available</p>
       </div>
     );

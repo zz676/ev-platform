@@ -223,8 +223,13 @@ export function PostComposer({
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       {/* Header */}
+<<<<<<< Updated upstream
       <div className="flex items-center justify-between border-b border-slate-200 bg-lime-100/35 px-4 py-2.5">
         <span className="text-sm font-semibold text-slate-700">Compose Post</span>
+=======
+      <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200">
+        <span className="text-sm font-medium text-gray-700">Compose Post</span>
+>>>>>>> Stashed changes
         <button
           onClick={generateContent}
           disabled={isGenerating}
@@ -266,10 +271,17 @@ export function PostComposer({
         )}
 
         {/* Prompt Editor */}
+<<<<<<< Updated upstream
         <div className="overflow-hidden rounded-xl border border-slate-200">
           <div className="flex items-center justify-between border-b border-slate-200 bg-lime-100/35 px-3 py-2">
             <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Wand2 className="h-4 w-4 text-slate-500" />
+=======
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 bg-white border-b border-gray-200">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Wand2 className="h-4 w-4 text-gray-500" />
+>>>>>>> Stashed changes
               Prompt (editable)
             </div>
             <div className="flex items-center gap-2">
