@@ -1,6 +1,12 @@
 import OpenAI from "openai";
 import { Post } from "@prisma/client";
-import { DIGEST_PROMPT, DIGEST_TITLE } from "@/lib/config/prompts";
+import {
+  DIGEST_MULTI_PROMPT,
+  DIGEST_SINGLE_PROMPT,
+  DIGEST_TITLE,
+  ENGAGEMENT_HOOKS,
+  TWEET_FORMAT,
+} from "@/lib/config/prompts";
 import { POSTING_CONFIG } from "@/lib/config/posting";
 import prisma from "@/lib/prisma";
 
@@ -112,16 +118,38 @@ function getProvider(name: "deepseek" | "openai") {
   return { provider, client: providerClients[name]! };
 }
 
+const FALLBACK_EMOJIS = ["📈", "⚡", "🔋", "🌍", "🏭", "🚗", "💰", "📊"];
+
 function fallbackDigestBullets(posts: Post[]): string {
+  if (posts.length === 1) {
+    // Single-article spotlight fallback: hook + context
+    const p = posts[0];
+    const title = (p.translatedTitle || p.originalTitle || "Untitled").trim();
+    const summary = (p.translatedSummary || "").trim();
+    const context = summary
+      ? summary.replace(/\s+/g, " ").slice(0, 200)
+      : "";
+    return context ? `${title}\n\n${context}` : title;
+  }
+  // Multi-article digest fallback: emoji-led lines
   const top = posts.slice(0, 4);
   const lines = top.map((p, idx) => {
     const title = (p.translatedTitle || p.originalTitle || "Untitled").trim();
-    const summary = (p.translatedSummary || "").trim();
-    const summaryShort = summary ? summary.replace(/\s+/g, " ").slice(0, 90) : "";
-    const suffix = summaryShort ? `: ${summaryShort}${summary.length > 90 ? "..." : ""}` : "";
-    return `${idx + 1}. ${title}${suffix}`;
+    const emoji = FALLBACK_EMOJIS[idx % FALLBACK_EMOJIS.length];
+    return `${emoji} ${title}`;
   });
   return lines.join("\n");
+}
+
+/**
+ * Pick a deterministic engagement hook based on the current day
+ */
+export function pickEngagementHook(): string {
+  const dayOfYear = Math.floor(
+    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) /
+      86_400_000
+  );
+  return ENGAGEMENT_HOOKS[dayOfYear % ENGAGEMENT_HOOKS.length];
 }
 
 /**
@@ -214,7 +242,10 @@ export async function generateDigestContent(posts: Post[]): Promise<string> {
     })
     .join("\n\n");
 
-  const prompt = DIGEST_PROMPT.replace("{posts}", postSummaries);
+  // Pick prompt based on article count
+  const template =
+    posts.length === 1 ? DIGEST_SINGLE_PROMPT : DIGEST_MULTI_PROMPT;
+  const prompt = template.replace("{posts}", postSummaries);
 
   const deepseekEnabled = !DISABLE_DEEPSEEK && !!process.env.DEEPSEEK_API_KEY;
 
@@ -280,26 +311,62 @@ export function formatDigestTweet(
   posts: Post[]
 ): string {
   const brandHashtags = extractBrandHashtags(posts);
-  const allHashtags = [...baseHashtags, ...brandHashtags];
+  const allHashtags = [...baseHashtags, ...brandHashtags].slice(0, 5);
   const hashtagStr = allHashtags.join(" ");
-  return `${content}\n\n🍋 ${siteUrl}\n${hashtagStr}`;
+
+  if (posts.length === 1) {
+    // Single-article spotlight: content already has hook + context
+    return `${content}\n\nFull story → ${siteUrl}\n${hashtagStr}`;
+  }
+  // Multi-article digest
+  const hook = pickEngagementHook();
+  return `${DIGEST_TITLE}\n\n${content}\n\n${hook}\n${siteUrl}\n${hashtagStr}`;
 }
 
 /**
  * Generate a complete formatted digest tweet ready for storage and posting
- * Includes: title + LLM bullets + site link + hashtags
+ * Single article  → Spotlight format: hook + context + CTA
+ * Multi articles  → Digest format: title + emoji bullets + engagement question
  */
 export async function generateFullDigestTweet(posts: Post[]): Promise<string> {
-  // Get LLM-generated bullets
-  const bullets = await generateDigestContent(posts);
+  // Get LLM-generated content (format depends on post count)
+  const content = await generateDigestContent(posts);
 
-  // Build hashtags: base site hashtags + brand-specific ones
+  // Build hashtags: base site hashtags (2) + brand-specific (up to 3) = max 5
   const brandHashtags = extractBrandHashtags(posts);
-  // Take first 4 base hashtags and up to 3 brand hashtags (max 6 total)
-  const baseHashtags = POSTING_CONFIG.SITE_HASHTAGS.slice(0, 4);
-  const allHashtags = [...baseHashtags, ...brandHashtags].slice(0, 6);
+  const baseHashtags = POSTING_CONFIG.SITE_HASHTAGS.slice(0, 2);
+  const allHashtags = [...baseHashtags, ...brandHashtags].slice(0, 5);
   const hashtagStr = allHashtags.join(" ");
 
-  // Assemble full tweet: title + bullets + link + hashtags
-  return `${DIGEST_TITLE}\n${bullets}\n\n🍋 ${POSTING_CONFIG.SITE_URL}\n${hashtagStr}`;
+  const siteUrl = POSTING_CONFIG.SITE_URL;
+
+  let tweet: string;
+  if (posts.length === 1) {
+    // Spotlight format: {hook}\n\n{context}\n\nFull story → {url}\n{hashtags}
+    tweet = `${content}\n\nFull story → ${siteUrl}\n${hashtagStr}`;
+  } else {
+    // Digest format: title + emoji bullets + engagement question + url + hashtags
+    const hook = pickEngagementHook();
+    tweet = `${DIGEST_TITLE}\n\n${content}\n\n${hook}\n${siteUrl}\n${hashtagStr}`;
+  }
+
+  // Soft trim if over limit — truncate content lines to fit
+  if (tweet.length > TWEET_FORMAT.MAX_TWEET_LENGTH) {
+    const contentLines = content.split("\n");
+    while (
+      contentLines.length > 1 &&
+      tweet.length > TWEET_FORMAT.MAX_TWEET_LENGTH
+    ) {
+      contentLines.pop();
+      const trimmed = contentLines.join("\n");
+      if (posts.length === 1) {
+        tweet = `${trimmed}\n\nFull story → ${siteUrl}\n${hashtagStr}`;
+      } else {
+        const hook = pickEngagementHook();
+        tweet = `${DIGEST_TITLE}\n\n${trimmed}\n\n${hook}\n${siteUrl}\n${hashtagStr}`;
+      }
+    }
+  }
+
+  return tweet;
 }

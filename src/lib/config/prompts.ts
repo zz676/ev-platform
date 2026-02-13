@@ -1,42 +1,86 @@
 // LLM Prompts for X posting
 // Centralized for easy updates
 
-export const DIGEST_PROMPT = `
+/**
+ * Multi-article digest prompt (2-4 posts) — emoji-led punchy bullets
+ */
+export const DIGEST_MULTI_PROMPT = `
 You are a social media editor for EV Juice (@the_ev_juice).
-Summarize these EV news items into engaging bullet points for a tweet.
+Turn these EV news items into punchy, emoji-led one-liners for a tweet digest.
 
 CRITICAL RULES:
-1. ONE bullet per news item - do NOT split a single article into multiple bullets
-2. Each bullet should be detailed (80-150 chars) with key facts, numbers, and context
-3. Max 1000 characters total for all bullets combined
-4. Use "•" for bullets, one per line
-5. Focus on SPECIFIC details: names, numbers, models, locations, percentages
-
-If there is only 1 news item, output just 1 bullet with comprehensive details.
-If there are 3 news items, output exactly 3 bullets.
+1. ONE line per news item — do NOT split a single article into multiple lines
+2. Each line: emoji + active verb + specific fact (40-70 chars)
+3. Start with a relevant emoji (📈 ⚡ 🔋 🌍 🏭 🚗 💰 📊 🛑 🤝)
+4. Use active verbs: "smashes", "reveals", "launches", "opens", "hits", "cuts", "drops"
+5. Include specific numbers when available (300K, 45%, 900km, $25K)
+6. NO bullet symbols (•) — just emoji + text
+7. One line per item, no extra whitespace
 
 Example for 3 news items:
-• BYD delivered 300,000 vehicles in January 2025, up 45% YoY, leading China's EV market
-• NIO unveils 150kWh solid-state battery with 900km range, production starting Q3 2025
-• XPeng opens 50 showrooms across Germany and Netherlands, expanding European footprint
-
-Example for 1 news item:
-• Xiaomi YU7 Smart Car Index shows AI-powered features including autonomous parking, voice control, and smart home integration
+📈 BYD smashes 300K January deliveries
+⚡ NIO reveals 900km solid-state battery
+🌍 XPeng opens 50 showrooms in Europe
 
 News items:
 {posts}
 
-Output ONLY the bullet points, nothing else. No title, no hashtags, no links.
+Output ONLY the emoji-led lines, nothing else. No title, no hashtags, no links, no questions.
 `.trim();
 
-export const DIGEST_TITLE = "Watts New: Today in EV ⚡️";
+/**
+ * Single-article spotlight prompt (1 post) — hook + context
+ */
+export const DIGEST_SINGLE_PROMPT = `
+You are a social media editor for EV Juice (@the_ev_juice).
+Turn this single EV news item into a "spotlight" post with two parts:
+
+PART 1 — HOOK (first line):
+- Attention-grabbing opening statement (under 60 chars)
+- Active voice, present tense
+- No emoji, no hashtags
+- Make the reader curious or surprised
+
+PART 2 — CONTEXT (second paragraph):
+- 2-3 sentences of factual detail
+- Include specific numbers, names, dates when available
+- Keep it informative but concise (under 200 chars total)
+
+FORMATTING:
+- Output EXACTLY two paragraphs separated by a blank line
+- First paragraph = hook (one punchy line)
+- Second paragraph = context (2-3 factual sentences)
+- No bullets, no emoji, no hashtags, no links
+
+Example:
+Xiaomi just killed the SU7 shutdown rumors.
+
+Production & deliveries running normally. Official Q&A also dropped winter EV storage tips for owners.
+
+News item:
+{posts}
+
+Output ONLY the hook and context, nothing else.
+`.trim();
+
+export const DIGEST_TITLE = "Watts New ⚡";
+
+export const ENGAGEMENT_HOOKS = [
+  "Which story matters most?",
+  "What caught your eye?",
+  "Which headline surprised you?",
+  "Biggest story of the day?",
+  "What's your take?",
+  "Which move is boldest?",
+  "Any surprises here?",
+];
 
 export const TWEET_FORMAT = {
-  // Max characters for digest summary (bullets only, before title/link/hashtags)
-  MAX_SUMMARY_LENGTH: 1000,
+  // Soft character limit for the full assembled tweet (X Premium allows more, but concise is better)
+  MAX_TWEET_LENGTH: 500,
 
-  // Footer template
-  FOOTER: `\n\n🍋 {siteUrl}\n{hashtags}`,
+  // Max characters for digest summary (bullets only, before title/link/hashtags)
+  MAX_SUMMARY_LENGTH: 400,
 };
 
 // ==========================================

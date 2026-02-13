@@ -27,7 +27,7 @@ export const POSTING_CONFIG = {
 
   // Site configuration
   SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || "https://evjuice.net",
-  SITE_HASHTAGS: ["#ChinaEV", "#EVNews", "#EVJuice", "#EV", "#ElectricVehicle", "#CleanEnergy", "#AI", "#AIArt"],
+  SITE_HASHTAGS: ["#EV", "#EVNews"],
 
   // Brand hashtags - extracted from content
   BRAND_HASHTAGS: {
