@@ -41,7 +41,7 @@ export function StockTicker() {
   if (isLoading) {
     return (
       <div className="bg-lime-500 text-gray-900 py-[0.425rem] overflow-hidden">
-        <div className="flex items-center justify-center text-[0.72rem] text-gray-800">
+        <div className="flex items-center justify-center text-ticker text-gray-800">
           Loading stock data...
         </div>
       </div>
@@ -80,7 +80,7 @@ export function StockTicker() {
     const arrow = isPositive ? "▲" : isNegative ? "▼" : "";
 
     return (
-      <span className="inline-flex items-center mx-6 whitespace-nowrap text-[0.72rem]">
+      <span className="inline-flex items-center mx-6 whitespace-nowrap text-ticker">
         <span className="font-medium text-gray-900">{stock.name}</span>
         <span className="mx-2 text-gray-800">{formatPrice(stock.price)}</span>
         <span className={`${changeColor} font-medium`}>

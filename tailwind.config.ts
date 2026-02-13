@@ -57,6 +57,16 @@ const config: Config = {
           900: "hsl(var(--ev-green-900))",
         },
       },
+      fontSize: {
+        ticker: "0.72rem",
+        sidebar: "0.78rem",
+        "card-title": ["0.81rem", { lineHeight: "1.275" }],
+        "btn-sm": "0.825rem",
+        nav: "0.9625rem",
+        "hero-sm": "1.275rem",
+        brand: "1.4375rem",
+        "hero-lg": "1.59rem",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

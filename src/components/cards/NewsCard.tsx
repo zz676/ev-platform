@@ -80,7 +80,7 @@ export function NewsCard({
       {/* Content */}
       <div className="pt-[0.225rem] px-3 pb-[0.225rem]">
         {/* Title */}
-        <h3 className="text-[0.81rem] leading-[1.275] text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors">
+        <h3 className="text-card-title text-gray-900 line-clamp-2 group-hover:text-ev-green-600 transition-colors">
           <Link href={`/${locale}/post/${id}`}>{title}</Link>
         </h3>
 
