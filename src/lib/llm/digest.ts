@@ -316,11 +316,11 @@ export function formatDigestTweet(
 
   if (posts.length === 1) {
     // Single-article spotlight: content already has hook + context
-    return `${content}\n\nFull story → ${siteUrl}\n${hashtagStr}`;
+    return `${content}\n\nFull story ⚡🍋 ${siteUrl}\n${hashtagStr}`;
   }
   // Multi-article digest
   const hook = pickEngagementHook();
-  return `${DIGEST_TITLE}\n\n${content}\n\n${hook}\n${siteUrl}\n${hashtagStr}`;
+  return `${DIGEST_TITLE}\n\n${content}\n\n${hook}\n⚡🍋 ${siteUrl}\n${hashtagStr}`;
 }
 
 /**
@@ -342,12 +342,12 @@ export async function generateFullDigestTweet(posts: Post[]): Promise<string> {
 
   let tweet: string;
   if (posts.length === 1) {
-    // Spotlight format: {hook}\n\n{context}\n\nFull story → {url}\n{hashtags}
-    tweet = `${content}\n\nFull story → ${siteUrl}\n${hashtagStr}`;
+    // Spotlight format: {hook}\n\n{context}\n\nFull story ⚡🍋 {url}\n{hashtags}
+    tweet = `${content}\n\nFull story ⚡🍋 ${siteUrl}\n${hashtagStr}`;
   } else {
     // Digest format: title + emoji bullets + engagement question + url + hashtags
     const hook = pickEngagementHook();
-    tweet = `${DIGEST_TITLE}\n\n${content}\n\n${hook}\n${siteUrl}\n${hashtagStr}`;
+    tweet = `${DIGEST_TITLE}\n\n${content}\n\n${hook}\n⚡🍋 ${siteUrl}\n${hashtagStr}`;
   }
 
   // Soft trim if over limit — truncate content lines to fit
@@ -360,10 +360,10 @@ export async function generateFullDigestTweet(posts: Post[]): Promise<string> {
       contentLines.pop();
       const trimmed = contentLines.join("\n");
       if (posts.length === 1) {
-        tweet = `${trimmed}\n\nFull story → ${siteUrl}\n${hashtagStr}`;
+        tweet = `${trimmed}\n\nFull story ⚡🍋 ${siteUrl}\n${hashtagStr}`;
       } else {
         const hook = pickEngagementHook();
-        tweet = `${DIGEST_TITLE}\n\n${trimmed}\n\n${hook}\n${siteUrl}\n${hashtagStr}`;
+        tweet = `${DIGEST_TITLE}\n\n${trimmed}\n\n${hook}\n⚡🍋 ${siteUrl}\n${hashtagStr}`;
       }
     }
   }
