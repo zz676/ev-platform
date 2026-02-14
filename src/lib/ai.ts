@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import crypto from "crypto";
+import path from "path";
 import { put } from "@vercel/blob";
 import prisma from "@/lib/prisma";
 
@@ -95,7 +96,7 @@ async function applyBrandingOverlay(imageUrl: string): Promise<string> {
   const siteUrl = normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL || "https://evjuice.net"
   );
-  const siteLabel = siteUrl.replace(/^https?:\/\//, "");
+  const siteLabel = "www." + siteUrl.replace(/^https?:\/\//, "");
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
   const response = await fetch(imageUrl);
@@ -117,6 +118,37 @@ async function applyBrandingOverlay(imageUrl: string): Promise<string> {
 
   const padding = Math.round(width * 0.03);
   const fontSize = Math.max(Math.round(height * 0.04), 18);
+
+  // Measure text first to compute layout
+  ctx.font = `600 ${fontSize}px sans-serif`;
+  const textMetrics = ctx.measureText(siteLabel);
+  const textWidth = textMetrics.width;
+
+  // Load icon and scale to match text height
+  const iconSize = Math.round(fontSize * 1.6);
+  const iconGap = 8;
+  const totalWidth = iconSize + iconGap + textWidth;
+
+  const iconPath = path.join(process.cwd(), "public", "icon-192.png");
+  let iconImage: Awaited<ReturnType<typeof loadImage>> | null = null;
+  try {
+    iconImage = await loadImage(iconPath);
+  } catch {
+    console.warn("[AI] Could not load icon-192.png, rendering text-only overlay");
+  }
+
+  // Position: right-aligned block at bottom-right
+  const blockRight = width - padding;
+  const blockLeft = blockRight - totalWidth;
+  const textY = height - padding;
+
+  // Draw icon (no shadow)
+  if (iconImage) {
+    const iconY = textY - iconSize;
+    ctx.drawImage(iconImage, blockLeft, iconY, iconSize, iconSize);
+  }
+
+  // Draw text with shadow
   ctx.font = `600 ${fontSize}px sans-serif`;
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";
@@ -125,7 +157,7 @@ async function applyBrandingOverlay(imageUrl: string): Promise<string> {
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = Math.round(fontSize * 0.15);
   ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-  ctx.fillText(siteLabel, width - padding, height - padding);
+  ctx.fillText(siteLabel, blockRight, textY);
   ctx.shadowColor = "transparent";
 
   const outputBuffer = canvas.toBuffer("image/png");
