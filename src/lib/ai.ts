@@ -4,16 +4,10 @@ import path from "path";
 import { put } from "@vercel/blob";
 import prisma from "@/lib/prisma";
 
-// Image generation pricing (as of 2024)
+// Image generation pricing (as of 2025)
 const IMAGE_GEN_COST = {
-  // Together AI - FLUX.1 models
-  "FLUX.1-schnell": 0.003, // Fast, cheap
-  "FLUX.1-dev": 0.01,
-  "FLUX.1-pro": 0.025,
-  // DALL-E 3
-  "dall-e-3-1792x1024-standard": 0.08,
-  "dall-e-3-1792x1024-hd": 0.12,
-  "dall-e-3-1024x1024-standard": 0.04,
+  // GPT Image 1 Mini
+  "gpt-image-1-mini-1536x1024-low": 0.006,
 } as const;
 
 // Text completion pricing (per 1M tokens, as of 2024)
@@ -64,29 +58,6 @@ async function trackAIUsage(params: {
 }
 
 // Retry helper with exponential backoff
-async function retryWithBackoff<T>(
-  fn: () => Promise<T>,
-  maxRetries: number = 3,
-  baseDelayMs: number = 1000
-): Promise<T> {
-  let lastError: Error | undefined;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-
-      if (attempt < maxRetries) {
-        const delay = baseDelayMs * Math.pow(2, attempt - 1); // 1s, 2s, 4s
-        console.warn(`Together AI attempt ${attempt} failed, retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-
-  throw lastError;
-}
 
 function normalizeSiteUrl(url: string): string {
   return url.replace(/\/+$/, "");
@@ -355,108 +326,7 @@ Requirements:
   return response.choices[0].message.content;
 }
 
-// Generate image using Together AI (FLUX.1)
-async function generateWithTogetherAI(
-  prompt: string,
-  options: { source: string; postId?: string }
-): Promise<string> {
-  const togetherKey = process.env.TOGETHER_API_KEY;
-  if (!togetherKey) {
-    throw new Error("TOGETHER_API_KEY not configured");
-  }
-
-  const model = "black-forest-labs/FLUX.1-dev";
-  const cost = IMAGE_GEN_COST["FLUX.1-dev"];
-
-  const response = await fetch("https://api.together.xyz/v1/images/generations", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${togetherKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      prompt,
-      width: 1792,
-      height: 1024,
-      n: 1,
-      response_format: "url",
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Together AI error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  const imageUrl = data.data?.[0]?.url;
-
-  if (!imageUrl) {
-    throw new Error("Together AI: no image URL returned");
-  }
-
-  // Track successful generation
-  await trackAIUsage({
-    type: "image_generation",
-    model: "FLUX.1-dev",
-    size: "1792x1024",
-    cost,
-    success: true,
-    postId: options.postId,
-    source: options.source,
-  });
-
-  console.log(`FLUX.1 image generated for: ${prompt.slice(0, 50)}... [source: ${options.source}, cost: $${cost}]`);
-  return imageUrl;
-}
-
-// Generate image using DALL-E 3 (fallback)
-async function generateWithDALLE(
-  prompt: string,
-  options: { source: string; postId?: string }
-): Promise<string> {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) {
-    throw new Error("OPENAI_API_KEY not configured");
-  }
-
-  const model = "dall-e-3";
-  const size = "1792x1024" as const;
-  const quality = "standard" as const;
-  const cost = IMAGE_GEN_COST["dall-e-3-1792x1024-standard"];
-
-  const openai = new OpenAI({ apiKey: openaiKey });
-
-  const response = await openai.images.generate({
-    model,
-    prompt,
-    n: 1,
-    size,
-    quality,
-  });
-
-  const imageUrl = response.data?.[0]?.url;
-  if (!imageUrl) {
-    throw new Error("DALL-E: no image URL returned");
-  }
-
-  // Track successful generation
-  await trackAIUsage({
-    type: "image_generation",
-    model: "dall-e-3",
-    size,
-    cost,
-    success: true,
-    postId: options.postId,
-    source: options.source,
-  });
-
-  console.log(`DALL-E 3 image generated for: ${prompt.slice(0, 50)}... [source: ${options.source}, cost: $${cost}]`);
-  return imageUrl;
-}
-
-// Generate image for X post - tries Together AI (FLUX.1) first, falls back to DALL-E 3
+// Generate image using GPT Image 1.5
 export async function generatePostImage(
   title: string,
   summary: string,
@@ -468,78 +338,12 @@ export async function generatePostImage(
   const source = options?.source || "unknown";
   const postId = options?.postId;
 
-  // Create a prompt that generates relevant EV imagery
-  const imagePrompt = `A professional, modern photograph style image for an electric vehicle news article.
-Topic: ${title}
-Context: ${summary.slice(0, 200)}
-
-Style requirements:
-- Clean, professional news/tech media aesthetic
-- Feature electric vehicles, charging infrastructure, or EV technology
-- Modern urban or tech environment
-- Vibrant but realistic colors
-- No embedded text or logos in the scene
-- Leave a clean, low-detail area near the bottom for branding overlay
-- High quality, suitable for social media`;
-
-  let imageUrl: string | null = null;
-
-  // Try Together AI (FLUX.1) first - 96% cheaper
-  // Uses retry with exponential backoff (1s, 2s, 4s) for transient errors like HTTP 500
-  if (process.env.TOGETHER_API_KEY) {
-    try {
-      imageUrl = await retryWithBackoff(
-        () => generateWithTogetherAI(imagePrompt, { source, postId }),
-        3,    // maxRetries
-        1000  // baseDelayMs
-      );
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      console.warn(`Together AI failed after all retries, falling back to DALL-E: ${errorMsg}`);
-
-      // Track the failure (after all retries exhausted)
-      await trackAIUsage({
-        type: "image_generation",
-        model: "FLUX.1-dev",
-        size: "1792x1024",
-        cost: 0,
-        success: false,
-        errorMsg: `All retries failed: ${errorMsg}`,
-        postId,
-        source,
-      });
-    }
-  }
-
-  // Fallback to DALL-E 3
-  if (!imageUrl && process.env.OPENAI_API_KEY) {
-    try {
-      imageUrl = await generateWithDALLE(imagePrompt, { source, postId });
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
-
-      // Track the failure
-      await trackAIUsage({
-        type: "image_generation",
-        model: "dall-e-3",
-        size: "1792x1024",
-        cost: 0,
-        success: false,
-        errorMsg,
-        postId,
-        source,
-      });
-
-      throw error;
-    }
-  }
-
-  if (!imageUrl) {
-    // No API keys configured
-    const error = "No image generation API configured (need TOGETHER_API_KEY or OPENAI_API_KEY)";
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    const error = "No image generation API configured (need OPENAI_API_KEY)";
     await trackAIUsage({
       type: "image_generation",
-      model: "none",
+      model: "gpt-image-1.5",
       cost: 0,
       success: false,
       errorMsg: error,
@@ -548,6 +352,71 @@ Style requirements:
     });
     throw new Error(error);
   }
+
+  const model = "gpt-image-1-mini";
+  const size = "1536x1024" as const;
+  const quality = "low" as const;
+  const cost = IMAGE_GEN_COST["gpt-image-1-mini-1536x1024-low"];
+
+  const imagePrompt = `An authentic, minimalist editorial-style stock photograph for a news article about electric vehicles.
+Topic: ${title}
+Context: ${summary.slice(0, 200)}
+
+Style requirements:
+
+Atmosphere: Minimalist, gentle, calming, and comfortable. Use soft, diffused, natural daylight (e.g., soft morning light or an overcast day); strictly NO harsh midday sun, deep shadows, neon lights, glowing accents, or futuristic cyberpunk elements.
+
+Palette: Calming and muted, realistic colors (e.g., soft whites, gentle grays, calming blues, and natural greens). Avoid overly vibrant or aggressive clashing colors.
+
+Composition: Simplicity is paramount. Focus tightly on one contemporary electric vehicle subject. The scene should be uncluttered with very few background elements (e.g., a single modern car in a modern residential driveway or at a minimalist, clean charging spot).
+
+Restrictions: strictly NO text, watermarks, or logos generated in the scene (including vehicle license plates, which should be blurred or omitted).
+
+Negative Space: The bottom-right quadrant of the image must remain exceptionally simple, clean, and low-detail, providing an empty "safe zone" for a branding overlay.`;
+
+  const openai = new OpenAI({ apiKey: openaiKey });
+
+  let imageUrl: string;
+  try {
+    const response = await openai.images.generate({
+      model,
+      prompt: imagePrompt,
+      n: 1,
+      size,
+      quality,
+    });
+
+    const url = response.data?.[0]?.url;
+    if (!url) {
+      throw new Error("GPT Image 1.5: no image URL returned");
+    }
+    imageUrl = url;
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    await trackAIUsage({
+      type: "image_generation",
+      model,
+      size,
+      cost: 0,
+      success: false,
+      errorMsg,
+      postId,
+      source,
+    });
+    throw error;
+  }
+
+  await trackAIUsage({
+    type: "image_generation",
+    model,
+    size,
+    cost,
+    success: true,
+    postId,
+    source,
+  });
+
+  console.log(`GPT Image 1 Mini generated for: ${title.slice(0, 50)}... [source: ${source}, cost: $${cost}]`);
 
   try {
     return await applyBrandingOverlay(imageUrl);
