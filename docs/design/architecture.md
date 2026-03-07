@@ -454,28 +454,34 @@ X posts with images get significantly higher engagement. We use a hybrid approac
 
 **Note**: X has fully migrated to `api.x.com` domain (as of 2025). The old `twitter.com` endpoints are deprecated.
 
-### AI Image Generation (DALL-E 3)
+### AI Image Generation (GPT Image 1 Mini)
 
-When no scraped image is available, we generate a professional EV-themed image:
+When no scraped image is available, we generate an EV-themed image using GPT Image 1 Mini at 1536×1024 (low quality):
 
 ```typescript
-// Prompt template for DALL-E 3
-const imagePrompt = `A professional, modern photograph style image for an electric vehicle news article.
+// Prompt template for GPT Image 1 Mini
+const imagePrompt = `An authentic, minimalist editorial-style stock photograph for a news article about electric vehicles.
 Topic: ${title}
 Context: ${summary.slice(0, 200)}
 
 Style requirements:
-- Clean, professional news/tech media aesthetic
-- Feature electric vehicles, charging infrastructure, or EV technology
-- Modern urban or tech environment
-- Vibrant but realistic colors
-- No text or logos in the image
-- High quality, suitable for social media`;
+
+Setting: Place the car in a natural outdoor environment — choose one of: an open forest road, a coastal cliffside, a vast open plain, a lakeside or seaside with calm water, or a wide open sky backdrop. Strictly NO city skylines, tall buildings, urban streets, or man-made structures in the background.
+
+Atmosphere: Minimalist, gentle, calming, and serene. Use soft, diffused natural daylight (e.g., soft morning light, golden hour, or an overcast sky); strictly NO harsh midday sun, deep shadows, neon lights, glowing accents, or futuristic cyberpunk elements.
+
+Palette: Calming and muted, realistic colors drawn from nature (e.g., soft greens, gentle blues, sandy tones, misty grays). Avoid overly vibrant or aggressive clashing colors.
+
+Composition: Simplicity is paramount. One contemporary electric vehicle, centered or slightly off-center, with a vast, clean natural background that fills most of the frame. The background should feel open, airy, and uncluttered — like the car is alone in nature.
+
+Restrictions: Strictly NO text, watermarks, or logos in the scene. Vehicle license plates must be blurred or omitted.
+
+Negative Space: The bottom-right quadrant of the image must remain exceptionally simple, clean, and low-detail (e.g., open sky, calm water, or blurred foliage), providing an empty "safe zone" for a branding overlay.`;
 ```
 
 **Cost breakdown**:
-- DALL-E 3 (1024x1024, standard): ~$0.04 per image
-- At 3-5 posts/day with 50% AI generation: ~$2-3/month
+- GPT Image 1 Mini (1536×1024, low): $0.006 per image
+- At 3-5 posts/day with 50% AI generation: ~$0.30/month
 
 ### Files Involved
 
