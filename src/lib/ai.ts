@@ -364,15 +364,17 @@ Context: ${summary.slice(0, 200)}
 
 Style requirements:
 
-Atmosphere: Minimalist, gentle, calming, and comfortable. Use soft, diffused, natural daylight (e.g., soft morning light or an overcast day); strictly NO harsh midday sun, deep shadows, neon lights, glowing accents, or futuristic cyberpunk elements.
+Setting: Place the car in a natural outdoor environment — choose one of: an open forest road, a coastal cliffside, a vast open plain, a lakeside or seaside with calm water, or a wide open sky backdrop. Strictly NO city skylines, tall buildings, urban streets, or man-made structures in the background.
 
-Palette: Calming and muted, realistic colors (e.g., soft whites, gentle grays, calming blues, and natural greens). Avoid overly vibrant or aggressive clashing colors.
+Atmosphere: Minimalist, gentle, calming, and serene. Use soft, diffused natural daylight (e.g., soft morning light, golden hour, or an overcast sky); strictly NO harsh midday sun, deep shadows, neon lights, glowing accents, or futuristic cyberpunk elements.
 
-Composition: Simplicity is paramount. Focus tightly on one contemporary electric vehicle subject. The scene should be uncluttered with very few background elements (e.g., a single modern car in a modern residential driveway or at a minimalist, clean charging spot).
+Palette: Calming and muted, realistic colors drawn from nature (e.g., soft greens, gentle blues, sandy tones, misty grays). Avoid overly vibrant or aggressive clashing colors.
 
-Restrictions: strictly NO text, watermarks, or logos generated in the scene (including vehicle license plates, which should be blurred or omitted).
+Composition: Simplicity is paramount. One contemporary electric vehicle, centered or slightly off-center, with a vast, clean natural background that fills most of the frame. The background should feel open, airy, and uncluttered — like the car is alone in nature.
 
-Negative Space: The bottom-right quadrant of the image must remain exceptionally simple, clean, and low-detail, providing an empty "safe zone" for a branding overlay.`;
+Restrictions: Strictly NO text, watermarks, or logos in the scene. Vehicle license plates must be blurred or omitted.
+
+Negative Space: The bottom-right quadrant of the image must remain exceptionally simple, clean, and low-detail (e.g., open sky, calm water, or blurred foliage), providing an empty "safe zone" for a branding overlay.`;
 
   const openai = new OpenAI({ apiKey: openaiKey });
 
