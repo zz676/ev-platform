@@ -87,6 +87,22 @@ export function Header() {
           >
             {t("subscribe")}
           </button>
+          {/* Juice Index */}
+          <a
+            href="https://www.juiceindex.io/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-nav font-medium text-gray-600 hover:text-ev-green-600 transition-colors"
+          >
+            <Image
+              src="/juiceindex-logo.png"
+              alt="Juice Index"
+              width={20}
+              height={20}
+              className="w-5 h-5 rounded-sm"
+            />
+            Juice Index
+          </a>
         </nav>
 
         {/* Right Section - Search + Language + Profile/Login */}
