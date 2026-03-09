@@ -188,11 +188,16 @@ export async function GET(request: NextRequest) {
         candidateUrl: string,
         source: "scraped" | "ai-generated"
       ) => {
-        console.log(`[Digest] Checking image accessibility: ${candidateUrl}`);
-        const isAccessible = await isImageUrlAccessible(candidateUrl);
-        if (!isAccessible) {
-          console.log(`[Digest] Image not accessible: ${candidateUrl}`);
-          return null;
+        // Data URLs (base64-embedded) don't need an accessibility check — uploadMedia handles them directly
+        if (!candidateUrl.startsWith("data:")) {
+          console.log(`[Digest] Checking image accessibility: ${candidateUrl}`);
+          const isAccessible = await isImageUrlAccessible(candidateUrl);
+          if (!isAccessible) {
+            console.log(`[Digest] Image not accessible: ${candidateUrl}`);
+            return null;
+          }
+        } else {
+          console.log(`[Digest] Skipping accessibility check for data URL (length: ${candidateUrl.length})`);
         }
 
         try {
