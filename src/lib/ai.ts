@@ -70,13 +70,21 @@ async function applyBrandingOverlay(imageUrl: string): Promise<string> {
   const siteLabel = "www." + siteUrl.replace(/^https?:\/\//, "");
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to download image for branding: HTTP ${response.status}`);
+  let imageBuffer: Buffer;
+  if (imageUrl.startsWith("data:")) {
+    // Base64 data URL — decode directly without a network fetch
+    const match = imageUrl.match(/^data:[^;]+;base64,(.+)$/);
+    if (!match) {
+      throw new Error("Invalid data URL format for branding overlay");
+    }
+    imageBuffer = Buffer.from(match[1], "base64");
+  } else {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image for branding: HTTP ${response.status}`);
+    }
+    imageBuffer = Buffer.from(await response.arrayBuffer());
   }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const imageBuffer = Buffer.from(arrayBuffer);
 
   const { createCanvas, loadImage } = await import("canvas");
   const baseImage = await loadImage(imageBuffer);
@@ -389,10 +397,15 @@ Negative Space: The bottom-right quadrant of the image must remain exceptionally
     });
 
     const url = response.data?.[0]?.url;
-    if (!url) {
-      throw new Error("GPT Image 1.5: no image URL returned");
+    const b64 = response.data?.[0]?.b64_json;
+    if (url) {
+      imageUrl = url;
+    } else if (b64) {
+      // gpt-image-1 family returns base64 by default, not a URL
+      imageUrl = `data:image/png;base64,${b64}`;
+    } else {
+      throw new Error("GPT Image 1 Mini: no image data returned (no url or b64_json)");
     }
-    imageUrl = url;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : "Unknown error";
     await trackAIUsage({
