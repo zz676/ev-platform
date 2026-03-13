@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PostStatus, ImageSource } from "@prisma/client";
 import { postTweet, formatTweetContent, uploadMedia } from "@/lib/twitter";
-import { generatePostImage } from "@/lib/ai";
+import { generatePostImage, applyBrandingOverlay } from "@/lib/ai";
 import { requireApiAdmin } from "@/lib/auth/api-auth";
 import {
   canManualRetry,
@@ -125,7 +125,16 @@ export async function POST(
       for (const candidate of candidateImages) {
         try {
           console.log(`Trying image for post ${post.id}: ${candidate.url} (${candidate.source})`);
-          mediaId = await uploadMedia(candidate.url);
+          // Apply branding overlay to scraped images (AI-generated already have it)
+          let uploadUrl = candidate.url;
+          if (candidate.source === ImageSource.SCRAPED) {
+            try {
+              uploadUrl = await applyBrandingOverlay(candidate.url);
+            } catch (overlayErr) {
+              console.warn(`Branding overlay failed for scraped image, using original:`, overlayErr);
+            }
+          }
+          mediaId = await uploadMedia(uploadUrl);
           mediaIds = [mediaId];
           imageSource = candidate.source;
           console.log(`Image uploaded for post ${post.id}, media_id: ${mediaId}`);

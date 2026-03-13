@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { PostStatus, Prisma } from "@prisma/client";
 import { postTweet, uploadMedia, isImageUrlAccessible } from "@/lib/twitter";
-import { generatePostImage } from "@/lib/ai";
+import { generatePostImage, applyBrandingOverlay } from "@/lib/ai";
 import { POSTING_CONFIG } from "@/lib/config/posting";
 import { generateFullDigestTweet } from "@/lib/llm/digest";
 import {
@@ -201,10 +201,19 @@ export async function GET(request: NextRequest) {
         }
 
         try {
-          console.log(`[Digest] Attempting to upload image to X: ${candidateUrl}`);
-          const mediaId = await uploadMedia(candidateUrl);
+          // Apply branding overlay to scraped images (AI-generated already have it)
+          let uploadUrl = candidateUrl;
+          if (source === "scraped") {
+            try {
+              uploadUrl = await applyBrandingOverlay(candidateUrl);
+            } catch (overlayErr) {
+              console.warn(`[Digest] Branding overlay failed, using original:`, overlayErr);
+            }
+          }
+          console.log(`[Digest] Attempting to upload image to X: ${uploadUrl}`);
+          const mediaId = await uploadMedia(uploadUrl);
           console.log(`[Digest] Image upload successful, media_id: ${mediaId}`);
-          return { mediaId, imageUrl: candidateUrl, imageSource: source };
+          return { mediaId, imageUrl: uploadUrl, imageSource: source };
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           console.error(`[Digest] Image upload failed: ${errorMsg}`);
