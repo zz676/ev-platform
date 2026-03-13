@@ -57,7 +57,7 @@ async function trackAIUsage(params: {
   }
 }
 
-async function applyBrandingOverlay(imageUrl: string): Promise<string> {
+export async function applyBrandingOverlay(imageUrl: string): Promise<string> {
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
   let imageBuffer: Buffer;
