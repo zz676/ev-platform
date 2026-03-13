@@ -57,17 +57,7 @@ async function trackAIUsage(params: {
   }
 }
 
-// Retry helper with exponential backoff
-
-function normalizeSiteUrl(url: string): string {
-  return url.replace(/\/+$/, "");
-}
-
 async function applyBrandingOverlay(imageUrl: string): Promise<string> {
-  const siteUrl = normalizeSiteUrl(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://evjuice.net"
-  );
-  const siteLabel = "www." + siteUrl.replace(/^https?:\/\//, "");
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
   let imageBuffer: Buffer;
@@ -95,49 +85,25 @@ async function applyBrandingOverlay(imageUrl: string): Promise<string> {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(baseImage, 0, 0, width, height);
 
-  const padding = Math.round(width * 0.03);
-  const fontSize = Math.max(Math.round(height * 0.04), 18);
+  // Logo size: ~14% of image height, positioned bottom-right with padding
+  const padding = Math.round(width * 0.025);
+  const logoSize = Math.round(height * 0.14);
 
-  // Measure text first to compute layout
-  ctx.font = `600 ${fontSize}px sans-serif`;
-  const textMetrics = ctx.measureText(siteLabel);
-  const textWidth = textMetrics.width;
-
-  // Load icon and scale to match text height
-  const iconSize = Math.round(fontSize * 1.6);
-  const iconGap = 8;
-  const totalWidth = iconSize + iconGap + textWidth;
-
-  const iconPath = path.join(process.cwd(), "public", "icon-192.png");
-  let iconImage: Awaited<ReturnType<typeof loadImage>> | null = null;
+  const logoPath = path.join(process.cwd(), "public", "juiceindex-logo.png");
   try {
-    iconImage = await loadImage(iconPath);
+    const logoImage = await loadImage(logoPath);
+    const logoX = width - padding - logoSize;
+    const logoY = height - padding - logoSize;
+    // Subtle drop shadow for legibility on any background
+    ctx.shadowColor = "rgba(0, 0, 0, 0.30)";
+    ctx.shadowBlur = Math.round(logoSize * 0.08);
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = Math.round(logoSize * 0.04);
+    ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+    ctx.shadowColor = "transparent";
   } catch {
-    console.warn("[AI] Could not load icon-192.png, rendering text-only overlay");
+    console.warn("[AI] Could not load juiceindex-logo.png, skipping branding overlay");
   }
-
-  // Position: right-aligned block at bottom-right
-  const blockRight = width - padding;
-  const blockLeft = blockRight - totalWidth;
-  const textY = height - padding;
-
-  // Draw icon (no shadow)
-  if (iconImage) {
-    const iconY = textY - iconSize;
-    ctx.drawImage(iconImage, blockLeft, iconY, iconSize, iconSize);
-  }
-
-  // Draw text with shadow
-  ctx.font = `600 ${fontSize}px sans-serif`;
-  ctx.textAlign = "right";
-  ctx.textBaseline = "bottom";
-  ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
-  ctx.shadowBlur = Math.round(fontSize * 0.35);
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = Math.round(fontSize * 0.15);
-  ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-  ctx.fillText(siteLabel, blockRight, textY);
-  ctx.shadowColor = "transparent";
 
   const outputBuffer = canvas.toBuffer("image/png");
   if (!blobToken) {
