@@ -253,23 +253,23 @@ async function generateImage(
   summary: string,
   postId: string
 ): Promise<string> {
-  const imagePrompt = `An authentic, minimalist editorial-style stock photograph for a news article about electric vehicles.
-Topic: ${title}
-Context: ${summary.slice(0, 200)}
+  const imageStyles = [
+    // Style 1: Forest Serenity — sunlit woods, car small and side-on, rich woodland detail
+    `A stunning cinematic automotive photograph of a sleek modern electric vehicle gliding through a lush, sun-drenched forest. The car is in side profile or 3/4 rear angle — small in the frame, occupying no more than 35% of image width, placed in the left or right third. The scene is rich with natural detail: tall ancient trees with textured bark flank the winding asphalt road, their canopy alive with golden sunlight streaming through in dramatic shafts. The forest floor is carpeted with ferns, wildflowers, and fallen leaves. A shallow rocky stream is visible catching light between the trees in the background. Dappled shadows play across the road surface. In the far distance, a soft clearing hints at open sky beyond the tree line. Mood: serene, vibrant, alive — like a nature documentary. Rich deep greens, amber sunlight, fresh shadows. NO fog, NO haze, NO yellowish overcast. NO text, logos, or license plates. Bottom-right: blurred mossy road edge or soft fern bokeh for overlay space.`,
 
-Style requirements:
+    // Style 2: Dynamic Curve — high-speed corner, motion blur, dramatic environment
+    `A high-energy cinematic automotive action shot of a sleek modern electric vehicle carving through a sweeping mountain curve at speed. Camera angle is low and slightly behind, offset to the side. The car is in a powerful 3/4 rear-angle stance — NOT head-on. Strong motion blur streaks the road surface and surrounding pines. The tarmac has worn white lane markings and subtle tire tracks that add realism. Rocky cliff faces rise on one side of the road, draped in moss and small ferns. On the other side, the land drops away revealing a breathtaking forested valley far below. Dramatic cumulus clouds in a vivid blue sky tower above the ridge. Shafts of afternoon sunlight cut through the valley. A hawk or eagle is faintly visible soaring in the mid-distance. Colors: vivid pine greens, warm tarmac grays, crisp sky blue, golden light. Mood: fast, powerful, thrilling. NO fog, NO haze. NO text, logos, or license plates. Bottom-right: blurred road surface with motion streaks for overlay space.`,
 
-Setting: Place the car in a natural outdoor environment — choose one of: an open forest road, a coastal cliffside, a vast open plain, a lakeside or seaside with calm water, or a wide open sky backdrop. Strictly NO city skylines, tall buildings, urban streets, or man-made structures in the background.
+    // Style 3: Mountain Vista — epic wide landscape, car tiny, rich foreground
+    `A breathtaking ultra-wide cinematic landscape photograph with a sleek modern electric vehicle as a tiny element on a dramatic mountain road. The car is very small — less than 20% of frame width — visible in mid-distance, side profile, winding along a narrow road that ribbons through the terrain. The composition is epic in scale: the foreground features alpine wildflowers in vibrant purples and yellows, with rocks and low shrubs adding texture. The road winds past a crystal-clear glacial lake that mirrors the sky and snow-capped peaks beyond. Majestic mountains dominate the upper half of the frame, their rocky summits dusted with snow. A dramatic cloudscape — large white cumulus against deep blue sky — fills the upper third. Late afternoon light casts long golden shadows across the valley. Colors: vivid sky blue, emerald lake, white snow, golden meadow. Mood: epic, free, awe-inspiring. NO fog, NO haze. NO text, logos, or license plates. Bottom-right: clear sky or still lake surface for overlay space.`,
 
-Atmosphere: Minimalist, gentle, calming, and serene. Use soft, diffused natural daylight (e.g., soft morning light, golden hour, or an overcast sky); strictly NO harsh midday sun, deep shadows, neon lights, glowing accents, or futuristic cyberpunk elements.
+    // Style 4: Coastal Speed — low angle, dramatic ocean, golden hour richness
+    `A cinematic low-angle automotive photograph of a sleek modern electric vehicle powering along a dramatic clifftop coastal highway at golden hour. Camera hugs the road surface, angled to the side and slightly behind the car — which occupies the left or right third of the frame in a sleek side or 3/4 rear profile. The scene is richly layered: in the foreground, coastal wildflowers and dry golden grass cling to the cliff edge. Below the cliff, waves crash spectacularly against dark volcanic rocks, sending white spray into the air. The vivid turquoise and deep navy ocean stretches to a glowing horizon. A distant sailboat is silhouetted against the orange sky. Overhead, a few long wispy cirrus clouds catch the last warm light. Motion blur on the wheels and road surface conveys effortless speed. Colors: vivid ocean blues, fiery golden horizon, warm amber on the car body. Mood: luxurious, aspirational, free. NO fog, NO flat overcast. NO text, logos, or license plates. Bottom-right: blurred cliff-edge grass or ocean surface for overlay space.`,
+  ];
 
-Palette: Calming and muted, realistic colors drawn from nature (e.g., soft greens, gentle blues, sandy tones, misty grays). Avoid overly vibrant or aggressive clashing colors.
-
-Composition: Simplicity is paramount. One contemporary electric vehicle, centered or slightly off-center, with a vast, clean natural background that fills most of the frame. The background should feel open, airy, and uncluttered — like the car is alone in nature.
-
-Restrictions: Strictly NO text, watermarks, or logos in the scene. Vehicle license plates must be blurred or omitted.
-
-Negative Space: The bottom-right quadrant of the image must remain exceptionally simple, clean, and low-detail (e.g., open sky, calm water, or blurred foliage), providing an empty "safe zone" for a branding overlay.`;
+  const styleIndex = Math.floor(Math.random() * imageStyles.length);
+  const imagePrompt = `${imageStyles[styleIndex]}
+Topic context: ${title}. ${summary.slice(0, 150)}`;
 
   // Try Together AI (FLUX.1) first - 96% cheaper
   if (process.env.TOGETHER_API_KEY) {
