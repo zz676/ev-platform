@@ -332,24 +332,215 @@ export async function generatePostImage(
   const quality = "low" as const;
   const cost = IMAGE_GEN_COST["gpt-image-1-mini-1536x1024-low"];
 
+  // Helper to pick a random element from an array
+  const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+  // Variation pools for each style to ensure visual diversity
+  const formulaCarVariations = {
+    angles: [
+      "ultra-low road-level shot, nose filling the bottom-center of the frame",
+      "dramatic high 3/4 aerial shot looking down on the car mid-corner",
+      "tight side-profile tracking shot with extreme motion blur on the background",
+      "rear 3/4 chase camera angle showing the diffuser and rear wing in detail",
+      "wide establishing shot from above the grandstands showing the full circuit bend",
+    ],
+    settings: [
+      "a twisting Monaco-style street circuit with safety barriers and a tunnel entrance glowing orange",
+      "a sweeping high-speed banked curve at a futuristic night circuit with LED strip lighting embedded in the walls",
+      "a rain-drenched city circuit with reflective puddles and spray roosting from the tires",
+      "a sun-baked desert straight with heat shimmer and sand dunes in the background",
+      "a dawn start grid with fog rolling across the track and pit buildings silhouetted behind",
+    ],
+    colors: [
+      "neon yellow and electric blue livery",
+      "matte black with vivid red racing stripes",
+      "pearl white with holographic teal accents",
+      "deep metallic purple with gold pinstripes",
+      "fluorescent orange and carbon-fiber black",
+    ],
+    details: [
+      "Sparks fly from the underside as it scrapes the road. Motion blur streaks the barriers.",
+      "Tire smoke billows behind in a thick white cloud. The brake discs glow cherry-red.",
+      "Rain spray creates a fan of mist behind the car. Headlights cut through the murk.",
+      "The DRS flap is wide open and heat haze distorts the air above the engine cover.",
+      "Confetti from a recent podium celebration drifts across the frame in a colorful haze.",
+    ],
+  };
+
+  const muscleCarVariations = {
+    angles: [
+      "dramatic 3/4 front angle, the car facing slightly toward the camera",
+      "dead-center head-on shot with the hood stretching toward the lens",
+      "low-angle rear 3/4 showing the wide haunches and twin exhaust tips",
+      "side profile with the car in motion, dust trailing from the rear wheels",
+      "elevated front-down shot emphasizing the massive hood and chrome grille",
+    ],
+    settings: [
+      "a cracked desert salt flat at sunset with distant purple mesas",
+      "a straight empty two-lane highway cutting through golden wheat fields at dusk",
+      "a moody industrial waterfront at blue hour with old brick warehouses and steel bridges",
+      "a dusty Route 66 gas station at twilight with a single flickering neon sign",
+      "a wide red-rock canyon road with towering sandstone walls glowing amber in late sun",
+    ],
+    colors: [
+      "deep candy-apple red with metallic flake",
+      "midnight blue with dual white racing stripes",
+      "matte olive green with chrome bumper accents",
+      "burnt orange with a black vinyl roof and chrome trim",
+      "jet black with subtle gold pinstriping along the body lines",
+    ],
+    details: [
+      "Heat shimmer ripples off the hood. Chrome catches the orange glow.",
+      "The driver's-side window is down and a leather-gloved hand rests on the door.",
+      "Exhaust fumes curl upward in the cold evening air like wisps of smoke.",
+      "One headlight pops up, casting a warm beam across the cracked pavement.",
+      "Dust motes float in a single shaft of golden light hitting the windshield.",
+    ],
+  };
+
+  const hypercarVariations = {
+    angles: [
+      "centered head-on, filling the mid-frame with an aggressive wide-body stance",
+      "low 3/4 front angle showing the massive splitter and sculpted fenders",
+      "overhead bird's-eye view looking straight down on the car's flowing roofline",
+      "tight close-up of the front quarter showing air intakes and headlight detail",
+      "rear-facing view through the tunnel, taillights blazing red and diffuser heat shimmering",
+    ],
+    settings: [
+      "a raw concrete tunnel with moisture streaks and bold yellow reflective markers",
+      "a glass-walled underground parking structure with fluorescent ceiling lights reflected in polished floors",
+      "a curved highway overpass at dusk with city lights twinkling far below",
+      "the entrance to a brutalist concrete bridge with dramatic geometric shadows",
+      "a dimly-lit aircraft hangar with shafts of dusty light from high windows",
+    ],
+    colors: [
+      "deep matte carbon-black with vivid orange aerodynamic accents",
+      "liquid silver with electric green highlight lines along the body creases",
+      "satin battleship grey with bright red carbon-fiber mirrors and splitter",
+      "pearlescent white that shifts to blue under the tunnel lights",
+      "bare exposed carbon-fiber weave with subtle copper-bronze accent trim",
+    ],
+    details: [
+      "Brake rotors glow amber-red. The tunnel exit is a tiny blinding circle of daylight.",
+      "LED running lights trace a sharp line across the front. Exhaust gases shimmer behind.",
+      "Active aero flaps are fully deployed. Air vents on the hood expel hot turbulence.",
+      "Ground-effect skirts nearly touch the floor. Puddle reflections mirror the car perfectly.",
+      "Interior ambient lighting glows ice-blue through the tinted windshield glass.",
+    ],
+  };
+
+  const roadsterVariations = {
+    angles: [
+      "slightly elevated side-front angle with the driver's scarf trailing in the wind",
+      "low rear 3/4 showing the tapered tail, round taillights, and wire spare wheel",
+      "dramatic front-on view through a stone archway framing the approaching car",
+      "wide landscape shot with the car small in the lower third, the scenery dominating",
+      "tight cockpit-level shot from the passenger seat showing the wood-rim steering wheel and road ahead",
+    ],
+    settings: [
+      "a winding cliffside road on the Italian Riviera at golden hour with turquoise sea below",
+      "a tree-lined French country lane in autumn with golden leaves drifting across the road",
+      "a misty Scottish highland pass at dawn with heather-covered hills and a stone bridge",
+      "a sun-drenched Tuscan vineyard road with cypress trees and a hilltop villa",
+      "a coastal California highway with crashing Pacific waves and fog-wrapped headlands",
+    ],
+    colors: [
+      "rich British racing green",
+      "elegant cream white with a tan leather interior",
+      "classic Rosso Corsa Ferrari red",
+      "soft powder blue with chrome wire wheels",
+      "warm Burgundy wine with a cream racing stripe",
+    ],
+    details: [
+      "Sunlight rakes across the aluminum hood in warm gold. Bougainvillea cascades over a stone wall.",
+      "Fallen leaves swirl in the car's wake. Morning dew beads on the chrome mirrors.",
+      "The headlights glow softly in the mist. Sheep graze in a field beside the road.",
+      "A picnic basket sits on the passenger seat. Cypress tree shadows stripe the road.",
+      "Sea spray catches the light in a rainbow mist. Seagulls wheel above the cliff edge.",
+    ],
+  };
+
+  const rallyCarVariations = {
+    angles: [
+      "low and slightly ahead, looking back as the car fills the left two-thirds in a 3/4 front angle",
+      "high helicopter-style shot showing the car carving an S-curve through dense forest from above",
+      "rear chase angle with the car's taillights glowing through a massive cloud of dust",
+      "side-on tracking shot frozen mid-jump as the car launches off a crest",
+      "tight front-on shot as the car smashes through a shallow river crossing, water exploding outward",
+    ],
+    settings: [
+      "a muddy gravel forest stage lined with pine trees splattered by mud",
+      "a snow-covered mountain pass with icy hairpins and snow banks on both sides",
+      "a dry African savanna track with red dust and acacia trees in the distance",
+      "a narrow Welsh valley road in heavy rain with stone walls and green hills",
+      "a Finnish lakeside gravel road at midnight sun with golden light filtering through birch trees",
+    ],
+    colors: [
+      "vivid white with bold neon-green and black rally blocks",
+      "electric blue with bright yellow mud flaps and roof scoop",
+      "fiery red with white door numbers and a black bonnet",
+      "matte military green with orange rollcage visible through the windows",
+      "bright Subaru-style rally blue with gold wheels caked in mud",
+    ],
+    details: [
+      "A massive rooster-tail of mud and gravel explodes from the rear wheels.",
+      "The co-driver's hand braces against the dashboard. A pace-note book flutters in the footwell.",
+      "Snow chunks fly off the wheelarches like confetti. Studded tires bite the ice.",
+      "Red dust hangs in the air from the previous car. The setting sun turns it to gold.",
+      "The roof-mounted LED light bar blazes white. Fallen leaves pepper the air around the car.",
+    ],
+  };
+
+  const cyberpunkVariations = {
+    angles: [
+      "low-angle front 3/4, headlights cutting razor-sharp beams into the lens",
+      "dramatic top-down shot showing the car's sculpted roof and neon reflections in surrounding puddles",
+      "rear 3/4 with glowing taillights creating long red streaks in the wet road",
+      "ultra-wide establishing shot of a neon-lit street with the car small but luminous at center",
+      "close-up front detail shot showing the LED light bar and rain droplets on the bodywork",
+    ],
+    settings: [
+      "a rain-soaked urban street in a neon-drenched city with skyscrapers and steam from manhole covers",
+      "an elevated highway overpass with holographic billboards and a sprawling city visible below",
+      "a narrow back-alley between towering buildings with fire escapes and dripping neon signs",
+      "a futuristic charging plaza with glowing floor panels and a circular glass tower behind",
+      "a waterfront promenade at night with the car reflected in still harbor water and city lights beyond",
+    ],
+    colors: [
+      "deep violet shifting to electric blue in the neon reflections",
+      "chrome mirror finish reflecting all the surrounding neon colors",
+      "matte titanium grey with pulsing cyan underglow LED strips",
+      "glossy midnight black with magenta accent lighting in every crease",
+      "iridescent green-gold chameleon paint that shifts color with every angle",
+    ],
+    details: [
+      "Neon signs in vivid pink, teal, and orange reflect in the glossy body and flooded street.",
+      "Holographic advertisements flicker above, casting shifting colored light across the car's roof.",
+      "A drone hovers nearby, its spotlight creating a cone of light through the rain.",
+      "Pedestrians with translucent umbrellas are silhouetted against a massive glowing video wall.",
+      "Electric arcs spark from the charging port. Rain droplets on the hood glow like tiny jewels.",
+    ],
+  };
+
+  // Build prompts with randomized elements for each style
   const imageStyles = [
-    // Style 1: Electric Formula Race Car — street circuit, head-on drama
-    `A breathtaking cinematic motorsport photograph of a bold electric Formula-style single-seater race car charging directly toward the camera at full speed on a twisting street circuit. The camera is ultra-low, almost road-level, so the nose of the car fills the bottom-center of the frame with explosive presence. The front wing, exposed wheels, and aerodynamic body are sharp and dramatic. Behind the car: vibrant safety barriers painted in vivid red and blue stripes, a tunnel entrance with glowing orange light spilling out, and a sea of blurred crowd grandstands packed with fans. Motion blur streaks the barriers on both sides. Sparks fly from the underside of the car as it scrapes the road. The livery is an eye-popping neon yellow and electric blue. Colors: saturated neon yellow, cobalt blue, vivid red barriers, golden tunnel glow. Mood: thunderous, heart-pounding, electric. NO text, logos, or license plates. Bottom-right corner: blurred tarmac and sparks for overlay space.`,
+    // Style 1: Electric Formula Race Car
+    `A breathtaking cinematic motorsport photograph of a bold electric Formula-style single-seater race car in action. Camera: ${pick(formulaCarVariations.angles)}. Setting: ${pick(formulaCarVariations.settings)}. The car's livery is ${pick(formulaCarVariations.colors)}. ${pick(formulaCarVariations.details)} The aerodynamic body is sharp and dramatic with exposed wheels and detailed front wing. Colors are vivid and saturated. Mood: thunderous, heart-pounding, electric. NO text, logos, or license plates. Bottom-right corner: space for overlay.`,
 
-    // Style 2: Classic American Muscle Revival — desert sunset, front 3/4 glory
-    `A stunning cinematic automotive photograph of a powerful wide-body American classic muscle car with a long hood, squared haunches, chrome details, and twin exhausts, parked at a dramatic 3/4 front angle on a cracked desert salt flat at sunset. The car faces slightly toward the camera, commanding and aggressive. Its paint is a deep candy-apple red with metallic flake that blazes in the last light. Chrome bumpers, headlights, and wide flared fenders catch the orange glow. The desert stretches endlessly behind it: flat blinding white salt, then distant purple mesas silhouetted against a sky on fire with orange, crimson, and violet. Heat shimmer ripples off the hood. A long dark shadow stretches behind the car toward the camera. Colors: deep candy red, blazing orange sky, white salt flat, purple mountains. Mood: raw power, American freedom, golden-era nostalgia. NO text, logos, or license plates. Bottom-right: cracked salt flat texture fading to shadow for overlay space.`,
+    // Style 2: Classic American Muscle Revival
+    `A stunning cinematic automotive photograph of a powerful wide-body American classic muscle car with a long hood, squared haunches, chrome details, and twin exhausts. Camera: ${pick(muscleCarVariations.angles)}. Setting: ${pick(muscleCarVariations.settings)}. The car's paint is ${pick(muscleCarVariations.colors)}. ${pick(muscleCarVariations.details)} Mood: raw power, American freedom, golden-era nostalgia. NO text, logos, or license plates. Bottom-right: space for overlay.`,
 
-    // Style 3: Hypercar Head-On Tunnel Blast — underground drama
-    `An ultra-dramatic cinematic photograph of a low-slung hypercar racing head-on through a dramatic concrete tunnel at full throttle. The car is centered, aimed directly at the camera, filling the mid-frame with an aggressive wide-body stance featuring a huge carbon splitter, gaping front intakes, and quad headlights blazing white. The tunnel walls are raw concrete with streaks of moisture and bold yellow reflective markers that blur into glowing ribbons on both sides from the speed. Brake rotors glow amber-red behind the front wheels. The tunnel exit far behind the car is a tiny blinding white circle of daylight. The car's paint is deep matte carbon-black with vivid orange aerodynamic accents. Colors: carbon black and orange, glowing amber brakes, streaking yellow markers, white exit light. Mood: ferocious, explosive, otherworldly. NO text, logos, or license plates. Bottom-right: blurred wet concrete tunnel floor for overlay space.`,
+    // Style 3: Hypercar Tunnel/Urban Blast
+    `An ultra-dramatic cinematic photograph of a low-slung hypercar with an aggressive wide-body stance, huge carbon splitter, gaping front intakes, and blazing headlights. Camera: ${pick(hypercarVariations.angles)}. Setting: ${pick(hypercarVariations.settings)}. The car's finish is ${pick(hypercarVariations.colors)}. ${pick(hypercarVariations.details)} Mood: ferocious, explosive, otherworldly. NO text, logos, or license plates. Bottom-right: space for overlay.`,
 
-    // Style 4: Classic 1960s Sports Roadster — Italian Riviera, golden hour
-    `A gorgeous cinematic photograph of a curvaceous 1960s Italian-inspired open-top sports roadster with a long elegant hood, round headlights, wire wheels, and hand-formed aluminum bodywork, gliding through a winding cliffside road on the Italian Riviera at golden hour. The car is shot from a slightly elevated side-front angle with the driver's scarf trailing in the wind. Below the cliff edge: brilliant turquoise Mediterranean sea with white sailboats. Above: a terracotta-walled village clings to the hillside. Bougainvillea vines in vivid magenta cascade over the stone wall beside the road. The car's paint is a rich British racing green. Sunlight rakes across the aluminum hood in warm gold. Colors: British racing green, warm gold light, turquoise sea, magenta bougainvillea, terracotta walls. Mood: romantic, timeless, legendary. NO text, logos, or license plates. Bottom-right: sun-dappled stone road fading into warm blur for overlay space.`,
+    // Style 4: Classic 1960s Sports Roadster
+    `A gorgeous cinematic photograph of a curvaceous 1960s Italian-inspired open-top sports roadster with a long elegant hood, round headlights, wire wheels, and hand-formed aluminum bodywork. Camera: ${pick(roadsterVariations.angles)}. Setting: ${pick(roadsterVariations.settings)}. The car's paint is ${pick(roadsterVariations.colors)}. ${pick(roadsterVariations.details)} Mood: romantic, timeless, legendary. NO text, logos, or license plates. Bottom-right: space for overlay.`,
 
-    // Style 5: Electric Rally Car — forest stage, flying mud and drama
-    `A ferocious cinematic action photograph of a compact electric rally car launching sideways through a forest stage at full attack, front wheels cocked hard in a spectacular power-slide around a muddy gravel corner. Camera is low and slightly ahead, looking back as the car fills the left two-thirds of the frame in an aggressive 3/4 front angle. A massive rooster-tail of mud and gravel explodes from the rear wheels in a wide arc. Pine trees line the narrow stage road with their trunks streaked by mud splatter from previous competitors. Fallen leaves and small rocks pepper the air. The car's livery is vivid white with bold neon-green and black rally blocks. Roof-mounted LED light bar blazes white in the forest. Colors: brilliant white and neon green car, dark pine forest, flying brown mud, dappled forest light. Mood: wild, unhinged, heart-in-mouth rally drama. NO text, logos, or license plates. Bottom-right: blurred gravel and mud spray for overlay space.`,
+    // Style 5: Electric Rally Car
+    `A ferocious cinematic action photograph of a compact electric rally car at full attack. Camera: ${pick(rallyCarVariations.angles)}. Setting: ${pick(rallyCarVariations.settings)}. The car's livery is ${pick(rallyCarVariations.colors)}. ${pick(rallyCarVariations.details)} Mood: wild, unhinged, heart-in-mouth rally drama. NO text, logos, or license plates. Bottom-right: space for overlay.`,
 
-    // Style 6: Neon Cyberpunk EV Supercar — rain-soaked night city
-    `A cinematic night photograph of a futuristic electric supercar with an aggressive low wedge shape, active aerodynamics, and glowing underbody LED strips, sitting on a rain-soaked urban street in a neon-drenched city. Camera is low-angle and front 3/4, the car's headlights cut razor-sharp beams into the lens and reflect in the wet tarmac as two rivers of pure white light. Neon signs in vivid pink, teal, and orange reflect in the glossy car body and flooded street surface. Steam rises from manhole covers. A blurred crowd with colorful umbrellas lines the wet sidewalk behind. The skyline is packed with skyscrapers whose windows form a mosaic of warm gold light against an indigo-purple sky. The car's paint shifts from deep violet to electric blue in the neon reflections. Colors: violet-blue car, neon pink and teal reflections, white headlight beams, indigo night sky. Mood: cinematic cyberpunk, electric future, rain-soaked beauty. NO text, logos, or license plates. Bottom-right: wet reflective tarmac with neon color pools for overlay space.`,
+    // Style 6: Neon Cyberpunk EV Supercar
+    `A cinematic night photograph of a futuristic electric supercar with an aggressive low wedge shape, active aerodynamics, and glowing underbody LED strips. Camera: ${pick(cyberpunkVariations.angles)}. Setting: ${pick(cyberpunkVariations.settings)}. The car's paint is ${pick(cyberpunkVariations.colors)}. ${pick(cyberpunkVariations.details)} Mood: cinematic cyberpunk, electric future. NO text, logos, or license plates. Bottom-right: space for overlay.`,
   ];
 
   const styleIndex = Math.floor(Math.random() * imageStyles.length);
